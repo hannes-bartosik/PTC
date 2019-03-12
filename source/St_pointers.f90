@@ -279,10 +279,6 @@ endif
 
        case('UPDATETWISS','UPDATETWISSFORORBIT')
            call update_twiss_for_orbit
-       case('USEORBITUNITS')
-          MY_ERING%t%ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS=.true.
-       case('DONOTUSEORBITUNITS')
-          MY_ERING%t%ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS=.false.
        case('SETORBITRESTORE')
           read(mf,*) restore_mag,restore_magp
        case('SETORBITPHASOR')

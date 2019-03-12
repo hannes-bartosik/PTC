@@ -432,13 +432,6 @@ contains
     TYPE(INTERNAL_STATE), target, OPTIONAL :: STATE
     TYPE(INTERNAL_STATE), pointer :: STATE0
 
-    IF(my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS) THEN
-       x(1:4)=x(1:4)*1.e-3_dp
-       X5=X(5)
-       X(5)=X(6)/my_ORBIT_LATTICE%ORBIT_P0C
-       X(6)=X5/my_ORBIT_LATTICE%ORBIT_OMEGA
-    ENDIF
-
     u=my_false
 
     T=>my_ORBIT_LATTICE%ORBIT_NODES(K)%NODE
@@ -548,13 +541,6 @@ contains
        T=>T%NEXT
     ENDDO
     first_particle=.false.
-
-    IF(my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS) THEN
-       x(1:4)=x(1:4)*1.e3_dp
-       X5=X(5)
-       X(5)=X(6)*my_ORBIT_LATTICE%ORBIT_OMEGA
-       X(6)=X5*my_ORBIT_LATTICE%ORBIT_P0C
-    ENDIF
 
   end SUBROUTINE ORBIT_TRACK_NODE_Standard_R
 
@@ -1121,17 +1107,6 @@ contains
     TYPE(INTEGRATION_NODE), POINTER  :: T
     TYPE(INTERNAL_STATE), OPTIONAL :: STATE
 
-    IF(my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS) THEN
-       call alloc(x5)
-       do i=1,4
-          x(i)=x(i)*1.e-3_dp
-       enddo
-       X5=X(5)
-       X(5)=X(6)/my_ORBIT_LATTICE%ORBIT_P0C
-       X(6)=X5/my_ORBIT_LATTICE%ORBIT_OMEGA
-    ENDIF
-
-
     u=my_false
 
     T=>MY_ORBIT_LATTICE%ORBIT_NODES(K)%NODE
@@ -1168,49 +1143,9 @@ contains
     ENDDO
     !    ENDIF
 
-    IF(my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS) THEN
-       do i=1,4
-          x(i)=x(i)*1.e3_dp
-       enddo
-       X5=X(5)
-       X(5)=X(6)*my_ORBIT_LATTICE%ORBIT_OMEGA
-       X(6)=X5*my_ORBIT_LATTICE%ORBIT_P0C
-       call kill(x5)
-
-    ENDIF
-
   end SUBROUTINE ORBIT_TRACK_NODEP
 
 
-
-
-  SUBROUTINE orbit_to_ptc(x)
-    implicit none
-    real(dp), intent(inout) :: x(6)
-    real(dp) x5
-
-    IF(my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS) THEN
-       x(1:4)=x(1:4)*1.e-3_dp
-       X5=X(5)
-       X(5)=X(6)/my_ORBIT_LATTICE%ORBIT_P0C
-       X(6)=X5/my_ORBIT_LATTICE%ORBIT_OMEGA
-    ENDIF
-
-  END SUBROUTINE orbit_to_ptc
-
-  SUBROUTINE ptc_to_orbit(x)
-    implicit none
-    real(dp), intent(inout) :: x(6)
-    real(dp) x5
-
-    IF(my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS) THEN
-       x(1:4)=x(1:4)*1.e3_dp
-       X5=X(5)
-       X(5)=X(6)*my_ORBIT_LATTICE%ORBIT_OMEGA
-       X(6)=X5*my_ORBIT_LATTICE%ORBIT_P0C
-    ENDIF
-
-  END SUBROUTINE ptc_to_orbit
 
   SUBROUTINE ORBIT_MAKE_NODE_LAYOUT_accel(R,no_end_mag)
     IMPLICIT NONE
@@ -1399,7 +1334,6 @@ contains
     !   write(6,*)ORBIT_WARNING, DLMAX,LMAX
 
     !  COMPUTE LATTICE FUNCTIONS
-    my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS=MY_FALSE
  !   STATE=(DEFAULT0+NOCAVITY0)
     STATE=(DEFAULT0+NOCAVITY0)  !+time0
 
@@ -1500,7 +1434,6 @@ close(mf)
     my_ORBIT_LATTICE%orbit_harmonic=my_ORBIT_LATTICE%ORBIT_L*my_ORBIT_LATTICE%ORBIT_OMEGA/TWOPI/my_ORBIT_LATTICE%ORBIT_BETA0
     my_ORBIT_LATTICE%ORBIT_LMAX=DLMAX
     !my_ORBIT_LATTICE%ORBIT_BETA0
-    my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS=MY_TRUE
     CALL KILL(ID);CALL KILL(Y);CALL KILL(NORM);
 
     my_ORBIT_LATTICE%orbit_harmonic=nint(my_ORBIT_LATTICE%orbit_harmonic)
@@ -1547,7 +1480,6 @@ close(mf)
       !  COMPUTE LATTICE FUNCTIONS
     r=>my_ORBIT_LATTICE%parent_layout
     ORBIT_NODES=>my_ORBIT_LATTICE%ORBIT_NODES
-    my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS=MY_FALSE
  
     STATE=(my_ORBIT_LATTICE%state-time0)+delta0   
 
@@ -1616,8 +1548,6 @@ close(mf)
     WRITE(6,*) "ETAPs ", ETAP
     WRITE(6,*) "COs ", CO
     WRITE(6,*) "COPs ", COP
-
-    my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS=my_true
  
     end SUBROUTINE update_twiss_for_orbit 
 

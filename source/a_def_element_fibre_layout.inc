@@ -411,7 +411,7 @@ END TYPE ORBIT_NODE
 TYPE ORBIT_LATTICE
    TYPE(ORBIT_NODE), pointer :: ORBIT_NODES(:)
    INTEGER, pointer  ::  ORBIT_N_NODE  ! GET_N_NODE
-   LOGICAL(lp), pointer  ::  ORBIT_USE_ORBIT_UNITS,accel
+   LOGICAL(lp), pointer  ::  accel
    INTEGER, pointer  ::  ORBIT_WARNING
    REAL(DP), pointer  ::  ORBIT_LMAX    ! GET_LMAX
    REAL(DP), pointer  ::  ORBIT_MAX_PATCH_TZ

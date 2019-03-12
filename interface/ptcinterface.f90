@@ -59,7 +59,6 @@
         endif
 
         write(6,*) " $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$" 
-        write(6,*) " ORBIT_USE_ORBIT_UNITS ",my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS
         write(6,*) " ORBIT_N_NODE ",my_ORBIT_LATTICE%ORBIT_N_NODE
         write(6,*) " ORBIT_WARNING ",my_ORBIT_LATTICE%ORBIT_WARNING
         write(6,*) " ORBIT_OMEGA ",my_ORBIT_LATTICE%ORBIT_OMEGA
