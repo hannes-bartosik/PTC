@@ -117,4 +117,11 @@ void ptc_trackBunch(Bunch* bunch, double ZtoPhi,
 extern "C" void  ptc_get_tunes_(double* X, double* Y);
 
 
+//===================================================
+// This recalculates the PTC TWISS
+//===================================================
+
+extern "C" void  ptc_update_twiss_();
+
+
 #endif  // PTC_C_INTERFACE_H

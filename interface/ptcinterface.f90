@@ -254,3 +254,11 @@ end SUBROUTINE ptc_synchronous_after
     Y=my_ORBIT_LATTICE%ORBIT_TUNES(2)
   END SUBROUTINE PTC_GET_TUNES
 
+
+!===========================================================
+! This subroutine updates the TWISS
+!===========================================================
+  SUBROUTINE PTC_UPDATE_TWISS
+    use orbit_ptc
+    call UPDATE_TWISS_FOR_ORBIT
+  END SUBROUTINE PTC_UPDATE_TWISS
