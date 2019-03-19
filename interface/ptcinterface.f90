@@ -168,26 +168,6 @@ CAVITY_TOTALPATH=0
       end
 
 
-!===================================================
-!track 6D coordinates through the PTC-ORBIT node
-!===================================================
-!       subroutine ptc_track_particle(node_index, x,xp,y,yp,phi,dE)
-!
-!         USE orbit_ptc
-!         IMPLICIT NONE
-!         REAL(DP) x,xp,y,yp,phi,dE
-!         INTEGER node_index
-!         INTEGER i
-!        
-!         i = node_index + 1
-!        
-!         call PUT_RAY(x,xp,y,yp,phi,dE)
-!         call TRACK_ONE_NODE(i)
-!         call GET_RAY(x,xp,y,yp,phi,dE)
-!
-!       return
-!       end subroutine orbit_ptc_track_particle
-!
 !===========================================================
 ! This subroutine should be called before particle tracking.
 !  It specifies the type of the task that will be performed
