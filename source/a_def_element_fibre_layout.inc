@@ -430,6 +430,7 @@ TYPE ORBIT_LATTICE
    !   REAL(DP), pointer  ::  orbit_dppfac ! GET_dppfac
    REAL(DP), pointer  ::  orbit_deltae ! GET_deltae
    REAL(DP), pointer  ::  ORBIT_OMEGA_after
+   REAL(DP), pointer  ::  ORBIT_TUNES(:)
    !   REAL(DP), pointer  ::  freqb,freqa,voltb,volta,phasa,phasb,xs6,dxs6
    TYPE(INTERNAL_STATE),pointer :: STATE
    TYPE(INTEGRATION_NODE), pointer :: tp

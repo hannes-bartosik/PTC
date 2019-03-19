@@ -110,4 +110,11 @@ extern "C" void  ptc_get_omega_(double* X);
 void ptc_trackBunch(Bunch* bunch, double ZtoPhi,
                     int &orbit_ptc_node_index);
 
+//===================================================
+// This returns the tunes
+//===================================================
+
+extern "C" void  ptc_get_tunes_(double* X, double* Y);
+
+
 #endif  // PTC_C_INTERFACE_H

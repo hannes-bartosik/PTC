@@ -2412,6 +2412,7 @@ CONTAINS
     deallocate(L%STATE)
     deallocate(L%orbit_energy)
     deallocate(L%ORBIT_OMEGA_after,L%orbit_gamma)
+    deallocate(L%ORBIT_TUNES)
     !    deallocate(L%orbit_dppfac)
     deallocate(L%orbit_deltae)
     deallocate(L%accel)
@@ -2484,6 +2485,7 @@ CONTAINS
        !    ALLOCATE(O%orbit_dppfac);O%orbit_dppfac=zero;
        ALLOCATE(O%orbit_deltae);O%orbit_deltae=0.0_dp;
        ALLOCATE(O%ORBIT_OMEGA_after);O%ORBIT_OMEGA_after=1.0_dp
+       ALLOCATE(O%ORBIT_TUNES(2));O%ORBIT_TUNES=0.0_dp;
        !    ALLOCATE(O%dxs6,O%xs6,O%freqb,O%freqa,O%voltb,O%volta,O%phasa,O%phasb)
        ALLOCATE(O%accel);
        nullify(O%dt);

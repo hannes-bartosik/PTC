@@ -241,3 +241,16 @@ SUBROUTINE ptc_synchronous_after(i_node)
    endif
 end SUBROUTINE ptc_synchronous_after
 
+
+!===========================================================
+! This subroutine gets the tunes of the lattice 
+!  (without recalculating them)
+!===========================================================
+  SUBROUTINE PTC_GET_TUNES(X,Y)
+    use pointer_lattice
+    IMPLICIT NONE
+    REAL(DP) X, Y
+    X=my_ORBIT_LATTICE%ORBIT_TUNES(1)
+    Y=my_ORBIT_LATTICE%ORBIT_TUNES(2)
+  END SUBROUTINE PTC_GET_TUNES
+

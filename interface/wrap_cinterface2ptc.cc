@@ -268,6 +268,19 @@ static PyObject* wrap_ptc_trackBunch(PyObject *self, PyObject *args)
   return Py_None;
 }
 
+
+//===================================================
+// This returns the tunes.
+//===================================================
+
+static PyObject* wrap_ptc_get_tunes_(PyObject *self, PyObject *args)
+{
+  double X, Y;
+  ptc_get_tunes_(&X,&Y);
+  return Py_BuildValue("(dd)", X, Y);
+}
+
+
 static PyMethodDef ptcMethods[] =
 {
   {"ptc_init_",               wrap_ptc_init_,               METH_VARARGS, "Initializes PTC"},
@@ -283,6 +296,7 @@ static PyMethodDef ptcMethods[] =
   {"ptc_get_task_type_",      wrap_ptc_get_task_type_,      METH_VARARGS, "Call before tracking"},
   {"ptc_get_omega_",          wrap_ptc_get_omega_,          METH_VARARGS, "Returns fundamental RF frequency"},
   {"ptc_trackBunch",          wrap_ptc_trackBunch,          METH_VARARGS, "Track the Bunch through a PTC element"},
+  {"ptc_get_tunes_",          wrap_ptc_get_tunes_,          METH_VARARGS, "Returns the tunes"},
   {NULL, NULL}
 };
 
