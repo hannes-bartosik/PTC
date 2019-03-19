@@ -1507,14 +1507,14 @@ contains
     my_ORBIT_LATTICE%ORBIT_TUNES(1)=norm%tune(1)
     my_ORBIT_LATTICE%ORBIT_TUNES(2)=norm%tune(2)
 
-    WRITE(6,*) "FRACTIONAL TUNES ", my_ORBIT_LATTICE%ORBIT_TUNES(1), my_ORBIT_LATTICE%ORBIT_TUNES(2)
-    WRITE(6,*) "TWISS PARAMETERS AT THE ENTRANCE"
-    WRITE(6,*) "BETAs ", BET
-    WRITE(6,*) "ALPHAs ",ALF
-    WRITE(6,*) "ETAs ", ETA
-    WRITE(6,*) "ETAPs ", ETAP
-    WRITE(6,*) "COs ", CO
-    WRITE(6,*) "COPs ", COP
+    !! WRITE(6,*) "FRACTIONAL TUNES ", my_ORBIT_LATTICE%ORBIT_TUNES(1), my_ORBIT_LATTICE%ORBIT_TUNES(2)
+    !! WRITE(6,*) "TWISS PARAMETERS AT THE ENTRANCE"
+    !! WRITE(6,*) "BETAs ", BET
+    !! WRITE(6,*) "ALPHAs ",ALF
+    !! WRITE(6,*) "ETAs ", ETA
+    !! WRITE(6,*) "ETAPs ", ETAP
+    !! WRITE(6,*) "COs ", CO
+    !! WRITE(6,*) "COPs ", COP
 
     DO K=1,my_ORBIT_LATTICE%ORBIT_N_NODE
        CALL ORBIT_TRACK_NODE(K,Y,STATE)
@@ -1541,13 +1541,13 @@ contains
        ORBIT_NODES(K)%LATTICE(12)=CO(2)
        ORBIT_NODES(K)%LATTICE(13)=COP(2)
     ENDDO
-    WRITE(6,*) "TWISS PARAMETERS AT THE EXIT"
-    WRITE(6,*) "BETAs ", BET
-    WRITE(6,*) "ALPHAs ",ALF
-    WRITE(6,*) "ETAs ", ETA
-    WRITE(6,*) "ETAPs ", ETAP
-    WRITE(6,*) "COs ", CO
-    WRITE(6,*) "COPs ", COP
+    !! WRITE(6,*) "TWISS PARAMETERS AT THE EXIT"
+    !! WRITE(6,*) "BETAs ", BET
+    !! WRITE(6,*) "ALPHAs ",ALF
+    !! WRITE(6,*) "ETAs ", ETA
+    !! WRITE(6,*) "ETAPs ", ETAP
+    !! WRITE(6,*) "COs ", CO
+    !! WRITE(6,*) "COPs ", COP
  
     end SUBROUTINE update_twiss_for_orbit 
 
