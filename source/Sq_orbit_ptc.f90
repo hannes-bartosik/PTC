@@ -1343,18 +1343,12 @@ contains
     closed=0.0_dp
 
  !   CALL FIND_ORBIT(R,CLOSED,1,STATE,c_1d_5)
-closed(1)=0.001d0
-call kanalnummer(mf,"junk.txt")
-p=>r%start
-do i=1,r%n
-    CALL TRACK(R,closed,i,i+1,STATE)
-write(mf,*) i,p%mag%name
-write(mf,*) closed(1:2)
-p=>p%next
-enddo
-!write(6,*) closed
-close(mf)
-!pause 123
+    closed(1)=0.001d0
+    p=>r%start
+    do i=1,r%n
+      CALL TRACK(R,closed,i,i+1,STATE)
+      p=>p%next
+    enddo
 
 	CALL FIND_ORBIT(R,CLOSED,1,STATE,1e-5_dp)
     ID=1
