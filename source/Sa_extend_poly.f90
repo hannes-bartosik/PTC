@@ -5,34 +5,62 @@ module S_extend_poly
   USE tree_element_MODULE
   IMPLICIT NONE
   public
-  integer,private,parameter::ndd=6
-  private PRINTenv,env_8map,env_8benv
-  private ALLOCenv6,killenv6,REAL6env_8,env_8t,tenv_8
   logical(lp), target :: ALWAYS_knobs=.false.
-  type(real_8) e_muon_scale
-  INTERFACE ASSIGNMENT (=)
-     MODULE PROCEDURE ENV_8MAP
-     MODULE PROCEDURE REAL6env_8
-     MODULE PROCEDURE env_8t
-     MODULE PROCEDURE tenv_8
-     MODULE PROCEDURE env_8benv
-  END  INTERFACE
+  type(real_8) e_muon_scale,a_spin_scale
 
-
-  INTERFACE PRINT
-     MODULE PROCEDURE PRINTenv
-  END  INTERFACE
-
-  INTERFACE DAPRINT
-     MODULE PROCEDURE PRINTenv
-  END  INTERFACE
-
-
+  ! LD: 22.03.2019 (see Sc_euclidean.f90, Sh_def_kinf.f90 and Sr_spin.f90)
+  character(len=150) :: ELEM_NAME = "UNKNOWN"
+  integer            :: MAPDUMP = 0 ! 0 or 1 enable/disable PRTP
 
 CONTAINS
 
+  ! LD: 03.04.2019
+  SUBROUTINE PRTP1(S, X)
+    IMPLICIT NONE
+    CHARACTER(*), INTENT(IN):: S
+    TYPE(REAL_8), INTENT(IN):: X
 
+    ! cancel all PRTP
+    if (MAPDUMP .eq. 0) return
 
+    ! @@ + elem + func + 7 columns
+    WRITE(*, '(a,a15,a,a15,7E25.16)') '@@ ', ELEM_NAME, ' ', S, X.sub.'000000'&
+                              , X.sub.'100000', X.sub.'010000', X.sub.'001000'&
+                              , X.sub.'000100',-X.sub.'000001', X.sub.'000010'
+  END SUBROUTINE PRTP1
+
+  ! LD: 22.03.2019
+  SUBROUTINE PRTP(S, X)
+    IMPLICIT NONE
+    CHARACTER(*), INTENT(IN):: S
+    TYPE(REAL_8), OPTIONAL, INTENT(IN):: X(6)
+
+    ! cancel all PRTP
+    if (MAPDUMP .eq. 0) return
+
+    ! special case: display only string without X
+    if (.not. PRESENT(X)) then
+      WRITE(*, '(a,a)') '@@ ', S
+      return
+    endif
+
+    ! @@ + elem + func + 6 columns
+    if (MAPDUMP .eq. 1) then
+      WRITE(*, '(a,a15,a,a15,6E25.16)') '@@ ', ELEM_NAME, ' ', S &
+        , X(1).sub.'000000', X(2).sub.'000000', X(3).sub.'000000', X(4).sub.'000000',-X(6).sub.'000000', X(5).sub.'000000'
+      return
+    endif
+
+    ! @@ + elem + func + 42 columns
+    WRITE(*, '(a,a15,a,a15,42E25.16)') '@@ ', ELEM_NAME, ' ', S &
+      , X(1).sub.'000000', X(2).sub.'000000', X(3).sub.'000000', X(4).sub.'000000',-X(6).sub.'000000', X(5).sub.'000000'&
+      , X(1).sub.'100000', X(1).sub.'010000', X(1).sub.'001000', X(1).sub.'000100',-X(1).sub.'000001', X(1).sub.'000010'&
+      , X(2).sub.'100000', X(2).sub.'010000', X(2).sub.'001000', X(2).sub.'000100',-X(2).sub.'000001', X(2).sub.'000010'&
+      , X(3).sub.'100000', X(3).sub.'010000', X(3).sub.'001000', X(3).sub.'000100',-X(3).sub.'000001', X(3).sub.'000010'&
+      , X(4).sub.'100000', X(4).sub.'010000', X(4).sub.'001000', X(4).sub.'000100',-X(4).sub.'000001', X(4).sub.'000010'&
+      ,-X(6).sub.'100000',-X(6).sub.'010000',-X(6).sub.'001000',-X(6).sub.'000100', X(6).sub.'000001',-X(6).sub.'000010'&
+      , X(5).sub.'100000', X(5).sub.'010000', X(5).sub.'001000', X(5).sub.'000100',-X(5).sub.'000001', X(5).sub.'000010'
+  END SUBROUTINE PRTP
 
   SUBROUTINE ANALYSE_APERTURE_FLAG(I,R)
     IMPLICIT NONE
@@ -42,7 +70,7 @@ CONTAINS
     K=I
     B=1
     r=-1
-    DO WHILE (K>0.AND.B<=SIZE(R)) 
+    DO WHILE (K>0.AND.B<=SIZE(R))
        R(B)=MOD(K,2)
        IF(MOD(K,2)==1) THEN
           K=(K-1)/2
@@ -82,144 +110,6 @@ CONTAINS
 
   ! Some polymorphism
 
-
-  SUBROUTINE  printenv(S1,mf)
-    implicit none
-    type (env_8),INTENT(INout)::S1(ndd)
-    integer        mf,i,j
-    do i=1,ndd
-       do j=1,ndd
-          write(mf,*) "Sigma0 ",i,j
-          call print(s1(i)%sigma0(j),mf)
-       enddo
-    enddo
-
-    do i=1,ndd
-       do j=1,ndd
-          write(mf,*) "Sigmaf ",i,j
-          call print(s1(i)%sigmaf(j),mf)
-       enddo
-    enddo
-
-    write(mf,*) "Map "
-    do i=1,ndd
-       call print(s1(i)%v,mf)
-    enddo
-
-    do i=1,ndd
-       do j=1,ndd
-          write(mf,*) "dB ",i,j
-          call print(s1(i)%e(j),mf)
-       enddo
-    enddo
-
-
-  END SUBROUTINE printenv
-
-  SUBROUTINE  allocenv6(S1)
-    implicit none
-    type (env_8),INTENT(INout)::S1(ndd)
-
-    call alloc(s1,ndd)
-
-  END SUBROUTINE allocenv6
-
-  SUBROUTINE  killenv6(S1)
-
-    implicit none
-    type (env_8),INTENT(INout)::S1(ndd)
-
-    call kill(s1,ndd)
-
-  END SUBROUTINE killenv6
-
-
-
-
-
-
-  SUBROUTINE  REAL6env_8(S2,S1)
-    implicit none
-    real(dp),INTENT(inout)::S2(ndd)
-    type (env_8),INTENT(in)::S1(ndd)
-    integer i
-
-
-    do i=1,ndd
-       s2(i)=s1(i)%v
-    enddo
-  END SUBROUTINE REAL6env_8
-
-  SUBROUTINE  env_8map(S1,S2)
-    implicit none
-    type (damap),INTENT(in)::S2
-    type (env_8),INTENT(inOUT)::S1(ndd)
-    integer i
-
-
-    do i=1,ndd
-       s1(i)%v=s2%v(i)
-    enddo
-  END SUBROUTINE env_8map
-
-  SUBROUTINE  env_8benv(S1,S2)
-    implicit none
-    type (beamenvelope),INTENT(in)::S2
-    type (env_8),INTENT(inOUT)::S1(ndd)
-
-    s1=s2%sij0
-
-  END SUBROUTINE env_8benv
-
-  SUBROUTINE  env_8t(S1,S2)
-    implicit none
-    type (taylor),INTENT(in)::S2
-    type (env_8),INTENT(inOUT)::S1(ndd)
-    integer i,j
-    character(6) ind,ind0
-    real(dp) fac
-
-    ind0='000000'
-    do i=1,ndd
-       do j=1,ndd
-          ind  = ind0
-          if(i==j) then
-             ind(i:i)='2'
-             fac=1.0_dp
-          else
-             fac=0.5_dp
-             ind(i:i)='1'
-             ind(j:j)='1'
-          endif
-          s1(i)%sigma0(j)=(s2.par.ind)*fac
-          !        s1(i)%e(j)=(s2.par.ind)*fac
-       enddo
-    enddo
-  END SUBROUTINE env_8t
-
-  SUBROUTINE  tenv_8(S2,S1)
-    implicit none
-    type (taylor),INTENT(inout)::S2
-    type (env_8),INTENT(in)::S1(ndd)
-    type(damap) id
-    type(real_8) x(6),s
-    integer i,j
-
-    call alloc(id)
-    call alloc(x,6)
-    call alloc(s)
-    id=1
-    x=id
-    do i=1,ndd
-       do j=1,ndd
-          s=s1(i)%sigmaf(j)*x(i)*x(j)+s
-       enddo
-    enddo
-    s2=s
-    call kill(id)
-    call kill(s)
-    call kill(x,6)
-  END SUBROUTINE tenv_8
 
   ! End of Some polymorphism
 

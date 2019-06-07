@@ -5,8 +5,8 @@ module pointer_lattice
   implicit none
   public
   ! stuff for main program
-  type(layout),pointer :: my_ering
-  type(internal_state),pointer :: my_estate
+  type(layout),pointer :: my_ering => null(), my_fring => null()
+  type(internal_state),pointer :: my_estate => null()
 !  type(internal_state),pointer :: my_old_state
   integer ,pointer :: my_start, MY_ORDER, MY_NP,MY_END,my_start_t
   real(dp), pointer :: my_fix(:),MY_DELTA
@@ -21,31 +21,86 @@ module pointer_lattice
   integer :: kind_ap=2,file_ap=0                      ! Single aperture position and kind of aperture + file unit
   character(nlp) name_ap,namet(2)
   character(255) :: filename_ap = "Tracking.txt"
-  integer last_npara
-  integer :: i_layout=1, i_layout_t=1
+  character(255), private :: file_zher,filezhe, name_zhe
+  integer, private :: k_zhe,number_zhe_maps
+  integer last_npara 
+  integer :: i_layout=0,i_layout_t=1,pos_layout=1
   integer my_lost_position
   private thin
   real(dp) thin
   !  BEAM STUFF
-  REAL(DP) SIG(6),ait(6,6)
-  type(beam), allocatable:: my_beams(:)
-  type(beam), pointer:: my_beam
+  REAL(DP) SIG(6) 
+  REAL(DP) ait(6,6)
+ 
+  logical :: nophase=.false. 
   INTEGER :: N_BEAM=0,USE_BEAM=1
-
+  logical, private :: m_u_t = .true.
   TYPE(REAL_8),private :: Y(6)
   TYPE(DAMAP),PRIVATE :: ID
   !  integer nd2,npara
   !  PRIVATE POWER_CAVITY,RADIA
   ! stuff from my fortran
   type(internal_state), target:: etat
-  integer,target:: START ,FIN,ORDER,np,start_t
+  integer,private,target:: START ,FIN,ORDER,np,start_t
   real(dp),target:: xfix(6) ,DELT0
+  integer :: logs_exp=30, num_iter = 20
+  !logical :: absolute = .false.
+ !private ind1,ind2,ipos,ireal,a_f,a_f0,yfit
+  integer, allocatable:: ind1(:),ind2(:),ipos(:)
+  logical, allocatable :: ireal(:)
+  real(dp), allocatable :: a_f(:),a_f0(:),yfit(:),dyfit(:,:)
+  integer sizeind1
+  logical :: onefunc = .true.,skipzero=.false.,skipcomplex=.true.
+ type(probe), pointer :: xs0g(:) => null()
 
+   
   INTERFACE SCRIPT
      MODULE PROCEDURE read_ptc_command
   END INTERFACE
 
-   
+!!  new stuff on non-perturbative !
+
+!type  vector_field_fourier 
+!     real(dp) fix(6)    !   closed orbit of map
+!     integer :: ns(3)=0   ! integer for Fourier transform
+!     real(dp), pointer :: mr(:,:,:,:,:) =>null()   ! spin matrices produced by code (i,j,k,1:3,1:3)
+!     real(dp), pointer ::  x_i(:,:,:,:) =>null()   ! starting position in phase  x_i(i,j,k,1:6)=r%x(1:6)
+!     real(dp), pointer :: phis(:,:,:,:) =>null()   ! %phis(i,j,k,2)=j*dphi2
+!     type(spinor), pointer :: sp(:,:,:)            ! sp(:i,j,k)   spinor for all the matrices mr  
+!     integer n1,n2,n3,nd                           ! # fourier modes -n1:n1, etc... nd=degree of freedom
+!     real(dp)  mu(3),muf(3),em(3)                  ! tune and initial emitances
+!     complex(dp),  DIMENSION(:,:,:,:), POINTER :: f  !  vector field expansion f(1:3,-n1:n1,-n2:n2,-n3:n3)
+!end  type vector_field_fourier
+!   type(vector_field_fourier) af
+
+!type  spinor_fourier 
+!     integer n1,n2,n3
+!     complex(dp),  DIMENSION(:,:,:,:), POINTER :: s
+!end  type spinor_fourier 
+
+!type  matrix_fourier 
+!      real(dp) muf(3)
+!     type(spinor_fourier) v(3)
+!end  type matrix_fourier 
+
+!  type  explogs  
+!     integer n1,n2
+!     complex(dp),  DIMENSION(:,:,:), POINTER :: h
+!  end  type explogs
+
+
+!  type  logs 
+!     integer  m(3),ms  
+!     integer  ns,no
+!     type(explogs) h,a,n
+!     type(explogs), pointer ::  af(:)
+!     real(dp), pointer :: as(:,:,:)
+!     type(spinor), pointer :: sp(:,:)
+!     real(dp), pointer :: s(:,:,:,:)  !   spin matrices
+!     real(dp) em(2),mu(2),fix(6)
+!     real(dp), pointer :: x_i(:,:,:),phis(:,:,:)
+!  end  type logs
+
 
 contains
   subroutine set_lattice_pointers
@@ -55,8 +110,10 @@ contains
     read77 =.true.
 
     my_ering => m_u%start
+m_u_t=.true.
 if(m_t%n>0) then
     my_ering => m_t%end
+    m_u_t=.false.
 endif
     if(associated(my_estate)) then
     !  my_estate=>my_old_state
@@ -82,13 +139,12 @@ endif
     NP=0
     xfix=0.d0
     my_scale_planar=100.d0
-    my_fix(1)=.000d0
+    my_fix(1:6)=.000d0
 
     write(6,*) " absolute_aperture  ", absolute_aperture
     write(6,*) " hyperbolic_aperture ", hyperbolic_aperture
 
     ! CALL create_p_ring
-
 
   end  subroutine set_lattice_pointers
 
@@ -113,8 +169,8 @@ endif
     integer ntune(2)
     ! fitting and scanning tunes
     real(dp) tune_ini(2),tune_fin(2),dtu(2),fint,hgap
-    integer nstep(2),i1,i2,I3,n_bessel
-    LOGICAL(LP) STRAIGHT,skip,fixp
+    integer nstep(2),i1,i2,I3,n_bessel,i11,i22,di12
+    LOGICAL(LP) STRAIGHT,skip,fixp,skipcav,fact
     ! end
     ! TRACK 4D NORMALIZED
     INTEGER POS,NTURN,resmax
@@ -136,22 +192,25 @@ endif
     INTEGER KINDAPER
     TYPE(integration_node), POINTER :: TL
     type(internal_state),target :: my_default
+    TYPE(internal_state) tempstate
     ! DYN APERTURE
     REAL(DP) r_in,del_in,DLAM,ang_in,ang_out,dx,targ_tune_alex(2),sexr0
     INTEGER ITE,n_in,POSR
     logical(lp) found_it
-    type(fibre),pointer ::p
+    type(fibre),pointer ::p,f1,f2,ft
     ! TRACKING RAYS
     INTEGER IBN,N_name
-    REAL(DP) X(6),DT(3),x_ref(6),sc,NLAM,A1,B1,HPHA,B_TESLA,CUR1,CUR2
-    REAL(DP)VOLT,PHASE
+    REAL(DP) X(6),DT(3),sc,NLAM,A1,B1,HPHA,B_TESLA,CUR1,CUR2
+    REAL(DP)VOLT,PHASE,x_ref(6),x_ref0(6)
+    type(internal_state) state0
+    logical do_state0
     INTEGER HARMONIC_NUMBER
     ! changing magnet
     logical(lp) bend_like
-    logical exists
+    logical exists,noca
     ! remove_patches
     save my_default
-    integer :: limit_int(2) =(/4,18/)
+
     LOGICAL :: b_b,patchbb
     REAL(DP) xbend
     ! automatic track
@@ -161,17 +220,19 @@ endif
     REAL(DP) RA(2)
     REAL(DP) XA,YA,DXA,DYA, DC_ac,A_ac,theta_ac,D_ac
     real(dp), allocatable :: an(:),bn(:) !,n_co(:)
-    integer icnmin,icnmax,n_ac,inode !,n_coeff
-    logical :: log_estate=.true.
+    integer icnmin,icnmax,n_ac,inode,icavv !,n_coeff
+    logical :: longprintt,onemap
+!    logical :: log_estate=.true. 
     integer :: mftune=6,nc
     real(dp), allocatable :: tc(:)
     type(integration_node), pointer  :: t
 
-    if(log_estate) then
-       nullify(my_estate)
-!       nullify(my_old_state)
-       log_estate=.false.
-    endif
+     longprintt=longprint 
+     longprint=.true.
+!    if(log_estate) then
+!       nullify(my_estate)
+!       log_estate=.false.
+!    endif
 
     if(associated(my_estate)) then
 !      my_old_state=>my_estate
@@ -185,16 +246,36 @@ endif
     write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
     write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
     write(6,*) "$$$$$$$$$$         Write New read_ptc_command           $$$$$$$$$$"
+    write(6,*) "$$$$$$$$$$         ",      ptc_fichier     ,"           $$$$$$$$$$"
     write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
     write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
 
-    open(unit=mf,file=ptc_fichier)
-
+    if(ptc_fichier/="screen") then
+     open(unit=mf,file=ptc_fichier)
+    else
+     mf=5
+    endif
+    if(i_layout==0) then
+             i_layout=1
+             call move_to_layout_i(m_u,my_ering,i_layout)
+             write(6,*) "Selected Layout in m_u",i_layout,"  called  ---> ",my_ering%name
+             m_u_t=.true.
+    endif
     do i=1,10000
        read(mf,'(a120)') comT
+       
+
+
        COM=COMT
        call context(com)
-
+       com=com(1:len_trim(com))
+       if(index(com,'!')/=0) then
+         if(index(com,'!')/=1) then
+          comt=com(1:index(com,'!')-1)
+          COM=COMT
+          call context(com)
+         endif
+       endif
 
 
        if(com(1:1)==' ') THEN
@@ -225,6 +306,7 @@ endif
        write(6,*) '            ',i,comT(1:LEN_TRIM(COMT))
        write(6,*) " "
        write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+
        select case(com)
        case('SELECTLAYOUT','SELECTLATTICE')
           read(mf,*) i_layout_temp
@@ -237,22 +319,25 @@ endif
 
              i_layout=i_layout_temp
              call move_to_layout_i(m_u,my_ering,i_layout)
-             write(6,*) "Selected Layout",i_layout,"  called  ---> ",my_ering%name
+             write(6,*) "Selected Layout in m_u",i_layout,"  called  ---> ",my_ering%name
+             m_u_t=.true.
           endif
        case('SELECTTRACKABLELAYOUT','SELECTTRACKABLELATTICE')
           read(mf,*) i_layout_temp
-          if(i_layout_temp>m_u%n) then
-             write(6,*) " Universe Size ", m_u%n
+          if(i_layout_temp>m_t%n) then
+             write(6,*) " Universe Size ", m_t%n
 
              write(6,*) " Selected Layout does not exist "
 
           else
 
              i_layout=i_layout_temp
-             call move_to_layout_i(m_u,my_ering,i_layout)
-             write(6,*) "Selected Layout",i_layout,"  called  ---> ",my_ering%name
+             call move_to_layout_i(m_t,my_ering,i_layout)
+             write(6,*) "Selected Layout in m_t",i_layout,"  called  ---> ",my_ering%name
+             m_u_t=.false.
           endif
        case('SELECTLASTLAYOUT','SELECTLASTLATTICE')
+         if(m_u_t) then
           i_layout_temp=m_u%n
           if(i_layout_temp>m_u%n) then
              write(6,*) " Universe Size ", m_u%n
@@ -263,8 +348,22 @@ endif
 
              i_layout=i_layout_temp
              call move_to_layout_i(m_u,my_ering,i_layout)
-             write(6,*) "Selected Layout",i_layout,"  called  ---> ",my_ering%name
+             write(6,*) "Selected Layout in m_u",i_layout,"  called  ---> ",my_ering%name
           endif
+         else
+          i_layout_temp=m_t%n
+          if(i_layout_temp>m_t%n) then
+             write(6,*) " Universe Size ", m_t%n
+
+             write(6,*) " Selected Layout does not exist "
+
+          else
+
+             i_layout=i_layout_temp
+             call move_to_layout_i(m_t,my_ering,i_layout)
+             write(6,*) "Selected Layout in m_t",i_layout,"  called  ---> ",my_ering%name
+          endif
+         endif
        case('NAMELAYOUT')
           read(mf,*) NAME
        case('KILLLASTLAYOUT')
@@ -283,14 +382,32 @@ endif
           MY_ERING%t%ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS=.true.
        case('DONOTUSEORBITUNITS')
           MY_ERING%t%ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS=.false.
-       case('SETORBITRESTORE')
+      case('FORCERESTORALLMAGNETS')
+          CALL force_restore_ANBN(my_ering)
+      case('RESTORALLMAGNETS')
+          CALL restore_ANBN(my_ering)
+
+       case('SETORBITRESTORE','RESTOREMAGNETFLAG')
           read(mf,*) restore_mag,restore_magp
-       case('SETORBITPHASOR')
-          read(mf,*) xsm%ac%x(1:2)
-          xsm0%ac%x(1:2)=xsm%ac%x(1:2)
-          ptc_node_old=-1
-          first_particle=my_false
-       case('SETORBITMARKER')   !!! TO CREATE A NODE
+!       case('SETORBITPHASOR')
+!          read(mf,*) xsm%ac%x(1:2)
+!          xsm0%ac%x(1:2)=xsm%ac%x(1:2)
+!          ptc_node_old=-1
+!          first_particle=my_false
+       case('SETORBITOMEGA')   !!! TO CREATE A NODE
+        read(mf,*) xbend
+         if(associated(MY_ERING%t)) then
+          if(associated(MY_ERING%t%ORBIT_LATTICE)) then
+         write(6,*) " Old ORBIT_OMEGA = ",MY_ERING%t%ORBIT_LATTICE%ORBIT_OMEGA
+        if(xbend<0) then 
+          MY_ERING%t%ORBIT_LATTICE%ORBIT_OMEGA=abs(xbend)
+        else
+          MY_ERING%t%ORBIT_LATTICE%ORBIT_OMEGA=MY_ERING%t%ORBIT_LATTICE%ORBIT_OMEGA*xbend
+        endif
+         write(6,*) " New ORBIT_OMEGA = ",MY_ERING%t%ORBIT_LATTICE%ORBIT_OMEGA
+        endif
+        endif 
+      case('SETORBITMARKER')
          READ(MF,*) i1
          allocate(orbitname(i1))
           do i1=1,size(orbitname)
@@ -298,16 +415,16 @@ endif
            call context(name)
            orbitname(i1)=name
           enddo
-       case('SETORBITPHASORFREQUENCY')
-          read(mf,*) xsm%ac%om
-          xsm0%ac%om=xsm%ac%om
-          ptc_node_old=-1
-          first_particle=my_false
+       case('USER1')
+         call my_user_routine1
+       case('SPINTWISSCAS')
+           read(mf,*) no,noca   !  order and general canonise
+         call SMALL_CODE_TWISS(my_ering,no,noca)
        case('SETORBITPHASORTIME','ORBITTIME')
-          read(mf,*) xsm%ac%t
-          xsm0%ac%t=xsm%ac%t
+          read(mf,*) xsmt
+          xsm0t=xsmt
           x_orbit_sync=0.0_dp
-          x_orbit_sync(6)=xsm%ac%t
+          x_orbit_sync(6)=xsmt
           ptc_node_old=-1
           first_particle=my_false       
        case('MAKEORBITMARKER')
@@ -324,12 +441,12 @@ endif
             endif    
        case('TIMEINUNITS','TIMEINSECONDS')
        
-          read(mf,*) xsm%ac%t
+          read(mf,*) xsmt
 !          write(6,*) " Using ",unit_time," seconds"
-          xsm%ac%t=xsm%ac%t*clight  !*unit_time
-          xsm0%ac%t=xsm%ac%t
+          xsmt=xsmt*clight  !*unit_time
+          xsm0t=xsmt
           x_orbit_sync=0.0_dp
-          x_orbit_sync(6)=xsm%ac%t
+          x_orbit_sync(6)=xsmt
           ptc_node_old=-1
           first_particle=my_false
        case('INITIALTIMEINMYUNITS','TIMEINMYUNITS','READFROMFILEINITIALTIME')
@@ -339,7 +456,7 @@ endif
                   " exists, interrupt execution if you do not want to overwrite!"
             call kanalnummer(i1,INITIAL_setting)
    !         read(i1,*) xsm%ac%t,unit_time,n_used_patch,include_patch
-            read(i1,*) xsm%ac%t,n_used_patch,include_patch
+            read(i1,*) xsmt,n_used_patch,include_patch
             read(i1,*) nc
             if(nc/=0) then
                  allocate(tc(nc))
@@ -382,14 +499,14 @@ endif
 
             endif
            else
-         read(mf,*) xsm%ac%t,n_used_patch,include_patch
+         read(mf,*) xsmt,n_used_patch,include_patch
 !             read(mf,*) xsm%ac%t,unit_time,n_used_patch,include_patch
           endif
  !         write(6,*) " Using ",unit_time," seconds"
-          xsm%ac%t=xsm%ac%t*clight 
-          xsm0%ac%t=xsm%ac%t
+          xsmt=xsmt*clight 
+          xsm0t=xsmt
           x_orbit_sync=0.0_dp
-          x_orbit_sync(6)=xsm%ac%t
+          x_orbit_sync(6)=xsmt
           ptc_node_old=-1
           first_particle=my_false
           write(6,*) "x_orbit_sync(6) = " , x_orbit_sync(6)
@@ -550,10 +667,16 @@ endif
           close(mfr)
        case('DEFAULT')
           my_estate=DEFAULT0
+       case('RADIATION')
+          my_estate=RADIATION          
        case('+NOCAVITY')
           my_estate=my_estate+NOCAVITY0
        case('-NOCAVITY')
           my_estate=my_estate-NOCAVITY0
+       case('+ENVELOPE')
+          my_estate=my_estate+ENVELOPE0
+       case('-ENVELOPE')
+          my_estate=my_estate-ENVELOPE0
        case('+CAVITY')
           my_estate=my_estate-NOCAVITY0
        case('-CAVITY')
@@ -588,20 +711,19 @@ endif
           my_estate=my_estate-MODULATION0
        case('+SPIN')
           my_estate=my_estate+SPIN0
-       case('-SPIN')
-          my_estate=my_estate-SPIN0
-          !  case('+EXACTMIS')
-          !     my_estate=my_estate+EXACTMIS0
-          !  case('-EXACTMIS')
-          !     my_estate=my_estate-EXACTMIS0
 
-          !       case('DEFAULTTPSA')
-          !       read(mf,*) default_tpsa
-          !       if(default_tpsa) then
-          !        write(6,*) " Default TPSA is Chinese "
-          !       else
-          !        write(6,*) " Default TPSA is Germanic "
-          !       endif
+       case("PRINTSTATE")
+         READ(MF,*) K
+         CALL print(MY_ESTATE,K)
+       case("PRINTSTATEONSCREEN")
+         CALL print(MY_ESTATE,6)
+
+       case("KILLPROBE","KILLPROBES")
+        deallocate(xs0g)
+        nullify(xs0g)
+       case("READPROBE","READPROBES")
+        read(mf,*) file_zher
+        call  read_ptc_rays(file_zher)
 
        case('BERZ','GERMANIC','MARTIN')
           CALL change_package(2)
@@ -618,9 +740,9 @@ endif
        case('FITBENDS')
           CALL fit_all_bends(my_ering,my_estate)
        case('LIMITFORCUTTING')
-          READ(MF,*) limit_int
-          WRITE(6,*) "limit_int =",limit_int
-       case('LMAX')
+          READ(MF,*) limit_int0
+          WRITE(6,*) "limit_int0 =",limit_int0
+       case('LMAX',"MAXIMUMDS")
           READ(MF,*) LMAX
           WRITE(6,*) "LMAX FOR SPACE CHARGE =",LMAX
        case('FUZZYLMAX')
@@ -631,18 +753,23 @@ endif
           IF(resplit_cutting==0) WRITE(6,*) " RESPLITTING NORMALLY"
           IF(resplit_cutting==1) WRITE(6,*) " CUTTING DRIFT USING LMAX"
           IF(resplit_cutting==2) WRITE(6,*) " CUTTING EVERYTHING USING LMAX"
+          IF(resplit_cutting==-2) WRITE(6,*) " CUTTING EVERYTHING USING LMAX EXCEPT DRIFTS"
           !       case('KIND7WITHMETHOD1')
           !          CALL PUT_method1_in_kind7(my_ering,1000)
+
+       case('RADIATIONBENDSPLIT','RADIATIONBEND')
+         read(mf,*) radiation_bend_split
        case('THINLENS=1')
           call THIN_LENS_restart(my_ering)
        case('MANUALTHINLENS')
           sagan_even=my_true
           THIN=-1
-          CALL THIN_LENS_resplit(my_ering,THIN,lim=limit_int)
+          CALL THIN_LENS_resplit(my_ering,THIN,lim=limit_int0)
        case('THINLENS')
          sagan_even=my_true
           READ(MF,*) THIN
           xbend=-1.0_dp
+          sexr0=-1.d0
           if(thin<0) then
              READ(MF,*) sexr0,xbend
              if(xbend<0) then
@@ -652,11 +779,12 @@ endif
              thin=-thin
           endif
           WRITE(6,*) "THIN LENS FACTOR =",THIN
-          CALL THIN_LENS_resplit(my_ering,THIN,lim=limit_int,lmax0=lmax,sexr=sexr0,xbend=xbend)
+          CALL THIN_LENS_resplit(my_ering,THIN,lim=limit_int0,lmax0=lmax,sexr=sexr0,xbend=xbend)
           radiation_bend_split=MY_false
        case('EVENTHINLENS')
           READ(MF,*) THIN
           xbend=-1.0_dp
+          sexr0=-1.d0
           if(thin<0) then
              READ(MF,*) sexr0,xbend
              if(xbend<0) then
@@ -666,11 +794,12 @@ endif
              thin=-thin
           endif
           WRITE(6,*) "THIN LENS FACTOR =",THIN
-          CALL THIN_LENS_resplit(my_ering,THIN,EVEN=my_TRUE,lim=limit_int,lmax0=lmax,sexr=sexr0,xbend=xbend)
+          CALL THIN_LENS_resplit(my_ering,THIN,EVEN=my_TRUE,lim=limit_int0,lmax0=lmax,sexr=sexr0,xbend=xbend)
        case('ODDTHINLENS')
           sagan_even=my_false
           READ(MF,*) THIN
           xbend=-1.0_dp
+          sexr0=-1.d0
           if(thin<0) then
              READ(MF,*) sexr0,xbend
              if(xbend<0) then
@@ -680,12 +809,8 @@ endif
              thin=-thin
           endif
           WRITE(6,*) "THIN LENS FACTOR =",THIN
-          CALL THIN_LENS_resplit(my_ering,THIN,EVEN=my_FALSE,lim=limit_int,lmax0=lmax,sexr=sexr0,xbend=xbend)
+          CALL THIN_LENS_resplit(my_ering,THIN,EVEN=my_FALSE,lim=limit_int0,lmax0=lmax,sexr=sexr0,xbend=xbend)
           ! thin layout stuff
-
-       case('ADDSURVEYINFO')
-
-          call ADD_SURVEY_INFO(my_ering)
 
        case('RECUTKIND7NODRIFT','USEODDMETHODS')
           call RECUT_KIND7(my_ering,lmax,my_false)
@@ -702,43 +827,6 @@ endif
              WRITE(6,*) " NO NODE LAYOUT PRESENT "
           ENDIF
 
-
-          ! BEAMS STUFF
-       case('ALLOCATEBEAMS')
-          READ(MF,*) N_BEAM
-          ALLOCATE(MY_BEAMS(N_BEAM))
-          CALL NULLIFY_BEAMS(MY_BEAMS)
-       case('DEALLOCATEBEAMS')
-          CALL KILL_BEAMS(MY_BEAMS)
-          DEALLOCATE(MY_BEAMS)
-       case('CREATEBEAM')
-          READ(MF,*) USE_BEAM,NUMBER_OF_PARTICLE, FILENAME
-          READ(MF,*) CUT,SIG(1:6)
-          CALL CONTEXT(FILENAME)
-          IF(FILENAME(1:2)=='NO'.OR.FILENAME(1:2)=='no') THEN
-             CALL  create_PANCAKE(MY_BEAMS(USE_BEAM),NUMBER_OF_PARTICLE,CUT,SIG,my_ering%start%t1)
-          ELSE
-             CALL  kanalnummer(mfr)
-             OPEN(UNIT=MFR,FILE=FILENAME)
-             READ(MF,*) MY_A_NO
-             CALL compute_A_4d(my_ering,my_estate,filename,pos,del,MY_A_NO,MY_A)
-             CALL  create_PANCAKE(MY_BEAMS(USE_BEAM),NUMBER_OF_PARTICLE,CUT,SIG,my_ering%start%t1,MY_A)
-             CALL KILL(MY_A)
-             close(mfr)
-          ENDIF
-       case('COPYBEAM')
-          READ(MF,*) I1,I2
-          CALL COPY_BEAM(MY_BEAMS(I1),MY_BEAMS(I2))
-       case('PRINTBEAM')
-          READ(MF,*) i1,filename
-          CALL  kanalnummer(mfr)
-          OPEN(UNIT=MFR,FILE=FILENAME)
-          call PRINT_beam_raw(MY_BEAMS(I1),MFr)
-          CLOSE(MFR)
-       case('BEAMSTATISTICS')
-          READ(MF,*) USE_BEAM
-
-          CALL Stat_beam_raw(MY_BEAMS(USE_BEAM),4,6)
 
        case('CHECKKREIN')
           WRITE(6,*) "OLD CHECK_KREIN ",check_krein
@@ -810,6 +898,16 @@ endif
                 TL=>TL%NEXT
              ENDDO
           endif
+       case('E1CAS','E1WM')
+       read(MF,*) sc
+       if(sc/=e1_cas) then
+         write(6,*) "E1 of the wonderful magnet company was ", e1_cas
+         write(6,*) "                     |  "
+         write(6,*) "                     |  "
+         write(6,*) "                    \|/  "
+           e1_cas=sc
+         write(6,*) "E1 of the wonderful magnet company is now ", e1_cas     
+        endif
        case('BEAMBEAM')
           READ(MF,*) SC,pos,patchbb
           read(mf,*) X_ref(1), X_ref(2), X_ref(3), X_ref(4)
@@ -856,8 +954,17 @@ endif
              write(6,*) " Beam-Beam position not found "
           endif
 
-       case('DOBEAMBEAM')
-          do_beam_beam=my_true
+       case('TAPERING','TAPER')
+           read(mf,*) i1    ! staircase for reachuing full radiation
+           read(mf,*) filename   !!!  put "nofile" for no plot
+           X_ref=0
+           p=>my_ering%start
+         call taper(p,X_ref,i1,my_estate,1.d-8,file=filename)  
+       case('UNTAPERING','UNTAPER')
+           p=>my_ering%start
+           call untaper(p)  
+          case('DOBEAMBEAM')
+          do_beam_beam=my_true       
        case('NOBEAMBEAM')
           do_beam_beam=my_false
        case('SETFAMILIES','SETGFAMILIES')
@@ -1056,8 +1163,8 @@ endif
                    P%MAGP%DC_ac=DC_ac
                    P%MAGP%A_ac=A_ac
                    P%MAGP%theta_ac=theta_ac*twopi
-                   P%MAG%slow_ac=.true.
-                   P%MAGP%slow_ac=.true.
+                   P%MAG%slow_ac=1
+                   P%MAGP%slow_ac=1
 
                    if(i2>p%mag%p%nmul) then
                       CALL ADD(P,i2,0,0.0_dp)
@@ -1097,9 +1204,25 @@ endif
              p=>p%next
           enddo
 
-
+       case('RFCLEANBMAD')
+     !  read(mf,*)  IBN,HPHA,N_name ! bessel, phase, totalpath
+           ibn=0
+        hpha=-pi
+        n_name=0
+          p=>my_ering%start
+          do ii=1,my_ering%N
+           if(p%mag%kind==kind4) then
+            p%mag%c4%N_BESSEL=ibn
+            p%magp%c4%N_BESSEL=ibn
+            p%mag%c4%phase0=HPHA
+            p%magp%c4%phase0=HPHA
+            p%mag%c4%CAVITY_TOTALPATH=n_name
+            p%magp%c4%CAVITY_TOTALPATH=n_name
+           endif
+           P=>P%NEXT
+          ENDDO
        case('MODULATE','ACMAGNET')
-          READ(MF,*) NAME
+          READ(MF,*) NAME , posr
 
           CALL CONTEXT(NAME)
           N_NAME=0
@@ -1165,8 +1288,12 @@ endif
                    P%MAGP%DC_ac=DC_ac
                    P%MAGP%A_ac=A_ac
                    P%MAGP%theta_ac=theta_ac*twopi
-                   P%MAG%slow_ac=.true.
-                   P%MAGP%slow_ac=.true.
+                 if(P%MAG%slow_ac/=0) then
+                  write(6,*) P%MAG%name, " already modulated "
+                  stop 180
+                 endif
+                   P%MAG%slow_ac=posr
+                   P%MAGP%slow_ac=posr
 
                    if(i2>p%mag%p%nmul) then
                       CALL ADD(P,i2,0,0.0_dp)
@@ -1236,7 +1363,378 @@ endif
       !    if(n_coeff>0) then
       !       deallocate(n_co)
       !    endif
+       case('MAPSFORZHE')
+          READ(MF,*) i11,I22,number_zhe_maps ,hgap ! position  i1=i2 one turn map,  fact is precision of stochastic kick
+          READ(MF,*) MY_A_NO,do_state0   ! ORDER OF THE MAP  
+          READ(MF,*) filename
+          state0=my_estate-radiation0-envelope0
+          if(do_state0) then
+           do_state0=my_estate%radiation.or.my_estate%envelope
+          endif
+          if(.not.associated(my_ering%t)) call make_node_layout(my_ering)
+          if(i11==i22) i22=i11+my_ering%n
+          di12=float(i22-i11)/number_zhe_maps
+                        do k_zhe=1,number_zhe_maps
+                             write(name_zhe,*) k_zhe
+                           file_zher(1:len_trim(filename))=filename(1:len_trim(filename))
+                           file_zher(1+len_trim(filename):len_trim(filename)+len_trim(name_zhe))=name_zhe(1:len_trim(name_zhe))
+                           call context(file_zher)
+                          write(6,*) "out file ",file_zher(1:len_trim(file_zher))
+           
+          i1=i11+(k_zhe-1)*di12
+          i2=i1+di12
+          if(i2>i22.or.k_zhe==number_zhe_maps) i2=i22
+          write(6,*)" from to ", i1,i2,i22
+!pause 873
+           p=>my_ering%start
+           f1=>p          
+           do ii=2,i1
+            p=>p%next
+             f1=>p
+           enddo
+           if(I2==i1) then
+            f2=>f1
+           else
+            p=>my_ering%start
+            f2=>p 
+            do ii=2,i2
+              p=>p%next
+              f2=>p
+            enddo
+            endif
+             x_ref=0.0_dp
 
+
+if(.not.my_estate%envelope) hgap=-1
+            call FIND_ORBIT_x(x_ref,my_estate,1.d-7,fibre1=f1)
+ if(do_state0)            call FIND_ORBIT_x(x_ref0,state0,1.d-7,fibre1=f1)
+
+ if(do_state0)   then
+              call fill_tree_element_line_zhe0(state0,my_estate,f1,f2,MY_A_NO,x_ref0,x_ref,file_zher,stochprec=hgap) 
+
+ else
+              call fill_tree_element_line_zhe(my_estate,f1,f2,MY_A_NO,x_ref,file_zher,stochprec=hgap) 
+ endif
+
+write(6,*) " State used "
+          call print(my_estate,6)
+write(6,*) " closed orbit at position ",i1
+           write(6,*) x_ref(1:3)
+           write(6,*) x_ref(4:6)
+                  enddo
+
+       case('MAPFORZHE')
+          READ(MF,*) i1,I2,hgap  ! position  i1=i2 one turn map,  fact is precision of stochastic kick
+          READ(MF,*) MY_A_NO   ! ORDER OF THE MAP  
+          READ(MF,*) filename
+          if(.not.associated(my_ering%t)) call make_node_layout(my_ering)
+          
+           p=>my_ering%start
+           f1=>p          
+           do ii=2,i1
+            p=>p%next
+             f1=>p
+           enddo
+           if(I2==i1) then
+            f2=>f1
+           else
+            p=>my_ering%start
+            f2=>p 
+            do ii=2,i2
+              p=>p%next
+              f2=>p
+            enddo
+            endif
+             x_ref=0.0_dp
+
+
+if(.not.my_estate%envelope) hgap=-1
+ if(my_a_no>0)            call FIND_ORBIT_x(x_ref,my_estate,1.d-7,fibre1=f1)
+
+              call fill_tree_element_line_zhe(my_estate,f1,f2,iabs(MY_A_NO),x_ref,filename,stochprec=hgap) 
+
+
+write(6,*) " State used "
+          call print(my_estate,6)
+write(6,*) " closed orbit at position ",i1
+           write(6,*) x_ref(1:3)
+           write(6,*) x_ref(4:6)
+ 
+
+       case('MAKEMAPITOJ')
+          READ(MF,*) i1,I2,i3  ! position
+          READ(MF,*) MY_A_NO  ! ORDER OF THE MAP
+          READ(MF,*) fixp,fact,noca  !  SYMPLECTIC , factored
+          READ(MF,*) filename
+          if(.not.associated(my_ering%t)) call make_node_layout(my_ering)
+          
+           
+           p=>my_ering%start
+           f1=>p          
+           do ii=2,i1
+            p=>p%next
+             f1=>p
+           enddo
+
+           p=>my_ering%start
+           f2=>p 
+           do ii=2,i2
+             p=>p%next
+             f2=>p
+           enddo
+ 
+             x_ref=0.0_dp
+             call MOVE_TO_LAYOUT_I(m_u,my_fring,i3)
+
+             if(associated(my_ering,my_fring))then 
+                ft=>f1
+             else
+                ft=>my_fring%start       
+             endif
+
+if(noca) then
+             call FIND_ORBIT_x(x_ref,time0+nocavity0,1.d-7,fibre1=f1)
+else
+             call FIND_ORBIT_x(x_ref,time0,1.d-7,fibre1=f1)
+endif  
+
+             name_root=filename
+             call context(name_root)
+             if(name_root(1:2)=='NO') then
+              call fill_tree_element_line(f1,f2,ft,i2,x_ref,fact,nocav=noca)
+             else
+              call fill_tree_element_line(f1,f2,ft,i2,x_ref,fact,nocav=noca,file=filename)
+             endif
+  
+
+
+                    ft%mag%forward(3)%symptrack=FIXP
+                    ft%magP%forward(3)%symptrack=FIXP
+                    ft%mag%do1mapf=.true.
+                    ft%magp%do1mapf=.true.
+                    ft%mag%filef="one_turn_map.txt"
+             if(associated(ft,f1))then
+                p=>f1%next
+               do i1=1,my_ering%n
+                if(associated(f2,p)) exit
+                 p%mag%skip_ptc_f=1
+                 p%magp%skip_ptc_f=1
+                p=>p%next 
+               enddo
+                
+             endif 
+
+       case('MAKEONETURNMAP','TRACKWITHONETURNMAP')
+          READ(MF,*) i1,i3  ! position
+          READ(MF,*) I2  ! ORDER OF THE MAP
+          READ(MF,*) fixp,fact,noca  !  SYMPLECTIC , factored
+          READ(MF,*) filename
+          if(.not.associated(my_ering%t)) call make_node_layout(my_ering)
+          
+           p=>my_ering%start
+           f1=>p          
+           do ii=2,i1
+            p=>p%next
+             f1=>p
+           enddo
+
+
+             f2=>f1
+             x_ref=0.0_dp
+             call MOVE_TO_LAYOUT_I(m_u,my_fring,i3)
+
+             if(associated(my_ering,my_fring))then 
+                ft=>f1
+             else
+                ft=>my_fring%start       
+             endif
+if(noca) then
+             call FIND_ORBIT_x(x_ref,time0+nocavity0,1.d-7,fibre1=f1)
+else
+             call FIND_ORBIT_x(x_ref,time0,1.d-7,fibre1=f1)
+endif  
+write(6,*) x_ref
+       
+             name_root=filename
+             call context(name_root)
+             if(name_root(1:2)=='NO') then
+              call fill_tree_element_line(f1,f2,ft,i2,x_ref,fact,nocav=noca)
+             else
+              call fill_tree_element_line(f1,f2,ft,i2,x_ref,fact,nocav=noca,file=filename)
+             endif
+                    ft%mag%forward(3)%symptrack=FIXP
+                    ft%magP%forward(3)%symptrack=FIXP
+                    ft%mag%do1mapf=.true.
+                    ft%magp%do1mapf=.true.
+                    ft%mag%filef="one_turn_map.txt"
+             if(associated(ft,f1))then
+                f2=>f1%next
+               do i1=1,my_ering%n
+                if(associated(f2,f1)) exit
+                 f2%mag%skip_ptc_f=1
+                 f2%magp%skip_ptc_f=1
+                f2=>f2%next 
+               enddo
+                
+             endif 
+
+
+       case('MAKEMAP','TRACKWITHMAP')
+          READ(MF,*) NAME
+          READ(MF,*) I1  ! ORDER OF THE MAP
+          READ(MF,*)  onemap  ! use one map : no cutting
+          READ(MF,*) fixp,fact  !  SYMPLECTIC , factored
+          if(.not.associated(my_ering%t)) call make_node_layout(my_ering)
+          x_ref=0.0_DP
+
+          READ(MF,*) x_ref
+          n_ac=0
+          CALL CONTEXT(NAME)
+          N_NAME=0
+          IF(NAME(1:2)=='NO') THEN
+             READ(MF,*) NAME
+             call context(name)
+             N_NAME=len_trim(name)
+          ENDIF
+
+          p=>my_ering%start
+          do ii=1,my_ering%N
+             found_it=MY_FALSE
+             IF(N_NAME==0) THEN
+                found_it=P%MAG%NAME==NAME
+             ELSE
+                found_it=P%MAG%NAME(1:N_NAME)==NAME(1:N_NAME)
+             ENDIF
+
+             IF(FOUND_IT) THEN
+                write(6,*) "  magnet found FOR MAP REPLACEMENT ",P%MAG%name
+                call fill_tree_element(p,I1,x_REF,onemap,fact)
+                 n_ac=n_ac+1
+
+                   IF(P%DIR==1) THEN
+                    p%mag%forward(3)%symptrack=FIXP
+                    p%magP%forward(3)%symptrack=FIXP
+                do i2=1,3
+                 write(p%mag%filef,*) "map",n_ac,".txt"
+                 call context(p%mag%filef)
+                enddo
+                   ELSE
+                do i2=1,3
+                 write(p%mag%fileb,*) "map",n_ac,".txt"
+                 call context(p%mag%fileb)
+                enddo
+                    p%mag%BACKward(3)%symptrack=FIXP
+                    p%magP%BACKward(3)%symptrack=FIXP
+                   ENDIF
+             ENDIF
+
+             p=>p%next
+          enddo
+
+       case('MAKEALLMAP','TRACKALLWITHMAP')
+          READ(MF,*) I1  ! ORDER OF THE MAP
+          READ(MF,*)  onemap  ! use one map : no cutting
+          READ(MF,*) fixp,fact  !  SYMPLECTIC 
+          READ(MF,*) skipcav  !  skip cavity 
+          icnmin=0
+          icnmax=0
+          icavv=0
+          x_ref=0.0_DP
+           n_ac=0
+          if(.not.associated(my_ering%t)) call make_node_layout(my_ering)
+          p=>my_ering%start
+          do ii=1,my_ering%N
+   
+
+             IF(p%mag%kind/=kind0) THEN
+             icnmax=icnmax+1
+              if(.not.skipcav.or.(p%mag%kind/=kind4.and.p%mag%kind/=kind21)) then
+              !  write(6,*) "  magnet found FOR MAP REPLACEMENT ",P%MAG%name
+                 n_ac=n_ac+1
+                call fill_tree_element(p,I1,x_REF,onemap,fact)
+                   IF(P%DIR==1) THEN
+                    p%mag%forward(3)%symptrack=FIXP
+                    p%magP%forward(3)%symptrack=FIXP
+                do i2=1,3
+                 write(p%mag%filef,*) "map",n_ac,".txt"
+                 call context(p%mag%filef)
+ 
+                enddo
+                   ELSE
+                do i2=1,3
+                 write(p%mag%fileb,*) "map",n_ac,".txt"
+                 call context(p%mag%fileb)
+
+                enddo
+                    p%mag%BACKward(3)%symptrack=FIXP
+                    p%magP%BACKward(3)%symptrack=FIXP
+                   ENDIF
+              else
+                icavv=icavv+1
+              endif
+             else
+              icnmin=icnmin+1
+             ENDIF
+
+
+             p=>p%next
+          enddo
+         write(6,*) icnmax, " changed into Taylor maps "
+         write(6,*) icnmin, " markers "
+         write(6,*) icavv, " cavities left alone "
+         write(6,*) my_ering%N, " total number of fibres "
+       case('REMOVEALLMAPS')
+       READ(MF,*) I1,I2  ! ORDER OF THE MAP
+
+          p=>my_ering%start
+          do ii=i1,i2-1
+             p%MAG%skip_ptc_f=-p%MAG%skip_ptc_f
+             p%MAGp%skip_ptc_f=-p%MAGp%skip_ptc_f
+             p=>p%next
+          enddo
+
+
+          p=>my_ering%start
+          do ii=1,my_ering%N
+   
+          if(associated(p%MAG%forward)) then
+             p%MAG%usef=.false.
+             p%MAGp%usef=.false.
+          endif
+           if(associated(p%MAG%backward)) then
+             p%MAG%useb=.false.
+             p%MAGp%useb=.false.
+           endif
+             p=>p%next
+          enddo
+    
+       case('PUTBACKALLMAP')
+
+       READ(MF,*) I1,I2  ! ORDER OF THE MAP
+
+          p=>my_ering%start
+          do ii=i1,i2-1
+             p%MAG%skip_ptc_f=-p%MAG%skip_ptc_f
+             p%MAGp%skip_ptc_f=-p%MAGp%skip_ptc_f
+             p=>p%next
+          enddo
+
+
+          p=>my_ering%start
+          do ii=1,my_ering%N
+   
+       if(associated(p%MAG%forward)) then
+             p%MAG%usef=.true.
+             p%MAGp%usef=.true.
+       endif
+       if(associated(p%MAG%backward)) then
+             p%MAG%useb=.true.
+             p%MAGp%useb=.true.
+       endif
+ 
+             p=>p%next
+          enddo
+    
        case('SETAPERTURE')
           READ(MF,*) KINDA,NAME
 
@@ -1299,18 +1797,20 @@ endif
           read(mf,*) filename, NAME, integrated
           read(mf,*) del
 
-          call compute_twiss(my_ering,my_estate,filename,1,del,1,integrated,name,my_true,my_false)
+    !      call compute_twiss(my_ering,my_estate,filename,1,del,1,integrated,name,my_true,my_false)
        case('PTCTWISS','TWISS','PTCTWISSRIPKEN','TWISSRIPKEN')  !
+          print*,'PTCTWISS'
+          
           read(mf,*) filename, NAME, integrated
           read(mf,*) del
-
+          
           call compute_twiss(my_ering,my_estate,filename,1,del,1,integrated,name,my_false,my_false)
 
        case('PTCTWISSSASHA','TWISSSASHA','PTCTWISSRIPKENSASHA','TWISSRIPKENSASHA')  !
           read(mf,*) filename, NAME, integrated
           read(mf,*) del
 
-          call compute_twiss(my_ering,my_estate,filename,1,del,1,integrated,name,my_false,my_true)
+    !      call compute_twiss(my_ering,my_estate,filename,1,del,1,integrated,name,my_false,my_true)
 
        case('FITTUNESCAN','SEARCHAPERTUREX=Y')
           read(mf,*) epsf
@@ -1423,16 +1923,26 @@ endif
           read(mf,*) targ_tune
           if(targ_tune(1)<=0.0_dp) targ_tune=tune(1:2)
           call lattice_fit_TUNE_gmap(my_ering,my_estate,epsf,pol_,NPOL,targ_tune,NP)
+
+       case('FITTUNERAD')
+          read(mf,*) epsf
+          read(mf,*) targ_tune
+          if(targ_tune(1)<=0.0_dp) targ_tune=tune(1:2)
+          call lattice_fit_TUNE_gmap_rad(my_ering,my_estate,epsf,pol_,NPOL,targ_tune,NP)
+
+       case('DELTAFITTUNE')
+          read(mf,*) epsf
+          read(mf,*) targ_tune
+          tempstate=my_estate+nocavity0
+          call lattice_GET_tune(my_ering,tempstate,mftune,tune)
+          targ_tune(1:2)=targ_tune(1:2)+tune(1:2) 
+          call lattice_fit_TUNE_gmap(my_ering,my_estate,epsf,pol_,NPOL,targ_tune,NP)
        case('FITTUNEAUTO')
           read(mf,*) epsf
           read(mf,*) targ_tune
           read(mf,*) namet(1), namet(2)
           if(targ_tune(1)<=0.0_dp) targ_tune=tune(1:2)
           call lattice_fit_TUNE_gmap_auto(my_ering,my_estate,EPSF,targ_tune,namet)
-       case('FITTUNECOUPLING')
-          read(mf,*) epsf
-          read(mf,*) targ_tune
-          call lattice_linear_res_gmap(my_ering,my_estate,epsf,pol_,NPOL,targ_tune,NP)
        case('SCANTUNE')
           STRAIGHT=.FALSE.
           read(mf,*) epsf
@@ -1474,7 +1984,7 @@ endif
           read(mf,*) epsf
           read(mf,*) targ_chrom
           read(mf,*)i1
-          call lattice_fit_CHROM_gmap1(my_ering,my_estate,EPSF,pol_,NPOL,targ_chrom,np,i1,mf)
+          call c_lattice_fit_CHROM_gmap1(my_ering,my_estate,EPSF,pol_,NPOL,targ_chrom,np,i1,mf)
        case('FITSEXLINEAR')
           read(mf,*) epsf
           read(mf,*) targ_chrom
@@ -1498,7 +2008,7 @@ endif
            close(mftune)
            mftune=6
        case('GETTUNE')
-          call lattice_GET_tune(my_ering,my_estate,mftune)
+          call lattice_GET_tune(my_ering,my_estate,mftune,tune)
        case('STRENGTH','STRENGTHFILE')  !
           IF(mfpolbloc/=0) CLOSE(mfpolbloc)
 
@@ -1553,8 +2063,6 @@ endif
           READ(MF,*) NO,EMIT0
           READ(MF,*) FILENAME
           CALL lattice_PRINT_RES_FROM_A(my_ering,my_estate,NO,EMIT0,MRES,FILENAME)
-       case('PRINTSTATE')
-          CALL PRINT(my_estate,6)
        case('PRINTTWICE')
           print77=.false.
           read77=.false.
@@ -2051,8 +2559,9 @@ endif
 
         call totalpath_cavity(my_ering,pos)
 
-       case('EQUILIBRIUMSIZES')
-          READ(MF,*) POS,FILENAME,fileTUNE, NAME
+ 
+       case('NEWEQUILIBRIUMSIZES','EQUILIBRIUMSIZES')
+          READ(MF,*) POS,FILENAME,NAME
           call context(name)
           if(name(1:11)/='NONAMEGIVEN') then
              posr=pos
@@ -2062,19 +2571,7 @@ endif
                 stop
              endif
           endif
-          CALL radia(my_ering,POS,FILENAME,fileTUNE,my_estate)
-       case('NEWEQUILIBRIUMSIZES')
-          READ(MF,*) POS,FILENAME, i1,NAME
-          call context(name)
-          if(name(1:11)/='NONAMEGIVEN') then
-             posr=pos
-             call move_to( my_ering,p,name,posR,POS)
-             if(pos==0) then
-                write(6,*) name, " not found "
-                stop
-             endif
-          endif
-          call radia_new(my_ering,POS,i1,FILENAME,my_estate)
+          call radia_new(my_ering,POS,my_estate,FILENAME)
        case('SPECIALALEX')
           READ(MF,*) I1
           READ(MF,*) targ_tune(1:2),sc
@@ -2101,9 +2598,153 @@ endif
 
     write(6,*) " Exiting Command File ", ptc_fichier(1:len_trim(ptc_fichier))
 
-    close(mf)
+     longprint=longprintt 
+
+    if(mf/=5) close(mf)
 
   END subroutine read_ptc_command
+
+ SUBROUTINE radia_new(R,loc,estate,FILE1,fix,em,sij,sijr,tune,damping)
+    implicit none
+    TYPE(LAYOUT) R
+
+    REAL(DP) X(6),m,energy,deltap
+    CHARACTER(*), optional :: FILE1
+    type(c_damap)  Id,a0,a_cs
+    type(c_normal_form) normal
+    integer  i,j 
+    real(dp), optional :: fix(6), em(3),sij(6,6),tune(3),damping(3)
+    complex(dp), optional :: sijr(6,6)   
+    TYPE(INTERNAL_STATE) state
+    TYPE(INTERNAL_STATE), target :: estate
+    integer loc,mf1
+    type(fibre), pointer :: p
+    type(probe) xs0
+    type(probe_8) xs
+    character*48 fmd,fmd1
+
+    if(present(FILE1)) then
+    call kanalnummer(mf1)
+    open(mf1,file=FILE1)
+    endif
+fmd= '(a12,1X,a3,I1,a3,i1,a4,D18.11,1x,D18.11)'
+fmd1='(1X,a3,I1,a3,i1,a4,2(D18.11,1x),(f10.3,1x),a2)'
+
+
+
+    state=(estate-nocavity0)+radiation0
+    x=0.d0
+
+    CALL FIND_ORBIT_x(R,X,STATE,1.0e-8_dp,fibre1=loc)
+    if(present(FILE1)) then
+        WRITE(mf1,*) " CLOSED ORBIT AT LOCATION ",loc
+        write(mf1,*) x
+    endif
+     if(present(fix)) fix=x
+
+
+    call GET_loss(r,energy,deltap)
+       if(present(FILE1)) then
+    write(mf1,*) "energy loss: GEV and DeltaP/p0c ",energy,deltap
+    write(mf1,*) " stable closed orbit tracked "
+    write(mf1,"(6(1X,D18.11))") x
+    write(mf1,*) "energy loss: GEV and DeltaP/p0c ",energy,deltap
+    endif
+    CALL INIT(state,1,0)
+    CALL ALLOC(NORMAL)
+    CALL ALLOC(ID)
+    call alloc(xs)
+
+!    if(i1==1) normal%stochastic=my_true
+    xs0=x
+    ID=1
+    xs=XS0+ID
+
+    state=state+envelope0
+
+    CALL TRACK_PROBE(r,xs,state, fibre1=loc)
+     id=xs
+   if(present(FILE1)) then
+    write(mf1,*) " Full Map "    
+     call print(id,mf1)
+    write(mf1,*) " End of Full Map "
+   endif
+  call  c_normal(id,normal)             ! (8)
+
+   if(present(FILE1)) then
+    write(mf1,*)" $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ "
+    write(mf1,*)" Tunes "
+    write(mf1,*) normal%tune
+    write(mf1,*)" Damping "
+    write(mf1,*) normal%damping
+    write(mf1,*)" Emittances "
+    write(mf1,*) normal%emittance
+    write(mf1,*)" $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ "
+    write(mf1,*)"   "
+
+    write(mf1,*)" Equilibrium Beam Sizes "
+    do i=1,6
+       do j=1,6
+          write(mf1,*) i,j,normal%s_ij0(i,j)
+       enddo
+    enddo
+write(mf1,*)
+write(mf1,'(16X,a50)') "   Equilibrium moments in Phasors Basis           "
+ do i=1,6
+ do j=i,6 
+  if(abs(normal%s_ijr(i,j))>1.d-20) then
+   write(mf1,fmd) " Phasors -> ","<x_",i," x_",j,"> = ",  &   ! (14)
+                    c_clean(normal%s_ijr(i,j),1.d-20)  
+  endif
+ enddo
+ enddo 
+    close(mf1)
+endif
+if(present(em)) em=normal%emittance
+if(present(tune)) tune=normal%tune(1:3)
+if(present(damping)) damping=normal%damping(1:3)
+if(present(sij)) then
+do i=1,6
+do j=1,6
+ sij(i,j)=normal%s_ij0(i,j)
+enddo
+enddo
+endif
+if(present(sijr)) then
+do i=1,6
+do j=1,6
+ sijr(i,j)=normal%s_ijr(i,j)
+enddo
+enddo
+endif
+
+!    if(normal%stochastic) then
+!       write(mf1,*) "Stochastic kicks"
+!       write(mf1,*) normal%kick!
+
+!       write(mf1,*)" Stochastic Transformation "
+!       do i=1,6
+!          do j=1,6
+!             write(mf1,*) i,j,normal%STOCH(i,j)
+!          enddo
+!       enddo
+
+!       write(mf1,*)" Inverse Stochastic Transformation "
+!       do i=1,6
+!          do j=1,6
+!             write(mf1,*) i,j,normal%STOCH_inv(i,j)
+!          enddo
+!       enddo
+
+!    endif
+
+
+
+    CALL KILL(NORMAL)
+    CALL KILL(ID)
+    CALL KILL(xs)
+
+  end subroutine radia_new
 
   subroutine totalpath_cavity(r,j)
     implicit none
@@ -2162,7 +2803,8 @@ endif
        circum=circum+s
        IF(ABS(s)>accuracy) THEN
           ip=ip+1
-          p%patch%b_t=-s
+          p%patch%b_l=-s
+          p%patch%b_t=-s/P%BETA0
           p%patch%time=2
        ELSE
           p%patch%time=0
@@ -2493,426 +3135,7 @@ endif
   end subroutine printframes
 
 
-  SUBROUTINE radia(R,loc,FILE1,FILE2,estate,ast,asti,kick,mat,mat0,fixrad)
-    implicit none
-    TYPE(LAYOUT) R
 
-    REAL(DP) X(6),m,as(6,6),energy,deltap
-    TYPE(ENV_8) YS(6)   !
-    type(beamenvelope) env
-    CHARACTER(*) FILE1,FILE2
-    type(normalform) normal
-    integer nd2,npara,i,j,js(6),n1,n2
-    TYPE(REAL_8) Y(6)
-    TYPE(DAMAP) ID
-    TYPE(INTERNAL_STATE) state
-    TYPE(INTERNAL_STATE), target :: estate
-    integer no,loc,mf1,mf2
-    real(dp) av(6,6),e(3),mat0i(6,6)
-    real(dp),optional :: ast(6,6),asti(6,6),kick(6),mat(6,6),mat0(6,6),fixrad(6)
-    type(fibre), pointer :: p
-    no=0
-    call kanalnummer(mf1)
-    open(mf1,file=FILE1)
-    call kanalnummer(mf2)
-    open(mf2,file=FILE2)
-
-
-    if(present(mat0)) then
-       state=(estate-nocavity0)+radiation0
-       x=0.d0
-       CALL FIND_ORBIT_x(R,X,STATE,1.0e-5_dp,fibre1=loc)
-       CALL INIT(state,1,0)
-       CALL ALLOC(Y)
-       CALL ALLOC(NORMAL)
-       call alloc(id)  ! ALLOCATE VARIABLES
-       id=1
-       y=id+x
-       CALL TRACK_PROBE_x(r,y,state, fibre1=loc)
-       id=y
-       mat0=id
-       normal=id
-       mat0i=id**(-1)   ! mat0i has inverse
-       write(6,*) "symplectic tunes "
-       write(6,*) normal%tune
-
-       CALL kill(Y)
-       CALL kill(NORMAL)
-       call kill(id)  ! ALLOCATE VARIABLES
-
-    endif
-    state=(estate-nocavity0)+radiation0
-    x=0.d0
-
-    CALL FIND_ORBIT_x(R,X,STATE,1.0e-5_dp,fibre1=loc)
-    WRITE(6,*) " CLOSED ORBIT AT LOCATION ",loc
-    write(6,*) x
-    if(present(fixrad)) fixrad=x
-    if(track_flag(r,x,loc,state)==0) then
-       write(6,*) " stable closed orbit tracked "
-    else
-       write(6,*) " unstable closed orbit tracked "
-       stop 333
-    endif
-
-    goto 100
-    open(unit=30,file='junk.txt')
-    call move_to(r,p,loc)
-    do i=loc,loc+r%n
-       call track(r,x,i,i+1,state)
-       p=>p%next
-       write(30,205) i,p%mag%name(1:8),x
-    enddo
-    close(30)
-205 FORMAT(1x,i4,1x,a8,1x,6(1X,D18.11))
-100 continue
-
-    call GET_loss(r,energy,deltap)
-    write(6,*) x
-    write(6,*) "energy loss: GEV and DeltaP/p0c ",energy,deltap
-
-    write(mf1,*) " stable closed orbit tracked "
-    write(mf1,"(6(1X,D18.11))") x
-    write(mf1,*) "energy loss: GEV and DeltaP/p0c ",energy,deltap
-
-    CALL INIT(state,2,0,BERZ,ND2,NPARA)
-    CALL ALLOC(Y)
-    CALL ALLOC(NORMAL)
-    call alloc(ys)
-    call alloc(env)  ! ALLOCATE VARIABLES
-    !Y=NPARA
-    CALL ALLOC(ID)
-    ID=1
-    Y=X+ID
-    ys=y
-
-    CALL TRACK(R,YS,loc,state)
-    call kanalnummer(npara,'junkys.txt')
-    write(6,*) loc
-    call print(ys,npara)
-    close(npara)
-    if(.not.check_stable) write(6,*) " unstable tracking envelope "
-    env%stochastic=.true.
-    env=ys
-    if(.not.check_stable) write(6,*) " unstable in normalizing envelope "
-
-    y=ys
-    normal=y
-    if(.not.check_stable) write(6,*) " unstable in normalizing map "
-    as=normal%a_t
-    goto 111
-    id=y
-    open(unit=66,file='crap.txt')
-    call print(id,66)
-    do i=1,6
-       do j=1,6
-          m=ys(i)%e(j)
-          write(66,*) i,j,m
-       enddo
-    enddo
-    close(66)
-111 continue
-    !  TYPE beamenvelope
-    !     ! radiation normalization
-    !     type (damap) transpose    ! Transpose of map which acts on polynomials
-    !     type (taylor) bij         !  Represents the stochastic kick at the end of the turn  Env_f=M Env_f M^t + B
-    !     TYPE (pbresonance) bijnr   !  Equilibrium beam sizes in resonance basis
-    !     type (taylor) sij0  !  equilibrium beam sizes
-    !     real(dp) emittance(3),tune(3),damping(3)
-    !     logical AUTO,STOCHASTIC
-    !     real(dp)  KICK(3)
-    !     type (damap) STOCH
-    !  END TYPE beamenvelope
-
-    write(6,*) " Chao emittance "
-    write(6,*) env%emittance
-    write(6,*) " tunes "
-    write(6,*) env%tune
-    write(6,*) " damping decrements "
-    write(6,*) env%damping
-    write(mf1,*) " Chao emittance "
-    write(mf1,*) env%emittance
-    write(mf1,*) " tunes "
-    write(mf1,*) env%tune
-    write(mf1,*) " damping decrements "
-    write(mf1,*) env%damping
-    js=0
-    do i=1,6
-       do j=1,6
-          js(j)=1
-          m=env%STOCH%v(i).sub.js
-          write(mf1,*) m,i,j
-          js(j)=0
-       enddo
-    enddo
-    js=0
-    do i=1,6
-       do j=1,6
-          js(j)=1
-          m=ys(i)%v.sub.js
-          ! write(mf1,*) m,i,j
-          js(j)=0
-       enddo
-    enddo
-    if(present(kick)) then
-       kick(1)=env%kick(1)
-       kick(2)=env%kick(1)
-       kick(3)=env%kick(2)
-       kick(4)=env%kick(2)
-       kick(5)=env%kick(3)
-       kick(6)=env%kick(3)
-    endif
-    write(mf1,*) env%kick
-    write(mf1,*) "B matrix"
-    call print(env%STOCH,mf1)
-    write(mf1,*) "m matrix"
-
-    if(present(mat)) then
-       id=ys%v
-       mat=id
-       mat=matmul(mat,mat0i)
-    endif
-    call print(ys%v,mf1)
-    write(mf1,*) "equilibrium <X_i X_j>"
-    call print(env%sij0,mf1)
-    write(mf1,*) " Resonance Fluctuation "
-    call print(env%bijnr,mf1)
-    ! for etienne
-    write(mf2,*) env%kick
-    call print(env%STOCH,mf2)
-    if(present(ast)) ast=env%STOCH
-    env%STOCH=env%STOCH**(-1)
-    if(present(asti))asti=env%STOCH
-    call print(env%STOCH,mf2)
-    call print(ys%v,mf2)
-    write(mf2,*) " Damping  "
-    write(mf2,*) env%damping
-    write(mf2,*) " Stochastic Theta "
-    call print(env%bij,mf2)
-
-    js=0
-    av=0.d0
-    e=env%emittance
-    write(mf1,*) " emmitances "
-    write(mf1,*) e
-    av(1,1)=(as(1,1)**2+as(1,2)**2)*e(1)+(as(1,3)**2+as(1,4)**2)*e(2)+ &
-         (as(1,5)**2+as(1,6)**2)*e(3)
-    av(3,3)=(as(3,1)**2+as(3,2)**2)*e(1)+(as(3,3)**2+as(3,4)**2)*e(2)+ &
-         (as(3,5)**2+as(3,6)**2)*e(3)
-    av(5,5)=(as(5,1)**2+as(5,2)**2)*e(1)+(as(5,3)**2+as(5,4)**2)*e(2)+ &
-         (as(5,5)**2+as(5,6)**2)*e(3)
-    av(3,5)=(as(3,1)*as(5,1)+as(3,2)*as(5,2))*e(1)+(as(3,3)*as(5,3)+as(3,4)*as(5,4))*e(2)+ &
-         (as(3,5)*as(5,5)+as(3,6)*as(5,6))*e(3)
-    n1=1
-    n2=3
-    av(n1,n2)=(as(n1,1)*as(n2,1)+as(n1,2)*as(n2,2))*e(1)+(as(n1,3)*as(n2,3)+as(n1,4)*as(n2,4))*e(2)+ &
-         (as(n1,5)*as(n2,5)+as(n1,6)*as(n2,6))*e(3)
-    n1=3
-    n2=6
-    av(n1,n2)=(as(n1,1)*as(n2,1)+as(n1,2)*as(n2,2))*e(1)+(as(n1,3)*as(n2,3)+as(n1,4)*as(n2,4))*e(2)+ &
-         (as(n1,5)*as(n2,5)+as(n1,6)*as(n2,6))*e(3)
-
-    m=env%sij0.sub.'2'
-
-    write(mf1,*) " <X**2> exact and alex "
-    write(mf1,*) m
-    write(mf1,*) av(1,1)
-    m=env%sij0.sub.'002'
-    write(mf1,*) " <y**2> exact and alex "
-    write(mf1,*) m
-    write(mf1,*) av(3,3)
-    m=env%sij0.sub.'00002'
-    write(mf1,*) " <L**2> exact and alex "
-    write(mf1,*) m
-    write(mf1,*) av(5,5)
-    m=env%sij0.sub.'001010'
-    write(mf1,*) " <y delta> exact and alex "
-    write(mf1,*) m/2.d0
-    write(mf1,*) av(3,5)
-    n1=1
-    n2=3
-    m=env%sij0.sub.'101000'
-    write(mf1,*) " <x y> exact and alex "
-    write(mf1,*) m/2.d0
-    write(mf1,*) av(n1,n2)
-    n1=3
-    n2=6
-    m=env%sij0.sub.'001001'
-    write(mf1,*) " <y L> exact and alex "
-    write(mf1,*) m/2.d0
-    write(mf1,*) av(n1,n2)
-
-
-
-    CALL KILL(Y)
-    CALL KILL(Ys)
-    CALL KILL(NORMAL)
-    CALL KILL(env)
-
-    ! compute map with radiation minus the cavity!
-    ! cavity must be at the end and only one cavity
-
-    if(no>0) then
-       CALL INIT(STATE,no,0,BERZ,ND2,NPARA)
-       CALL ALLOC(Y)  ! ALLOCATE VARIABLES
-       write(17,*) x(1),x(2),x(3)
-       write(17,*) x(4),x(5),x(6)
-       Y=NPARA
-       Y=X
-
-       CALL TRACK(R,Y,1,r%n,STATE)
-
-       call print(y,17)
-       call kill(y)
-    endif
-    close(mf1)
-    close(mf2)
-
-
-    if(present(mat)) then
-       call kanalnummer(mf1)
-       open(mf1,file='barber_stochastic.txt')
-       if(present(mat)) then
-          do i=1,6
-             do j=1,6
-                write(mf1,*) i,j,mat(i,j)," mat"
-             enddo
-          enddo
-       endif
-       if(present(ast)) then
-          do i=1,6
-             do j=1,6
-                write(mf1,*) i,j,ast(i,j)," ast"
-             enddo
-          enddo
-       endif
-       if(present(asti)) then
-          do i=1,6
-             do j=1,6
-                write(mf1,*) i,j,asti(i,j)," asti"
-             enddo
-          enddo
-       endif
-       if(present(kick)) then
-          do i=1,6
-             write(mf1,*) i,kick(i)," kick"
-          enddo
-       endif
-
-       close(mf1)
-    endif
-
-  end subroutine radia
-
-  SUBROUTINE radia_new(R,loc,i1,FILE1,estate)
-    implicit none
-    TYPE(LAYOUT) R
-
-    REAL(DP) X(6),m,energy,deltap
-    CHARACTER(*) FILE1
-    type(normal_spin) normal
-    integer  i,j ,i1
-    TYPE(damapspin) ID
-    TYPE(INTERNAL_STATE) state
-    TYPE(INTERNAL_STATE), target :: estate
-    integer loc,mf1
-    type(fibre), pointer :: p
-    type(probe) xs0
-    type(probe_8) xs
-
-    call kanalnummer(mf1)
-    open(mf1,file=FILE1)
-
-
-
-
-    state=(estate-nocavity0)+radiation0
-    x=0.d0
-
-    CALL FIND_ORBIT_x(R,X,STATE,1.0e-5_dp,fibre1=loc)
-    WRITE(6,*) " CLOSED ORBIT AT LOCATION ",loc
-    write(6,*) x
-
-
-
-
-    call GET_loss(r,energy,deltap)
-
-    write(6,*) "energy loss: GEV and DeltaP/p0c ",energy,deltap
-
-    write(mf1,*) " stable closed orbit tracked "
-    write(mf1,"(6(1X,D18.11))") x
-    write(mf1,*) "energy loss: GEV and DeltaP/p0c ",energy,deltap
-
-    CALL INIT(state,1,0)
-    CALL ALLOC(NORMAL)
-    CALL ALLOC(ID)
-    call alloc(xs)
-
-    if(i1==1) normal%stochastic=my_true
-    xs0=x
-    ID=1
-    xs=XS0+ID
-
-    state=state+envelope0
-
-    CALL TRACK_PROBE(r,xs,state, fibre1=loc)
-    write(mf1,*) " Full Map "
-     id=xs    
-     call print(id,mf1)
-    write(mf1,*) " End of Full Map "
-
-    normal=id
-    write(mf1,*)" $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ "
-    write(mf1,*)" Tunes "
-    write(mf1,*) normal%tune
-    write(mf1,*)" Damping "
-    write(mf1,*) normal%damping
-    write(mf1,*)" Emittances "
-    write(mf1,*) normal%emittance
-    write(mf1,*)" $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ "
-    write(mf1,*)"   "
-
-    write(mf1,*)" Equilibrium Beam Sizes "
-    do i=1,6
-       do j=1,6
-          write(mf1,*) i,j,normal%s_ij0(i,j)
-       enddo
-    enddo
-    write(mf1,*)" Equilibrium Phasor Sizes "
-    do i=1,6
-       do j=1,6
-          write(mf1,*) i,j,normal%s_ijr(i,j)
-       enddo
-    enddo
-
-    if(normal%stochastic) then
-       write(mf1,*) "Stochastic kicks"
-       write(mf1,*) normal%kick
-
-       write(mf1,*)" Stochastic Transformation "
-       do i=1,6
-          do j=1,6
-             write(mf1,*) i,j,normal%STOCH(i,j)
-          enddo
-       enddo
-
-       write(mf1,*)" Inverse Stochastic Transformation "
-       do i=1,6
-          do j=1,6
-             write(mf1,*) i,j,normal%STOCH_inv(i,j)
-          enddo
-       enddo
-
-    endif
-
-    close(mf1)
-
-    CALL KILL(NORMAL)
-    CALL KILL(ID)
-    CALL KILL(xs)
-
-  end subroutine radia_new
 
   subroutine Universe_max_n(n)
     !use build_lattice
@@ -2943,6 +3166,43 @@ endif
     enddo
 
   end subroutine Universe_max_node_n
+
+  
+ 
+
+
+
+
+subroutine read_ptc_rays(filename)
+implicit none
+character(*) filename
+integer mf,nr,i
+type(probe) r0
+real(dp) X(6)
+
+call kanalnummer(mf,filename)
+r0=0
+X=0
+R0=X
+
+read(mf,*) nr,r0%nac
+
+allocate(xs0g(nr))
+
+do i=1,r0%nac
+ read(mf,*) r0%ac(i)%om
+ read(mf,*) r0%ac(i)%x
+enddo
+
+do i=1,nr
+ xs0g(i)=0
+ xs0g(i)=r0
+ read(mf,*) xs0g(i)%x
+enddo
+close(mf)
+
+end subroutine read_ptc_rays
+
 
 
 end module pointer_lattice
@@ -3016,5 +3276,129 @@ subroutine read_mad_command77(ptc_fichier)
 
   write(6,*) " Warning: mad command file does not exit "
 
+
+
 end  subroutine read_mad_command77
 
+subroutine my_user_routine1 
+use madx_ptc_module
+!use pointer_lattice
+!use duan_zhe_map, probe_zhe=>probe,tree_element_zhe=>tree_element,dp_zhe=>dp, & 
+!DEFAULT0_zhe=>DEFAULT0,TOTALPATH0_zhe=>TOTALPATH0,TIME0_zhe=>TIME0,ONLY_4d0_zhe=>ONLY_4d0,RADIATION0_zhe=>RADIATION0, &
+!NOCAVITY0_zhe=>NOCAVITY0,FRINGE0_zhe=>FRINGE0,STOCHASTIC0_zhe=>STOCHASTIC0,ENVELOPE0_zhe=>ENVELOPE0, &
+!DELTA0_zhe=>DELTA0,SPIN0_zhe=>SPIN0,MODULATION0_zhe=>MODULATION0,only_2d0_zhe=>only_2d0 , &
+!INTERNAL_STATE_zhe=>INTERNAL_STATE
+implicit none
+ 
+type(layout),pointer :: fodo
+type(c_normal_form) normal_form
+integer pos,no,np,mf,i
+real(dp) closed_orbit(6)
+type(probe) xs0
+type(probe_8) xs
+type(c_damap) id,one_turn_map,a_cs,a0,a1,a2,a
+type(c_taylor) x2div2,x2div2_f,phase(3),phase_one_turn_map(3)
+type(internal_state) state
+type(fibre), pointer :: f
+
+
+
+ 
+!!!! reading the flat file produced by MAD-X
+!call ptc_ini_no_append
+call read_lattice_append(M_U,"../../files_for_cas/guido_fodo/flat.txt")
+!call read_lattice_append(M_U,"C:\msys64\home\Etienne\MAD-X\files_for_cas\guido_fodo\flat.txt")
+!call read_lattice_append(M_U,"guido_fodo_ubuntu.txt")
+fodo=>m_u%end
+
+
+call in_bmad_units   ! units similar to MAD-X
+ 
+
+! finds the closed orbit at position 1 (should be (0,0,0,0,0,0))
+pos=1
+closed_orbit=0.d0;  
+                                                
+call find_orbit_x(fodo,closed_orbit(1:6),STATE,1.e-8_dp,fibre1=pos)  
+ 
+state=nocavity   ! state that produces map with delta dependence
+no=3
+np=0
+call init_all(state,no,np)
+ 
+
+!   create these TPSA objects
+call alloc(id,one_turn_map,a_cs,a0,a1,a2,a)
+call alloc(xs)
+call alloc(normal_form)
+call alloc(x2div2,x2div2_f)
+call alloc(phase)
+call alloc(phase_one_turn_map)
+
+xs0=closed_orbit   ! xs0 contains orbit and spin 
+id=1   !    identity map
+xs=id+xs0   !  xs is a probe_8 which can become a Taylor series
+ 
+ 
+call propagate(fodo,xs,state,fibre1=pos) ! computes one turn map around closed orbit
+ 
+one_turn_map=xs
+ 
+ 
+call c_normal(one_turn_map,normal_form,phase=phase_one_turn_map)  ! one_turn_map= normal_form%atot o  rotation o  normal_form%atot^-1
+ 
+call c_canonise(normal_form%atot,a_cs,a0,a1,a2) 
+
+xs =  a_cs +xs0
+
+call kanalnummer(mf,"twiss_from_guido.txt")
+
+phase=0.0_dp
+x2div2=2.0_dp*(1.0_dp.cmono.1)**2
+call C_AVERAGE(x2div2,a1,x2div2_f)  
+
+write(mf,*) " Phase advance in x "
+call clean(phase,phase,prec=1.d-10)
+call print(phase(1),mf)
+write(mf,*) " Beginning of lattice "
+call print(x2div2_f,mf)
+
+f=>fodo%start
+do i=1,fodo%n
+ call propagate(fodo,xs,state,fibre1=i,fibre2=i+1)
+
+write(mf,*) " end of Magnet ",f%mag%name
+
+ a=xs  ! creates tracked canonical transformation
+ xs0=xs
+call c_canonise(a,a_cs,a0,a1,a2,phase) ;call clean(a1,a1,prec=1.d-10);
+ 
+call C_AVERAGE(x2div2,a1,x2div2_f)  
+
+write(mf,*) " Phase advance in x "
+call clean(phase,phase,prec=1.d-10)
+call print(phase(1),mf)
+write(mf,*) " 2(x^2> ~ beta"
+call print(x2div2_f,mf)
+
+xs=xs0+a_cs
+
+f=>f%next
+enddo
+
+
+write(mf,*) " Tune in x from one turn map"
+call clean(phase_one_turn_map,phase_one_turn_map,prec=1.d-10)
+call print(phase_one_turn_map(1),mf)
+
+close(mf)
+
+call kill(id,one_turn_map,a_cs,a0,a1,a2,a)
+call kill(xs)
+call kill(normal_form)
+call kill(x2div2,x2div2_f)
+call kill(phase)
+call kill(phase_one_turn_map)
+
+
+end  subroutine my_user_routine1

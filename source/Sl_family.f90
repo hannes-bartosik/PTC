@@ -145,7 +145,7 @@ CONTAINS
     !  his survey would have to be "caught" in this interface
 
     SELECT CASE(EL%KIND)
-    case(kind0:kind22,KINDWIGGLER,kindpa)
+    case(kind0:kind22,KINDWIGGLER,kindpa,kindsuperdrift,kindabell)
        call SURVEY_chart(C,el%p,dir,magnetframe,E_IN)
 
        !    case(kind23)
@@ -243,7 +243,7 @@ CONTAINS
     DO I=1,R%N
        IF(P%MAG%kind==kind4) THEN
           energy=energy+p%mag%delta_e
-          write(6,*) p%mag%name
+          if(lielib_print(10)==1) write(6,*) p%mag%name
        ENDIF
        P=>P%NEXT
     ENDDO
@@ -263,7 +263,7 @@ CONTAINS
        IF(ASSOCIATED(P%MAG%FREQ)) THEN
           IF(P%MAG%FREQ/=0.0_dp) THEN
              FREQ=TWOPI*P%MAG%FREQ/CLIGHT
-             VOLT=-P%MAG%VOLT*1e-3_dp/P%MAG%P%P0C
+             VOLT=-P%MAG%VOLT*volt_c/P%MAG%P%P0C
              PHAS=P%MAG%PHAS
           ENDIF
        ENDIF
@@ -382,14 +382,15 @@ CONTAINS
   END SUBROUTINE ADD_FREQ
 
   !END NEW
-  SUBROUTINE ADDP_ANBN(EL,NM,F,V) ! EXTENDS THE ADD ROUTINES FROM THE ELEMENT(P) TO THE FIBRE
+  SUBROUTINE ADDP_ANBN(EL,NM,F,V,ELECTRIC) ! EXTENDS THE ADD ROUTINES FROM THE ELEMENT(P) TO THE FIBRE
     IMPLICIT NONE
     TYPE(FIBRE),target, INTENT(INOUT) ::EL
     REAL(DP), INTENT(IN) ::V
     INTEGER, INTENT(IN) ::NM,F
+    LOGICAL(LP), OPTIONAL :: ELECTRIC
 
-    CALL ADD(EL%MAG,NM,F,V)
-    CALL ADD(EL%MAGP,NM,F,V)
+    CALL ADD(EL%MAG,NM,F,V,ELECTRIC)
+    CALL ADD(EL%MAGP,NM,F,V,ELECTRIC)
 
   END SUBROUTINE ADDP_ANBN
 
@@ -447,9 +448,17 @@ CONTAINS
     IMPLICIT NONE
     TYPE (WORK),INTENT(IN):: S1
     TYPE(FIBRE),target,INTENT(INOUT):: S2
-
-    S2%MAG=S1
-    S2%MAGP=S1
+    TYPE (WORK) w
+    if(s2%mag%vorname=="RESCALE".and.force_rescale) then
+     w=s1
+     w%power=1
+     w%rescale=.true.
+     S2%MAG=w
+     S2%MAGP=w
+    else
+     S2%MAG=S1
+     S2%MAGP=S1
+    endif
     if(S1%power/=-1) then       ! just rescaling  -1=ramping
        S2%mass=S1%mass
        S2%BETA0=S1%BETA0
@@ -464,15 +473,17 @@ CONTAINS
     IMPLICIT NONE
     TYPE (FIBRE),target,INTENT(IN):: S1
     TYPE(WORK),INTENT(INOUT):: S2
-
+    electron=my_true
+    muon=s1%mass/pmae
+    s2%mass=s1%mass
     S2=S1%MAG
     IF(ABS(S1%MAG%P%P0C-S1%MAGP%P%P0C)>1e-10_dp) THEN
-       W_P=0
-       W_P%NC=3
-       W_P%FC='(2(1X,A72,/),(1X,A72))'
-       W_P%C(1)=" BEWARE : ELEMENT AND ELEMENTP SEEM TO HAVE "
-       W_P%C(2)=" DIFFERENT REFERENCE ENERGIES!"
-       WRITE(W_P%C(3),'(1X,G21.14,1X,g21.14)')  S1%MAG%P%P0C,S1%MAGP%P%P0C
+       !w_p=0
+       !w_p%NC=3
+       !w_p%FC='(2(1X,A72,/),(1X,A72))'
+       write(6,*) " BEWARE : ELEMENT AND ELEMENTP SEEM TO HAVE "
+       write(6,*) " DIFFERENT REFERENCE ENERGIES!"
+       write(6,'(1X,G21.14,1X,g21.14)')  S1%MAG%P%P0C,S1%MAGP%P%P0C
        ! call !write_e(100)
     ENDIF
 
@@ -940,8 +951,8 @@ CONTAINS
        !          S2%MAG%R(I)=S1(3+I); S2%MAGP%R(I)=S1(3+I);
        !       ENDDO
        DO I=1,3
-          D(I)=S1(I);   D(I)=S1(I);
-          R(I)=S1(3+I); R(I)=S1(3+I);
+          D(I)=S1(I);   !D(I)=S1(I);
+          R(I)=S1(3+I); !R(I)=S1(3+I);
        ENDDO
        S2%CHART%D_IN=0.0_dp;S2%CHART%D_OUT=0.0_dp;
        S2%CHART%ANG_IN=0.0_dp;S2%CHART%ANG_OUT=0.0_dp;
@@ -975,7 +986,10 @@ CONTAINS
        CALL ROTATE_FRAME(F,OMEGAT,ANGLE,1,BASIS=BASIST)
 
        IF(PRESENT(BASIS)) THEN   ! MUST ROTATE THAT FRAME AS WELL FOR CONSISTENCY IN DEFINITION WHAT A MISALIGNMENT IS IN PTC
-          CALL   GEO_ROT(BASIST,ANGLE,1)
+!          CALL   GEO_ROT(BASIST,ANGLE,1)
+           e1=basist
+          CALL   GEO_ROT(BASIST,e2,ANGLE,e1)   ! 2018 correction: agrees with successive rotations followed by rotations
+           basist=e2
        ELSE
           BASIST=F%MID    ! ALREADY ROTATED
        ENDIF
@@ -1027,52 +1041,71 @@ CONTAINS
        ENDIF
 
     ELSE
-       W_P=0
-       W_P%NC=1
-       W_P%FC='((1X,A72))'
-       WRITE(W_P%C(1),'(1X,A39,1X,A16)') " CANNOT MISALIGN THIS FIBRE: NO CHARTS ", S2%MAG%NAME
+       !w_p=0
+       !w_p%NC=1
+       !w_p%FC='((1X,A72))'
+       WRITE(6,'(1X,A39,1X,A16)') " CANNOT MISALIGN THIS FIBRE: NO CHARTS ", S2%MAG%NAME
        ! call !write_e(100)
     ENDIF
 
 
   END SUBROUTINE MISALIGN_FIBRE
 
+
   SUBROUTINE  MAD_MISALIGN_FIBRE(S2,S1) ! MISALIGNS FULL FIBRE; FILLS IN CHART AND MAGNET_CHART
     IMPLICIT NONE
     REAL(DP),INTENT(IN):: S1(6)
     TYPE(FIBRE),target,INTENT(INOUT):: S2
     REAL(DP) ENT(3,3),ENT1(3,3),ENT2(3,3),T(3),MAD_ANGLE(3),T_GLOBAL(3),ANGLE(3),MIS(6)
+    real(dp) r1(3,3),r2(3,3),r3(3,3)
     ent=S2%CHART%F%ent
     T(1)=S1(1);T(2)=S1(2);T(3)=S1(3);
     MAD_ANGLE(1)=-S1(4)
     MAD_ANGLE(2)=-S1(5)
     MAD_ANGLE(3)=S1(6)
 
-    CALL CHANGE_BASIS(T,ENT,T_GLOBAL,GLOBAL_FRAME)
-    ANGLE=0.0_dp; ANGLE(3)=MAD_ANGLE(3)
-    ent1=ent
-    ent2=ent
-    CALL GEO_ROT(ENT1,ENT,ANGLE,ENT2)
+
+
     ANGLE=0.0_dp; ANGLE(1)=MAD_ANGLE(1)
     ent1=ent
     ent2=ent
     CALL GEO_ROT(ENT1,ENT,ANGLE,ENT2)
+ 
     ANGLE=0.0_dp; ANGLE(2)=MAD_ANGLE(2)
     ent1=ent
     ent2=ent
     CALL GEO_ROT(ENT1,ENT,ANGLE,ENT2)
 
-    CALL CHANGE_BASIS(T_GLOBAL,GLOBAL_FRAME,T,ENT)
+    ANGLE=0.0_dp; ANGLE(3)=MAD_ANGLE(3)
+    ent1=ent
+    ent2=ent
+    CALL GEO_ROT(ENT1,ENT,ANGLE,ENT2)
+    
+
+
+
+
     CALL COMPUTE_ENTRANCE_ANGLE(S2%CHART%F%ent,ENT,ANGLE)
-    MIS(1:3)=T
+
+ 
+     ent1=S2%CHART%F%ent
+     ent2=ent
+     CALL CHANGE_BASIS(T,ENT1,T_GLOBAL,ent2)
+
+ 
+
+    MIS(1:3)=T_GLOBAL
     MIS(4:6)=ANGLE
 
     ENT=S2%CHART%F%ent
     T=S2%CHART%F%A
-    call MISALIGN_SIAMESE(S2,MIS,T,ENT)
-    !    call MISALIGN_FIBRE(S2,MIS,S2%CHART%F%A,S2%CHART%F%ent)
+
+        call MISALIGN_FIBRE(S2,MIS,T,ENT)
 
   END SUBROUTINE MAD_MISALIGN_FIBRE
+
+
+
 
   ! NEW ROUTINES TO CHANGE LAYOUT using only magnets!!!!
 
@@ -1287,7 +1320,7 @@ CONTAINS
     if(pat) then
        k=0
        if(associated(R%doko)) then
-          dk=>r%doko
+          dk=>r% doko
           do while(associated(dk))  !!! PATCH TO DOKO'S  IF CREATED USING DNA I.E. APPEND_POINT
              p=> dk%parent_fibre
              call FIND_PATCH(p,p%next,NEXT=my_false,ENERGY_PATCH=my_true,prec=PREC0)
@@ -1846,11 +1879,11 @@ CONTAINS
 
 
     IF((PRESENT(ENT).AND.(.NOT.PRESENT(A))).OR.(PRESENT(A).AND.(.NOT.PRESENT(ENT)))) THEN
-       W_P=0
-       W_P%NC=2
-       W_P%FC='(2(1X,A72,/),(1X,A72))'
-       W_P%C(1)=" BEWARE : ENT AND A  "
-       W_P%C(2)=" MUST BOTH BE PRESENT OR ABSENT"
+       !w_p=0
+       !w_p%NC=2
+       !w_p%FC='(2(1X,A72,/),(1X,A72))'
+       write(6,*) " BEWARE : ENT AND A  "
+       write(6,*) " MUST BOTH BE PRESENT OR ABSENT"
        ! call !write_e(100)
     ELSEIF(PRESENT(ENT)) THEN
        ENTT=ENT

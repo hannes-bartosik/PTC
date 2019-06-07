@@ -1,7 +1,12 @@
+$(info Got $$LIBS as follows [${LIBS}])
+
 include ../../conf/make_root_config
+
+$(info Got $$LIBS after make_root_config [${LIBS}])
 
 #Fortran compiler
 FC=ifort
+
 
 DIRS  = $(patsubst %/, %, $(filter %/, $(shell ls -F))))
 SRCS  = $(wildcard *.cc)
@@ -33,9 +38,36 @@ INC += $(foreach dir, $(DIRS), $(wildcard ./$(dir)/*.h))
 # External library locations
 #-------------------------------------------------------------------------------
 
+
+
+$(info $$PROD_DIR is [${PROD_DIR}])
+$(info $$INTEL_TARGET_ARCH is [${INTEL_TARGET_ARCH}])
+$(info $$ORBIT_ARCH is [${ORBIT_ARCH}])
+
 ifeq ($(FC),ifort)
-  LIBS += -Lafs/cern.ch/sw/IntelSoftware/linux/x86_64/xe2013/composer_xe_2013_sp1.2.144/bin/intel64 -lifcore -lsvml
+    ifeq ($(PROD_DIR),)
+        $(info $$PROD_DIR is empty [${PROD_DIR}])
+        $(error Please source compilervars.sh and export PROD_DIR INTEL_TARGET_ARCH)
+    endif
+  
+  
+    ifeq ($(ORBIT_ARCH),Darwin)
+	LIBS += -L$(PROD_DIR)/lib
+        $(info Darwin $$LIBS is [${LIBS}])
+	LINKFLAGS += -undefined dynamic_lookup
+    else ifeq ($(ORBIT_ARCH),Linux)
+	ifeq ($(INTEL_TARGET_ARCH),)
+            $(info $$INTEL_TARGET_ARCH is empty [${INTEL_TARGET_ARCH}])
+            $(error Please source compilervars.sh and export PROD_DIR INTEL_TARGET_ARCH)
+	endif
+	LIBS += -L$(PROD_DIR)/lib/$(INTEL_TARGET_ARCH) 
+        $(info Linux $$LIBS is [${LIBS}])
+    endif
+    
+    LIBS += -lifcore -lsvml
+    $(info b $$LIBS is [${LIBS}])
 endif
+
 ifeq ($(FC),gfortran)
   LIBS += -L/usr/lib/gcc/x86_64-redhat-linux/4.4.4 -lgfortran
 endif
@@ -74,9 +106,12 @@ ptc_orbit_lib = libptc_orbit.so
 #========rules=========================
 #-------------------------------------------------------------------------------
 
-compile: $(OBJS_WRAP) $(FORT_OBJS) $(OBJS) $(INC)
+	
+compile: makeobjdir $(OBJS_WRAP) $(FORT_OBJS) $(OBJS) $(INC)
 	$(CXX) -fPIC $(SHARED_LIB) $(LIBS) $(LINKFLAGS) -o ../../lib/$(ptc_orbit_lib) $(OBJS) $(FORT_OBJS)
-	rm -rf ./*.mod
+
+makeobjdir:
+	mkdir -p obj
 
 clean:
 	rm -rf ./obj/*.o
@@ -98,10 +133,10 @@ clean:
 	$(CXX) $(CXXFLAGS) $(INCLUDES_LOCAL) $(INCLUDES) -c $< -o $@;
 
 ./obj/%.o : ./source/%.f90
-	$(FC) -fpic -O4 -c $< -o $@;
+	$(FC) $(FORTFLAGS) -c $< -o $@;
 
 ./obj/%.o : ./interface/%.f90
-	$(FC) -fpic -O4 -I ./source -c $< -o $@;
+	$(FC) $(FORTFLAGS) -I ./source -c $< -o $@;
 
 obj/b_da_arrays_all.o: obj/a_scratch_size.o
 obj/c_dabnew.o: obj/b_da_arrays_all.o

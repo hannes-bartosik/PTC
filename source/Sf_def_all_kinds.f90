@@ -6,7 +6,27 @@ module S_def_all_kinds
   implicit none
   public
   private XMIDR,GMIDR,ALLOC_FIBRE
-  include "a_def_worm.inc"
+
+
+TYPE INNER_FRAME
+   INTEGER, POINTER ::   NST           => null()
+   REAL(DP), POINTER :: ORIGIN(:,:)    => null()
+   REAL(DP), POINTER :: FRAME(:,:,:)   => null()
+   type(fibre), POINTER :: F           => null()
+   REAL(DP),POINTER :: L(:)            => null()
+   logical(LP),POINTER :: DO_SURVEY    => null()
+END TYPE INNER_FRAME
+
+
+TYPE worm
+   INTEGER, POINTER ::   NST           => null()
+   INTEGER, POINTER ::   POS(:)        => null()
+   REAL(DP), POINTER :: RAY(:,:)       => null()
+   TYPE(INNER_FRAME), POINTER :: E     => null()
+   type(fibre), POINTER :: F           => null()
+END TYPE worm	
+
+  !include "a_def_worm.inc"
   !  include "a_def_all_kind.inc"
   !  include "a_def_sagan.inc"
   !  include "a_def_user1.inc"
@@ -460,7 +480,7 @@ contains
           !             WRITE(6,*) "ERROR IN SURVEY_INNER_MAG "
           !             STOP 331
           !          ENDIF
-       CASE(KIND0,KIND1,KIND3:KIND5,KIND8:KIND9,KIND11:KIND15,KIND17:KIND22,kindwiggler)
+       CASE(KIND0,KIND1,KIND3:KIND5,KIND8:KIND9,KIND11:KIND15,KIND17:KIND22,kindwiggler,kindsuperdrift)
           LH=P%LC/2.0_dp
           A=O
           D=0.0_dp;D(3)=-LH
@@ -476,7 +496,7 @@ contains
              CALL GEO_TRA(A,MID,D,1)
              CALL XFRAME(E_IN,MID,A,start)
           ENDDO
-       CASE(KIND2,KIND6:KIND7,KIND10,KINDPA)
+       CASE(KIND2,KIND6:KIND7,KIND10,KINDPA,KINDabell)
           IF(P%B0==0.0_dp) THEN
              LH=P%LC/2.0_dp
              A=O
@@ -567,13 +587,13 @@ contains
           !             WRITE(6,*) "ERROR IN SURVEY_INNER_MAG "
           !             STOP 330
           !          ENDIF
-       CASE(KIND0,KIND1,KIND3:KIND5,KIND8:KIND9,KIND11:KIND15,KIND17:KIND22,kindwiggler)
+       CASE(KIND0,KIND1,KIND3:KIND5,KIND8:KIND9,KIND11:KIND15,KIND17:KIND22,kindwiggler,kindsuperdrift)
           E_IN%L(start)=start*P%LD/nst  +E_IN%L(-1)
           DO I=1,NST
              start=start+E_IN%F%dir
              E_IN%L(start)=start*P%LD/nst    +E_IN%L(-1)
           ENDDO
-       CASE(KIND2,KIND6:KIND7,KIND10,KINDPA)
+       CASE(KIND2,KIND6:KIND7,KIND10,KINDPA,kindabell)
           IF(P%B0==0.0_dp) THEN
              E_IN%L(start)=start*P%LD/nst    +E_IN%L(-1)
              DO I=1,NST
@@ -632,6 +652,7 @@ contains
 
 
   end SUBROUTINE SURVEY_INNER_MAG
+
 
 
 end module S_def_all_kinds

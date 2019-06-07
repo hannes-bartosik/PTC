@@ -3,6 +3,7 @@
 
 MODULE S_DEF_KIND
   USE S_def_all_kinds   ! not needed because of things below
+  use s_extend_poly, only : PRTP, PRTP1 ! LD: 22.03.2019
   public
   PRIVATE DRIFTP  !,DRIFT   ! ,DRIFTR
   PRIVATE SPARR,SPARP !,SPAR
@@ -22,13 +23,14 @@ MODULE S_DEF_KIND
   PRIVATE SYMPINTR,SYMPINTP
   PRIVATE SYMPINTEXR,SYMPINTEXP
   PRIVATE KICK_SOLR,KICK_SOLP !,KICK_SOL
-  PRIVATE FRINGE2SOLR,FRINGE2SOLP,FRINGE2SOL
+  PRIVATE FRINGE2QUADR,FRINGE2QUADP,FRINGE2QUAD
   PRIVATE INTESOLR,INTESOLP,INTESOL
   PRIVATE FACER,FACEP !,FACE
-  PRIVATE NEWFACER,NEWFACEP
+  PRIVATE NEWFACER,NEWFACEP,fake_shiftr,fake_shiftp
   PRIVATE EDGE_TRUE_PARALLELR,EDGE_TRUE_PARALLELP
 
-  PRIVATE ZEROR_KTK,ZEROP_KTK,ZEROR_STREX,ZEROP_STREX,ZEROR_CAV4,ZEROP_CAV4,ZEROr_enge,ZEROp_enge
+  PRIVATE ZEROR_KTK,ZEROP_KTK,ZEROR_STREX,ZEROP_STREX,ZERO_CAV4R,ZERO_CAV4P,ZEROr_enge,ZEROp_enge
+  PRIVATE ZEROR_superdrift,  ZEROP_superdrift,ZERO_ABELLR,ZERO_ABELLP,B_E_FIELDR,B_E_FIELDP
   PRIVATE ZEROR_KICKT3,ZEROP_KICKT3
   PRIVATE ALLOCKTK,KILLKTK
   PRIVATE GETMATR,GETMATD !,GETMAT
@@ -52,13 +54,14 @@ MODULE S_DEF_KIND
   PRIVATE SYMPINTSOLR,SYMPINTSOLP
   PRIVATE GETMULB_SOLR,GETMULB_SOLP,GETMULB_SOL
   PRIVATE KICKMULR,KICKMULP !,KICKMUL
-
-  PRIVATE EXPR7,EXPD7,EXPCOSY7
+  PRIVATE GETNEWBR,GETNEWBP
+  PRIVATE EXPR7,EXPD7,EXPCOSY7,get_z_cavr,get_z_cavp
 
   PRIVATE PUSH_NSMI_R,PUSH_NSMI_D
   PRIVATE PUSH_SSMI_R,PUSH_SSMI_D
 
   PRIVATE GETANBNR,GETANBNP,ZEROR_teapot,ZEROP_teapot,ALLOCTEAPOT,KILLTEAPOT
+  PRIVATE GETAEBER,GETAEBEP
   PRIVATE SPROTR,SPROTP,SPROT
   PRIVATE SseCR,SseCP,Ssec
   PRIVATE SSECH1R,SSECH1P !,SSECH1
@@ -85,30 +88,34 @@ MODULE S_DEF_KIND
 
   PRIVATE copypancake_el_elp,copypancake_elp_el,copypancake_el_el
   PRIVATE POINTERS_pancakeR,POINTERS_pancakep
+  PRIVATE copyABELL_el_elp,copyABELL_elp_el,copyABELL_el_el
+  PRIVATE POINTERS_ABELLR,POINTERS_ABELLp
   PRIVATE ZEROr_PANCAKE,ZEROP_PANCAKE
   PRIVATE rk4_pancaker,rk4_pancakeP
-  PRIVATE FEVAL_pancaker,FEVAL_pancakeP
+  PRIVATE FEVAL_pancaker,FEVAL_pancakeP,rks_pancaker,rks_pancakep,rks_pancake
   PRIVATE INTPANCAKER,INTPANCAKEP,conv_to_xpr,conv_to_xpp,conv_to_pxr
-  private conv_to_pxp
+  private conv_to_pxp, conv_to_pxpabell ,conv_to_xprabell,conv_to_xppabell,conv_to_pxrabell
   private ADJUSTR_TIME_CAV4,ADJUSTp_TIME_CAV4,INTER_CAV4,INTEp_CAV4
   private INTER_STREX,INTEP_STREX,INTER_SOL5,INTEP_SOL5,INTER_KTK,INTEP_KTK
   private fringe_STRAIGHTr,fringe_STRAIGHTP
   private INTEr_dkd2,INTEP_dkd2,INTER_DRIFT1,INTEP_DRIFT1
   private INTER_TKTF,INTEP_TKTF
-  private ADJUSTR_TIME_CAV_TRAV_OUT,ADJUSTP_TIME_CAV_TRAV_OUT
-  private FRINGE_CAV_TRAVR,FRINGE_CAV_TRAVp,INTER_CAV_TRAV,INTEP_CAV_TRAV
-  private INTER_PANCAKE,INTEP_PANCAKE,ADJUSTR_PANCAKE,ADJUSTP_PANCAKE
+  private ADJUST_TIME_CAV_TRAV_OUTR,ADJUST_TIME_CAV_TRAV_OUTP
+  private FRINGE_CAV_TRAVR,FRINGE_CAV_TRAVp,INTER_CAV_TRAV,INTEP_CAV_TRAV,INTEr_abell_SLICE,INTEP_abell_SLICE
+  private INTER_PANCAKE,INTEP_PANCAKE,ADJUST_PANCAKER,ADJUST_PANCAKEP,ADJUST_ABELLR,ADJUST_ABELLP
   private elliptical_b_r,elliptical_b_p  ! valishev
-
+  private PATCH_driftR,PATCH_driftp,SUPER_DRIFT_p,SUPER_DRIFT_r,INTERabell,INTEPabell
+  private fx_newr,fx_newp
+  private gen_conv_to_pxp,gen_conv_to_pxr,gen_conv_to_xpp,gen_conv_to_xpr
   INTEGER, PRIVATE :: TOTALPATH_FLAG
   !  private DRIFT_pancaker,DRIFT_pancakep,KICKPATH_pancaker,KICKPATH_pancakep
   ! using x and x'
-  private fxr,fxp,f_m
+  private fxr,fxp,fx,fxr_canonical,fxp_canonical,fxc,step_symp_p_PANCAkEr,step_symp_p_PANCAkEp,step_symp_p_PANCAkE
   PRIVATE feval       !,rk4_m
   !  FOR CAV_TRAV
   PRIVATE A_TRANSR,A_TRANSP
   PRIVATE feval_CAVr,feval_CAVP,feval_CAV
-  PRIVATE fevalBMAD_CAVR,fevalBMAD_CAVP
+  PRIVATE feval_CAV_bmadr,feval_CAV_bmadp
   private  FRINGECAVR_TRAV,FRINGECAVP_TRAV !,FRINGECAV_TRAV
   private rk2_cavr,rk2_cavp !,rk2_cav
   private rk4_cavr,rk4_cavp !,rk4_cav
@@ -116,23 +123,29 @@ MODULE S_DEF_KIND
   PRIVATE DRIFT_INTER,DRIFT_INTEP   ! NEW DRIFTS CUTABLE
   INTEGER,PRIVATE :: NMAXI=10000
   logical(lp) :: SPEED=.TRUE.
-  integer,TARGET :: HIGHEST_FRINGE=2
   logical(lp) ,TARGET :: OLD_IMPLEMENTATION_OF_SIXTRACK=.TRUE.
   real(dp), target :: phase0=-pi
   real(dp), target :: wedge_coeff(2)
   logical(lp), target :: MAD8_WEDGE=.TRUE.
   logical(lp) :: bug_intentional=.false.
- 
+  real(dp) :: e1_cas=0
   !  logical(lp) :: old_solenoid=.true.
   INTEGER :: N_CAV4_F=1
+  INTEGER :: m_abell=1,n_abell=2
+ ! logical ::  ABELL_NEW=.TRUE.
+  INTEGER :: metcav=0, nstcav=0
+  real(dp) :: xcav(1:6)=0.001d0, symplectic_check=1.d-10
+
+
   ! stochastic radiation in straigth
-  PRIVATE computeR_f4,computeP_f4,ZEROR_HE22,ZEROP_HE22
+  PRIVATE compute_f4r,compute_f4p,ZEROR_HE22,ZEROP_HE22
   PRIVATE DRIFTR_HE,DRIFTP_HE
   PRIVATE KICKR_HE,KICKP_HE,KICK_HE
   PRIVATE KICKPATHR_HE,KICKPATHP_HE
   PRIVATE INTR_HE,INTP_HE,INTR_HE_TOT,INTP_HE_TOT
   private ZEROr_DKD2,ZEROp_DKD2
-  private GETELECTRICR,GETELECTRICP
+  private GETMAGNETICR,GETMAGNETICP
+  private GETELECTRICR,GETELECTRICP,electric_field_septumR,electric_field_septump
   !include "def_all_kind.f90"
   ! New home for element and elementp
   integer, parameter :: N_ENGE=5
@@ -140,12 +153,17 @@ MODULE S_DEF_KIND
   logical(lp):: read_tc=.false.
   logical(lp):: solve_electric=.false.
   !  integer :: nvalishev=100
-  PRIVATE feval_teapotr,feval_teapotP
-  PRIVATE Abmad_TRANSR,Abmad_TRANSP,Abmad_TRANS
+  PRIVATE feval_teapotr,feval_teapotP,feval_abellr,feval_abellp
+  PRIVATE Abmad_TRANSR,Abmad_TRANSP
   private rk2bmad_cavr,rk2bmad_cavp,rk4bmad_cavr,rk4bmad_cavp,rk6bmad_cavr,rk6bmad_cavp
   private track_slice4r,track_slice4p
-
-
+  private  ZEROr_sol5,ZEROp_sol5,fringe_helr,fringe_help
+  logical(lp) :: tpsa_quad_sad=my_false
+ logical :: piotr_freq=.false.,syphers=.true.,freq_redefine = .false.
+integer :: put_a_abell = 1
+private rk2abellr,rk4abellr,rk6abellr,rk2abellp,rk4abellp,rk6abellp,get_z_abr,get_z_abp
+private fx_newcr,fx_newcp,fx_newc
+integer :: tot_t=1
   INTERFACE TRACK_SLICE
 !     MODULE PROCEDURE INTER_CAV4
 !     MODULE PROCEDURE INTEP_CAV4
@@ -167,18 +185,49 @@ MODULE S_DEF_KIND
      MODULE PROCEDURE INTEP_TKTF
      MODULE PROCEDURE INTER_CAV_TRAV
      MODULE PROCEDURE INTEP_CAV_TRAV
+     MODULE PROCEDURE INTER_abell_SLICE
+     MODULE PROCEDURE INTEP_abell_SLICE
      MODULE PROCEDURE INTER_PANCAKE
      MODULE PROCEDURE INTEP_PANCAKE
      MODULE PROCEDURE INTR_HE
      MODULE PROCEDURE INTP_HE
+     MODULE PROCEDURE INTER_superdrift
+     MODULE PROCEDURE INTEP_superdrift
   END INTERFACE
 
 
-  
+  INTERFACE fake_shift
+     MODULE PROCEDURE fake_shiftr
+     MODULE PROCEDURE fake_shiftp
+  END INTERFACE
+
+
+  INTERFACE fringe_hel
+     MODULE PROCEDURE fringe_helr
+     MODULE PROCEDURE fringe_help
+  END INTERFACE
+
+
+  INTERFACE PATCH_drift
+     MODULE PROCEDURE PATCH_driftR
+     MODULE PROCEDURE PATCH_driftp
+  END INTERFACE
+
+
+  INTERFACE get_z_ab
+     MODULE PROCEDURE get_z_abr
+     MODULE PROCEDURE get_z_abp
+  END INTERFACE
+
+
+  INTERFACE ADJUST_ABELL
+     MODULE PROCEDURE ADJUST_ABELLR
+     MODULE PROCEDURE ADJUST_ABELLP
+  END INTERFACE
 
   INTERFACE ADJUST_PANCAKE
-     MODULE PROCEDURE ADJUSTR_PANCAKE
-     MODULE PROCEDURE ADJUSTP_PANCAKE
+     MODULE PROCEDURE ADJUST_PANCAKER
+     MODULE PROCEDURE ADJUST_PANCAKEP
   END INTERFACE
 
   INTERFACE TRACK_FRINGE
@@ -196,6 +245,15 @@ MODULE S_DEF_KIND
      MODULE PROCEDURE fringe_STREXP
   END INTERFACE
 
+  INTERFACE get_z_cav
+     MODULE PROCEDURE get_z_cavr
+     MODULE PROCEDURE get_z_cavp
+  END INTERFACE  
+
+  INTERFACE B_E_FIELD
+     MODULE PROCEDURE B_E_FIELDR
+     MODULE PROCEDURE B_E_FIELDP
+  END INTERFACE
 
 
   INTERFACE TRACK
@@ -248,7 +306,9 @@ MODULE S_DEF_KIND
      MODULE PROCEDURE SYMPSEPR
      MODULE PROCEDURE SYMPSEPP
 
-
+     ! PANCAKE
+     MODULE PROCEDURE INTERabell
+     MODULE PROCEDURE INTEPabell
 
      ! PANCAKE
      MODULE PROCEDURE INTPANCAKER
@@ -257,6 +317,9 @@ MODULE S_DEF_KIND
      ! HELICAL_DIPOLE
      MODULE PROCEDURE INTR_HE_TOT
      MODULE PROCEDURE INTP_HE_TOT
+
+     MODULE PROCEDURE SUPER_DRIFT_r
+     MODULE PROCEDURE SUPER_DRIFT_p
 
   END INTERFACE
 
@@ -305,13 +368,37 @@ MODULE S_DEF_KIND
   INTERFACE feval_CAV
      MODULE PROCEDURE feval_CAVr
      MODULE PROCEDURE feval_CAVp
-     MODULE PROCEDURE fevalBMAD_CAVR 
-     MODULE PROCEDURE fevalBMAD_CAVP
+  END INTERFACE
+
+  INTERFACE feval_CAV_bmad
+     MODULE PROCEDURE feval_CAV_bmadr
+     MODULE PROCEDURE feval_CAV_bmadp
   END INTERFACE
 
   INTERFACE feval_teapot
      MODULE PROCEDURE feval_teapotr
      MODULE PROCEDURE feval_teapotP
+  END INTERFACE
+
+  INTERFACE feval_abell
+     MODULE PROCEDURE feval_abellr
+     MODULE PROCEDURE feval_abellP
+  END INTERFACE
+
+  INTERFACE rk2_abell
+     MODULE PROCEDURE rk2abellr
+     MODULE PROCEDURE rk2abellp
+  END INTERFACE
+
+  INTERFACE rk4_abell
+     MODULE PROCEDURE rk4abellr
+     MODULE PROCEDURE rk4abellp
+  END INTERFACE
+
+
+  INTERFACE rk6_abell
+     MODULE PROCEDURE rk6abellr
+     MODULE PROCEDURE rk6abellp
   END INTERFACE
 
   INTERFACE rk2_cav
@@ -335,6 +422,22 @@ MODULE S_DEF_KIND
      MODULE PROCEDURE rk6bmad_cavp
   END INTERFACE
 
+  INTERFACE rk2_teapot
+     MODULE PROCEDURE rk2_teapotr
+     MODULE PROCEDURE rk2_teapotp
+  END INTERFACE
+
+  INTERFACE rk4_teapot
+     MODULE PROCEDURE rk4_teapotr
+     MODULE PROCEDURE rk4_teapotp
+  END INTERFACE
+
+  INTERFACE rk6_teapot
+     MODULE PROCEDURE rk6_teapotr
+     MODULE PROCEDURE rk6_teapotp
+  END INTERFACE
+
+
   INTERFACE FRINGECAV
      MODULE PROCEDURE FRINGECAVR
      MODULE PROCEDURE FRINGECAVP       ! CAVITY FRINGE FIELDS
@@ -346,8 +449,8 @@ MODULE S_DEF_KIND
   END INTERFACE
 
   INTERFACE ADJUST_TIME_CAV_TRAV_OUT
-     MODULE PROCEDURE ADJUSTR_TIME_CAV_TRAV_OUT
-     MODULE PROCEDURE ADJUSTP_TIME_CAV_TRAV_OUT
+     MODULE PROCEDURE ADJUST_TIME_CAV_TRAV_OUTR
+     MODULE PROCEDURE ADJUST_TIME_CAV_TRAV_OUTP
   END INTERFACE
 
   INTERFACE FRINGECAV_TRAV
@@ -454,14 +557,19 @@ MODULE S_DEF_KIND
   !     MODULE PROCEDURE KICK_SOLp_old
   !  END INTERFACE
 
-  INTERFACE FRINGE2SOL
-     MODULE PROCEDURE FRINGE2SOLR
-     MODULE PROCEDURE FRINGE2SOLP
+  INTERFACE FRINGE2QUAD
+     MODULE PROCEDURE FRINGE2QUADR
+     MODULE PROCEDURE FRINGE2QUADP
   END INTERFACE
 
   INTERFACE GETMULB_SOL
      MODULE PROCEDURE GETMULB_SOLR
      MODULE PROCEDURE GETMULB_SOLP
+  END INTERFACE
+
+  INTERFACE GETNEWB
+     MODULE PROCEDURE GETNEWBR
+     MODULE PROCEDURE GETNEWBP
   END INTERFACE
 
   INTERFACE KICKMUL
@@ -491,11 +599,18 @@ MODULE S_DEF_KIND
   !end  INTERFACE
 
   INTERFACE copy
+     MODULE PROCEDURE copyABELL_el_elp
+     MODULE PROCEDURE copyABELL_elp_el
+     MODULE PROCEDURE copyABELL_el_el
      MODULE PROCEDURE copypancake_el_elp
      MODULE PROCEDURE copypancake_elp_el
      MODULE PROCEDURE copypancake_el_el
   END INTERFACE
 
+  INTERFACE POINTERS_ABELL
+     MODULE PROCEDURE POINTERS_ABELLR
+     MODULE PROCEDURE POINTERS_ABELLP
+  END INTERFACE
 
 
   INTERFACE POINTERS_pancake
@@ -503,9 +618,12 @@ MODULE S_DEF_KIND
      MODULE PROCEDURE POINTERS_pancakeP
   END INTERFACE
 
+
   INTERFACE ASSIGNMENT (=)
      MODULE PROCEDURE ZEROr_DKD2                 ! need upgrade
      MODULE PROCEDURE ZEROp_DKD2                  ! need upgrade
+     MODULE PROCEDURE ZEROr_sol5                 ! need upgrade
+     MODULE PROCEDURE ZEROp_sol5                  ! need upgrade
      MODULE PROCEDURE ZEROr_KTK                 ! need upgrade
      MODULE PROCEDURE ZEROP_KTK                  ! need upgrade
      MODULE PROCEDURE ZEROr_TKT7                 ! need upgrade
@@ -520,8 +638,10 @@ MODULE S_DEF_KIND
      MODULE PROCEDURE ZEROP_ECOL                  ! need upgrade
      MODULE PROCEDURE ZEROR_STREX
      MODULE PROCEDURE ZEROP_STREX
-     MODULE PROCEDURE ZEROR_CAV4
-     MODULE PROCEDURE ZEROP_CAV4
+     MODULE PROCEDURE ZERO_CAV4R
+     MODULE PROCEDURE ZERO_CAV4P
+     MODULE PROCEDURE ZERO_ABELLR
+     MODULE PROCEDURE ZERO_ABELLP
      MODULE PROCEDURE ZEROR_CAV_TRAV
      MODULE PROCEDURE ZEROP_CAV_TRAV
      MODULE PROCEDURE ZEROR_KICKT3
@@ -533,6 +653,8 @@ MODULE S_DEF_KIND
      MODULE PROCEDURE ZEROr_enge
      MODULE PROCEDURE ZEROp_enge
      MODULE PROCEDURE ZEROR_RAMP
+     MODULE PROCEDURE ZEROR_superdrift
+     MODULE PROCEDURE ZEROP_superdrift
   END INTERFACE
 
 
@@ -626,20 +748,33 @@ MODULE S_DEF_KIND
 !!!! *************************************************************** !!!!
 
   INTERFACE GETANBN
-     MODULE PROCEDURE GETANBNR
-     MODULE PROCEDURE GETANBNP
+!     MODULE PROCEDURE GETANBNR
+!     MODULE PROCEDURE GETANBNP
+     MODULE PROCEDURE GETAEBER
+     MODULE PROCEDURE GETAEBEP
   END INTERFACE
 
+  INTERFACE GETAEBE
+     MODULE PROCEDURE GETAEBER
+     MODULE PROCEDURE GETAEBEP
+  END INTERFACE
 
   INTERFACE GETELECTRIC
      MODULE PROCEDURE GETELECTRICR
-     MODULE PROCEDURE GETELECTRICP       ! USE TO CREATE OTHER ELEMENTS (INTEGRATION)
+     MODULE PROCEDURE GETELECTRICP       ! FOR ELECTRIC TEAPOT
+     MODULE PROCEDURE electric_field_septumR    ! FOR ESEPTUM
+     MODULE PROCEDURE electric_field_septump    ! FOR ESEPTUM
   END INTERFACE
 
-  INTERFACE GETMULB_TEAPOT
-     MODULE PROCEDURE GETMULB_TEAPOTR
-     MODULE PROCEDURE GETMULB_TEAPOTP       ! USE TO CREATE OTHER ELEMENTS (INTEGRATION)
+  INTERFACE GETMAGNETIC
+     MODULE PROCEDURE GETMAGNETICR
+     MODULE PROCEDURE GETMAGNETICP
   END INTERFACE
+
+ ! INTERFACE GETMULB_TEAPOT
+ !    MODULE PROCEDURE GETMULB_TEAPOTR
+ !    MODULE PROCEDURE GETMULB_TEAPOTP       ! USE TO CREATE OTHER ELEMENTS (INTEGRATION)
+ ! END INTERFACE
 
 
   INTERFACE SPROT
@@ -677,23 +812,63 @@ MODULE S_DEF_KIND
      MODULE PROCEDURE wedgeR
      MODULE PROCEDURE wedgeP       ! USE IN EXACT SECTOR BEND (INTEGRATION)
   END INTERFACE
-  INTERFACE F_M
+
+  INTERFACE fx
      MODULE PROCEDURE FXR
      MODULE PROCEDURE FXP
   END INTERFACE
+
+  INTERFACE fx_new
+     MODULE PROCEDURE fx_newr
+     MODULE PROCEDURE fx_newp
+  END INTERFACE
+
+  INTERFACE fx_newc
+     MODULE PROCEDURE fx_newcr
+     MODULE PROCEDURE fx_newcp
+  END INTERFACE
+
+  INTERFACE fxc
+     MODULE PROCEDURE fxr_canonical
+     MODULE PROCEDURE fxp_canonical
+  END INTERFACE
+
+  INTERFACE step_symp_p_PANCAkE
+     MODULE PROCEDURE step_symp_p_PANCAkEr
+     MODULE PROCEDURE step_symp_p_PANCAkEp
+  END INTERFACE
+
+!  INTERFACE step_symp_x_PANCAkE
+!     MODULE PROCEDURE step_symp_x_PANCAkEr
+!  END INTERFACE
 
   INTERFACE feval
      MODULE PROCEDURE FEVAL_pancaker
      MODULE PROCEDURE FEVAL_pancakeP
   END INTERFACE
 
+  INTERFACE gen_conv_to_px
+     MODULE PROCEDURE gen_conv_to_pxr
+     MODULE PROCEDURE gen_conv_to_pxp
+  END INTERFACE
+
+  INTERFACE gen_conv_to_xp
+     MODULE PROCEDURE gen_conv_to_xpr
+     MODULE PROCEDURE gen_conv_to_xpp
+  END INTERFACE
+
   INTERFACE conv_to_xp
      MODULE PROCEDURE conv_to_xpr
      MODULE PROCEDURE conv_to_xpp
+     MODULE PROCEDURE conv_to_xprabell
+     MODULE PROCEDURE conv_to_xppabell
   END INTERFACE
+
   INTERFACE conv_to_px
      MODULE PROCEDURE conv_to_pxr
      MODULE PROCEDURE conv_to_pxp
+     MODULE PROCEDURE conv_to_pxrabell
+     MODULE PROCEDURE conv_to_pxpabell
   END INTERFACE
 
 
@@ -702,12 +877,26 @@ MODULE S_DEF_KIND
      MODULE PROCEDURE rk4_pancakeP
   END INTERFACE
 
+  INTERFACE rks_pancake
+     MODULE PROCEDURE rks_pancaker
+     MODULE PROCEDURE rks_pancakep
+  END INTERFACE
+
 !!!!!!!  HELICAL
 
-
   INTERFACE compute_f4
-     MODULE PROCEDURE computeR_f4
-     MODULE PROCEDURE computeP_f4
+     MODULE PROCEDURE compute_f4gr
+     MODULE PROCEDURE compute_f4gp
+  END INTERFACE
+
+  INTERFACE compute_f4e
+     MODULE PROCEDURE compute_f4rold
+     MODULE PROCEDURE compute_f4pold
+  END INTERFACE
+
+  INTERFACE compute_f4s
+     MODULE PROCEDURE compute_f4r
+     MODULE PROCEDURE compute_f4p
   END INTERFACE
 
   INTERFACE DRIFT
@@ -720,7 +909,74 @@ MODULE S_DEF_KIND
      MODULE PROCEDURE KICKP_HE
   END INTERFACE
 
-contains
+CONTAINS !----------------------------------------------------------------------
+
+  SUBROUTINE PATCH_driftR(C,X,k,exact,dir)
+    implicit none
+    ! MISALIGNS REAL FIBRES IN PTC ORDER FOR FORWARD AND BACKWARD FIBRES
+    TYPE(superdrift),INTENT(INOUT):: C
+    real(dp), INTENT(INOUT):: X(6)
+    integer,intent(in) :: dir
+    logical(lp),INTENT(IN):: exact
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+
+     if(dir==1) then
+       X(3)=C%A_X1*X(3);X(4)=C%A_X1*X(4);
+       CALL ROT_YZ(C%ANG(1),X,C%P%BETA0,exact,k%TIME)
+       CALL ROT_XZ(C%ANG(2),X,C%P%BETA0,exact,k%TIME)
+       CALL ROT_XY(C%ANG(3),X)  !,PATCH)
+       CALL TRANS(C%D,X,C%P%BETA0,exact,k%TIME)
+       X(3)=C%A_X2*X(3);X(4)=C%A_X2*X(4);
+     else
+             X(3)=C%A_X2*X(3);X(4)=C%A_X2*X(4);
+             C%D(1)=-C%D(1)
+             C%D(2)=-C%D(2)
+             C%ANG(3)=-C%ANG(3)
+             CALL TRANS(C%D,X,C%P%BETA0,exact,k%TIME)
+             CALL ROT_XY(C%ANG(3),X)  !,OU)
+             CALL ROT_XZ(C%ANG(2),X,C%P%BETA0,exact,k%TIME)
+             CALL ROT_YZ(C%ANG(1),X,C%P%BETA0,exact,k%TIME)   ! ROTATIONS
+             C%D(1)=-C%D(1)
+             C%D(2)=-C%D(2)
+             C%ANG(3)=-C%ANG(3)
+             X(3)=C%A_X1*X(3);X(4)=C%A_X1*X(4);
+     endif
+
+  END SUBROUTINE PATCH_driftR
+
+
+  SUBROUTINE PATCH_driftp(C,X,k,exact,dir)
+    implicit none
+    TYPE(superdriftp),INTENT(INOUT):: C
+    TYPE(REAL_8), INTENT(INOUT):: X(6)
+    integer,intent(in) :: dir
+    logical(lp),INTENT(IN):: exact
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+     if(dir==1) then
+       X(3)=C%A_X1*X(3);X(4)=C%A_X1*X(4);
+       CALL ROT_YZ(C%ANG(1),X,C%P%BETA0,exact,k%TIME)
+       CALL ROT_XZ(C%ANG(2),X,C%P%BETA0,exact,k%TIME)
+       CALL ROT_XY(C%ANG(3),X)  !,PATCH)
+       CALL TRANS(C%D,X,C%P%BETA0,exact,k%TIME)
+       X(3)=C%A_X2*X(3);X(4)=C%A_X2*X(4);
+     else
+             X(3)=C%A_X2*X(3);X(4)=C%A_X2*X(4);
+             C%D(1)=-C%D(1)
+             C%D(2)=-C%D(2)
+             C%ANG(3)=-C%ANG(3)
+             CALL TRANS(C%D,X,C%P%BETA0,exact,k%TIME)
+             CALL ROT_XY(C%ANG(3),X)  !,OU)
+             CALL ROT_XZ(C%ANG(2),X,C%P%BETA0,exact,k%TIME)
+             CALL ROT_YZ(C%ANG(1),X,C%P%BETA0,exact,k%TIME)   ! ROTATIONS
+             C%D(1)=-C%D(1)
+             C%D(2)=-C%D(2)
+             C%ANG(3)=-C%ANG(3)
+             X(3)=C%A_X1*X(3);X(4)=C%A_X1*X(4);
+     endif
+
+  END SUBROUTINE PATCH_driftp
 
   SUBROUTINE INTER_DRIFT1(EL,X,k)
     IMPLICIT NONE
@@ -738,14 +994,14 @@ contains
 
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+
+       WRITE(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
   END SUBROUTINE INTER_DRIFT1
+
+
 
   SUBROUTINE INTEP_DRIFT1(EL,X,k)
     IMPLICIT NONE
@@ -768,16 +1024,120 @@ contains
 
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+
+       WRITE(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
     CALL KILL(DH)
 
   END SUBROUTINE INTEP_DRIFT1
+
+
+  SUBROUTINE INTER_superdrift(EL,X,k)
+    IMPLICIT NONE
+    real(dp), INTENT(INOUT) :: X(6)
+    TYPE(superdrift),INTENT(IN):: EL
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+    real(dp) DH,DD
+
+    SELECT CASE(EL%P%METHOD)
+    CASE(2,4,6)
+       DH=EL%L/EL%P%NST
+       DD=EL%P%LD/EL%P%NST
+
+       CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,EL%P%EXACT,k%TIME,X)
+
+
+    CASE DEFAULT
+
+       WRITE(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       ! call !write_e(357)
+    END SELECT
+
+  END SUBROUTINE INTER_superdrift
+
+  SUBROUTINE INTEP_superdrift(EL,X,k)
+    IMPLICIT NONE
+    TYPE(REAL_8), INTENT(INOUT) :: X(6)
+    TYPE(superdriftp),INTENT(IN):: EL
+    TYPE(REAL_8) DH
+    real(dp) DD
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+    CALL ALLOC(DH)
+    SELECT CASE(EL%P%METHOD)
+    CASE(2,4,6)
+       DH=EL%L/EL%P%NST
+       DD=EL%P%LD/EL%P%NST
+
+
+
+
+       CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,EL%P%EXACT,k%TIME,X)
+
+
+    CASE DEFAULT
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       ! call !write_e(357)
+    END SELECT
+
+    CALL KILL(DH)
+
+  END SUBROUTINE INTEP_superdrift
+
+
+  SUBROUTINE SUPER_DRIFT_p(EL,X,k)
+    IMPLICIT NONE
+    type(real_8),INTENT(INOUT):: X(6)
+
+    TYPE(superdriftp),TARGET,INTENT(INOUT):: EL
+    INTEGER I
+    integer(2) j
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+
+
+
+      if(el%p%dir==1) call  PATCH_drift(el,X,k,el%p%exact,1)
+
+    DO I=1,EL%P%NST
+       call track_slice(EL,X,k)
+    ENDDO
+
+     if(el%p%dir==-1) call  PATCH_drift(el,X,k,el%p%exact,-1)
+
+
+  END SUBROUTINE SUPER_DRIFT_p
+
+  SUBROUTINE SUPER_DRIFT_R(EL,X,k,MID)
+    IMPLICIT NONE
+    real(dp),INTENT(INOUT):: X(6)
+    TYPE(WORM),OPTIONAL,INTENT(INOUT):: MID
+    TYPE(superdrift),TARGET,INTENT(INOUT):: EL
+    INTEGER I
+    integer(2) j
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+
+     if(el%p%dir==1) call  PATCH_drift(el,X,k,el%p%exact,1)
+
+    IF(PRESENT(MID)) CALL XMID(MID,X,0)
+    DO I=1,EL%P%NST
+       call track_slice(EL,X,k)
+       IF(PRESENT(MID)) CALL XMID(MID,X,I)
+    ENDDO
+
+     if(el%p%dir==-1) call  PATCH_drift(el,X,k,el%p%exact,-1)
+
+
+  END SUBROUTINE SUPER_DRIFT_R
+
+
+
 
 
   SUBROUTINE DRIFT_INTER(EL,X,K,MID)
@@ -826,7 +1186,6 @@ contains
     TYPE(SOL5),OPTIONAL,INTENT(INOUT):: EL5
     TYPE(KTK),OPTIONAL,INTENT(INOUT):: EL6
     TYPE(TKTF),OPTIONAL,INTENT(INOUT):: EL7
-    !      TYPE(BEAM), INTENT(INOUT) ::B
     integer,INTENT(IN):: J
     real(dp), INTENT(INOUT) :: X(6)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
@@ -840,17 +1199,25 @@ contains
        if(J==1) then
           if(EL%P%DIR==1) THEN
              CALL EDGE(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,1,X,k)
-             IF(k%FRINGE.or.EL%P%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
           ELSE
              CALL EDGE(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,2,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
           ENDIF
        else
           if(EL%P%DIR==1) THEN
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
              CALL EDGE(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,2,X,k)
           ELSE
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
              CALL EDGE(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,1,X,k)
           ENDIF
        ENDIF
@@ -864,17 +1231,25 @@ contains
        if(J==1) then
           if(EL6%P%DIR==1) THEN
              CALL EDGE(EL6%P,EL6%BN,EL6%H1,EL6%H2,EL6%FINT,EL6%HGAP,1,X,k)
-             IF(k%FRINGE.or.el6%p%permfringe) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,1,X,k)
+             IF(k%FRINGE.or.el6%p%permfringe==1.or.el6%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,1,X,k)
+             IF(el6%p%permfringe==2.or.el6%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL6%P,EL6%bn(2),EL6%an(2),EL6%VA,EL6%VS,1,X,k)
           ELSE
              CALL EDGE(EL6%P,EL6%BN,EL6%H1,EL6%H2,EL6%FINT,EL6%HGAP,2,X,k)
-             IF(k%FRINGE.or.el6%p%permfringe) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,2,X,k)
+             IF(k%FRINGE.or.el6%p%permfringe==1.or.el6%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,2,X,k)
+             IF(el6%p%permfringe==2.or.el6%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL6%P,EL6%bn(2),EL6%an(2),EL6%VA,EL6%VS,2,X,k)
           ENDIF
        else
           if(EL6%P%DIR==1) THEN
-             IF(k%FRINGE.or.el6%p%permfringe) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,2,X,k)
+             IF(el6%p%permfringe==2.or.el6%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL6%P,EL6%bn(2),EL6%an(2),EL6%VA,EL6%VS,2,X,k)
+             IF(k%FRINGE.or.el6%p%permfringe==1.or.el6%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,2,X,k)
              CALL EDGE(EL6%P,EL6%BN,EL6%H1,EL6%H2,EL6%FINT,EL6%HGAP,2,X,k)
           ELSE
-             IF(k%FRINGE.or.el6%p%permfringe) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,1,X,k)
+             IF(el6%p%permfringe==2.or.el6%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL6%P,EL6%bn(2),EL6%an(2),EL6%VA,EL6%VS,1,X,k)
+             IF(k%FRINGE.or.el6%p%permfringe==1.or.el6%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,1,X,k)
              CALL EDGE(EL6%P,EL6%BN,EL6%H1,EL6%H2,EL6%FINT,EL6%HGAP,1,X,k)
           ENDIF
        ENDIF
@@ -888,21 +1263,29 @@ contains
        if(J==1) then
           if(EL5%P%DIR==1) THEN
              CALL EDGE(EL5%P,EL5%BN,EL5%H1,EL5%H2,EL5%FINT,EL5%HGAP,1,X,k)
-             IF(k%FRINGE.or.el5%p%permfringe) CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,1,X,k)
-             CALL FRINGE2SOL(EL5%P,EL5%B_SOL,EL5%FINT,EL5%HGAP,1,X,k)
+             IF(k%FRINGE.or.el5%p%permfringe==1.or.el5%p%permfringe==3) &
+                CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,1,X,k)
+             IF(el5%p%permfringe==2.or.el5%p%permfringe==3) &
+               CALL FRINGE2QUAD(EL5%P,EL5%bn(2),EL5%an(2),EL5%VA,EL5%VS,1,X,k)
           ELSE
              CALL EDGE(EL5%P,EL5%BN,EL5%H1,EL5%H2,EL5%FINT,EL5%HGAP,2,X,k)
-             IF(k%FRINGE.or.el5%p%permfringe) CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,2,X,k)
-             CALL FRINGE2SOL(EL5%P,EL5%B_SOL,EL5%FINT,EL5%HGAP,2,X,k)
+              IF(k%FRINGE.or.el5%p%permfringe==1.or.el5%p%permfringe==3) &
+                 CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,2,X,k)
+             IF(el5%p%permfringe==2.or.el5%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL5%P,EL5%bn(2),EL5%an(2),EL5%VA,EL5%VS,2,X,k)
           ENDIF
        else
           if(EL5%P%DIR==1) THEN
-             CALL FRINGE2SOL(EL5%P,EL5%B_SOL,EL5%FINT,EL5%HGAP,2,X,k)
-             IF(k%FRINGE.or.el5%p%permfringe) CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,2,X,k)
+             IF(el5%p%permfringe==2.or.el5%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL5%P,EL5%bn(2),EL5%an(2),EL5%VA,EL5%VS,2,X,k)
+              IF(k%FRINGE.or.el5%p%permfringe==1.or.el5%p%permfringe==3) &
+                       CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,2,X,k)
              CALL EDGE(EL5%P,EL5%BN,EL5%H1,EL5%H2,EL5%FINT,EL5%HGAP,2,X,k)
           ELSE
-             CALL FRINGE2SOL(EL5%P,EL5%B_SOL,EL5%FINT,EL5%HGAP,1,X,k)
-             IF(k%FRINGE.or.el5%p%permfringe) CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,1,X,k)
+             IF(el5%p%permfringe==2.or.el5%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL5%P,EL5%bn(2),EL5%an(2),EL5%VA,EL5%VS,1,X,k)
+              IF(k%FRINGE.or.el5%p%permfringe==1.or.el5%p%permfringe==3) &
+                        CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,1,X,k)
              CALL EDGE(EL5%P,EL5%BN,EL5%H1,EL5%H2,EL5%FINT,EL5%HGAP,1,X,k)
           ENDIF
        ENDIF
@@ -912,17 +1295,25 @@ contains
        if(J==1) then
           if(EL7%P%DIR==1) THEN
              CALL EDGE(EL7%P,EL7%BN,EL7%H1,EL7%H2,EL7%FINT,EL7%HGAP,1,X,k)
-             IF(k%FRINGE.or.el7%p%permfringe) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,1,X,k)
+             IF(k%FRINGE.or.el7%p%permfringe==1.or.el7%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,1,X,k)
+             IF(el7%p%permfringe==2.or.el7%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL7%P,EL7%bn(2),EL7%an(2),EL7%VA,EL7%VS,1,X,k)
           ELSE
              CALL EDGE(EL7%P,EL7%BN,EL7%H1,EL7%H2,EL7%FINT,EL7%HGAP,2,X,k)
-             IF(k%FRINGE.or.el7%p%permfringe) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,2,X,k)
+             IF(k%FRINGE.or.el7%p%permfringe==1.or.el7%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,2,X,k)
+             IF(el7%p%permfringe==2.or.el7%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL7%P,EL7%bn(2),EL7%an(2),EL7%VA,EL7%VS,2,X,k)
           ENDIF
        else
           if(EL7%P%DIR==1) THEN
-             IF(k%FRINGE.or.el7%p%permfringe) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,2,X,k)
+             IF(el7%p%permfringe==2.or.el7%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL7%P,EL7%bn(2),EL7%an(2),EL7%VA,EL7%VS,2,X,k)
+             IF(k%FRINGE.or.el7%p%permfringe==1.or.el7%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,2,X,k)
              CALL EDGE(EL7%P,EL7%BN,EL7%H1,EL7%H2,EL7%FINT,EL7%HGAP,2,X,k)
           ELSE
-             IF(k%FRINGE.or.el7%p%permfringe) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,1,X,k)
+             IF(el7%p%permfringe==2.or.el7%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL7%P,EL7%bn(2),EL7%an(2),EL7%VA,EL7%VS,1,X,k)
+             IF(k%FRINGE.or.el7%p%permfringe==1.or.el7%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,1,X,k)
              CALL EDGE(EL7%P,EL7%BN,EL7%H1,EL7%H2,EL7%FINT,EL7%HGAP,1,X,k)
           ENDIF
        ENDIF
@@ -938,14 +1329,12 @@ contains
     TYPE(SOL5P),OPTIONAL,INTENT(INOUT):: EL5
     TYPE(KTKP),OPTIONAL,INTENT(INOUT):: EL6
     TYPE(TKTFP),OPTIONAL,INTENT(INOUT):: EL7
-    !      TYPE(BEAM), INTENT(INOUT) ::B
     integer,INTENT(IN):: J
     TYPE(REAL_8), INTENT(INOUT) :: X(6)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    call PRTP("FRNG_STRAIGHT:0", X)
 
-
-    ! J=1 front
     IF(PRESENT(EL)) THEN
        !       DO I=1,B%N
        !        IF(B%U(i)) CYCLE
@@ -954,17 +1343,25 @@ contains
        if(J==1) then
           if(EL%P%DIR==1) THEN
              CALL EDGE(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,1,X,k)
-             IF(k%FRINGE.or.EL%P%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
           ELSE
              CALL EDGE(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,2,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
           ENDIF
        else
           if(EL%P%DIR==1) THEN
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
              CALL EDGE(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,2,X,k)
           ELSE
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
              CALL EDGE(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,1,X,k)
           ENDIF
        ENDIF
@@ -978,17 +1375,25 @@ contains
        if(J==1) then
           if(EL6%P%DIR==1) THEN
              CALL EDGE(EL6%P,EL6%BN,EL6%H1,EL6%H2,EL6%FINT,EL6%HGAP,1,X,k)
-             IF(k%FRINGE.or.EL6%p%permfringe) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,1,X,k)
+             IF(k%FRINGE.or.el6%p%permfringe==1.or.el6%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,1,X,k)
+             IF(el6%p%permfringe==2.or.el6%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL6%P,EL6%bn(2),EL6%an(2),EL6%VA,EL6%VS,1,X,k)
           ELSE
              CALL EDGE(EL6%P,EL6%BN,EL6%H1,EL6%H2,EL6%FINT,EL6%HGAP,2,X,k)
-             IF(k%FRINGE.or.EL6%p%permfringe) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,2,X,k)
+             IF(k%FRINGE.or.el6%p%permfringe==1.or.el6%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,2,X,k)
+             IF(el6%p%permfringe==2.or.el6%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL6%P,EL6%bn(2),EL6%an(2),EL6%VA,EL6%VS,2,X,k)
           ENDIF
        else
           if(EL6%P%DIR==1) THEN
-             IF(k%FRINGE.or.EL6%p%permfringe) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,2,X,k)
+             IF(el6%p%permfringe==2.or.el6%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL6%P,EL6%bn(2),EL6%an(2),EL6%VA,EL6%VS,2,X,k)
+             IF(k%FRINGE.or.el6%p%permfringe==1.or.el6%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,2,X,k)
              CALL EDGE(EL6%P,EL6%BN,EL6%H1,EL6%H2,EL6%FINT,EL6%HGAP,2,X,k)
           ELSE
-             IF(k%FRINGE.or.EL6%p%permfringe) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,1,X,k)
+             IF(el6%p%permfringe==2.or.el6%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL6%P,EL6%bn(2),EL6%an(2),EL6%VA,EL6%VS,1,X,k)
+             IF(k%FRINGE.or.el6%p%permfringe==1.or.el6%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL6%P,EL6%AN,EL6%BN,1,X,k)
              CALL EDGE(EL6%P,EL6%BN,EL6%H1,EL6%H2,EL6%FINT,EL6%HGAP,1,X,k)
           ENDIF
        ENDIF
@@ -1002,21 +1407,29 @@ contains
        if(J==1) then
           if(EL5%P%DIR==1) THEN
              CALL EDGE(EL5%P,EL5%BN,EL5%H1,EL5%H2,EL5%FINT,EL5%HGAP,1,X,k)
-             IF(k%FRINGE.or.el5%p%permfringe) CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,1,X,k)
-             CALL FRINGE2SOL(EL5%P,EL5%B_SOL,EL5%FINT,EL5%HGAP,1,X,k)
+             IF(k%FRINGE.or.el5%p%permfringe==1.or.el5%p%permfringe==3) &
+                CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,1,X,k)
+             IF(el5%p%permfringe==2.or.el5%p%permfringe==3) &
+               CALL FRINGE2QUAD(EL5%P,EL5%bn(2),EL5%an(2),EL5%VA,EL5%VS,1,X,k)
           ELSE
              CALL EDGE(EL5%P,EL5%BN,EL5%H1,EL5%H2,EL5%FINT,EL5%HGAP,2,X,k)
-             IF(k%FRINGE.or.el5%p%permfringe) CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,2,X,k)
-             CALL FRINGE2SOL(EL5%P,EL5%B_SOL,EL5%FINT,EL5%HGAP,2,X,k)
+              IF(k%FRINGE.or.el5%p%permfringe==1.or.el5%p%permfringe==3) &
+                 CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,2,X,k)
+             IF(el5%p%permfringe==2.or.el5%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL5%P,EL5%bn(2),EL5%an(2),EL5%VA,EL5%VS,2,X,k)
           ENDIF
        else
           if(EL5%P%DIR==1) THEN
-             CALL FRINGE2SOL(EL5%P,EL5%B_SOL,EL5%FINT,EL5%HGAP,2,X,k)
-             IF(k%FRINGE.or.el5%p%permfringe) CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,2,X,k)
+             IF(el5%p%permfringe==2.or.el5%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL5%P,EL5%bn(2),EL5%an(2),EL5%VA,EL5%VS,2,X,k)
+              IF(k%FRINGE.or.el5%p%permfringe==1.or.el5%p%permfringe==3) &
+                       CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,2,X,k)
              CALL EDGE(EL5%P,EL5%BN,EL5%H1,EL5%H2,EL5%FINT,EL5%HGAP,2,X,k)
           ELSE
-             CALL FRINGE2SOL(EL5%P,EL5%B_SOL,EL5%FINT,EL5%HGAP,1,X,k)
-             IF(k%FRINGE.or.el5%p%permfringe) CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,1,X,k)
+             IF(el5%p%permfringe==2.or.el5%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL5%P,EL5%bn(2),EL5%an(2),EL5%VA,EL5%VS,1,X,k)
+              IF(k%FRINGE.or.el5%p%permfringe==1.or.el5%p%permfringe==3) &
+                        CALL MULTIPOLE_FRINGE(EL5%P,EL5%AN,EL5%BN,1,X,k)
              CALL EDGE(EL5%P,EL5%BN,EL5%H1,EL5%H2,EL5%FINT,EL5%HGAP,1,X,k)
           ENDIF
        ENDIF
@@ -1026,23 +1439,32 @@ contains
        if(J==1) then
           if(EL7%P%DIR==1) THEN
              CALL EDGE(EL7%P,EL7%BN,EL7%H1,EL7%H2,EL7%FINT,EL7%HGAP,1,X,k)
-             IF(k%FRINGE.or.EL7%p%permfringe) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,1,X,k)
+             IF(k%FRINGE.or.el7%p%permfringe==1.or.el7%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,1,X,k)
+             IF(el7%p%permfringe==2.or.el7%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL7%P,EL7%bn(2),EL7%an(2),EL7%VA,EL7%VS,1,X,k)
           ELSE
              CALL EDGE(EL7%P,EL7%BN,EL7%H1,EL7%H2,EL7%FINT,EL7%HGAP,2,X,k)
-             IF(k%FRINGE.or.EL7%p%permfringe) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,2,X,k)
+             IF(k%FRINGE.or.el7%p%permfringe==1.or.el7%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,2,X,k)
+             IF(el7%p%permfringe==2.or.el7%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL7%P,EL7%bn(2),EL7%an(2),EL7%VA,EL7%VS,2,X,k)
           ENDIF
        else
           if(EL7%P%DIR==1) THEN
-             IF(k%FRINGE.or.EL7%p%permfringe) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,2,X,k)
+             IF(el7%p%permfringe==2.or.el7%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL7%P,EL7%bn(2),EL7%an(2),EL7%VA,EL7%VS,2,X,k)
+             IF(k%FRINGE.or.el7%p%permfringe==1.or.el7%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,2,X,k)
              CALL EDGE(EL7%P,EL7%BN,EL7%H1,EL7%H2,EL7%FINT,EL7%HGAP,2,X,k)
           ELSE
-             IF(k%FRINGE.or.EL7%p%permfringe) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,1,X,k)
+             IF(el7%p%permfringe==2.or.el7%p%permfringe==3) &
+             CALL FRINGE2QUAD(EL7%P,EL7%bn(2),EL7%an(2),EL7%VA,EL7%VS,1,X,k)
+             IF(k%FRINGE.or.el7%p%permfringe==1.or.el7%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL7%P,EL7%AN,EL7%BN,1,X,k)
              CALL EDGE(EL7%P,EL7%BN,EL7%H1,EL7%H2,EL7%FINT,EL7%HGAP,1,X,k)
           ENDIF
        ENDIF
-
-
     ENDIF
+
+    call PRTP("FRNG_STRAIGHT:1", X)
+
   END SUBROUTINE fringe_STRAIGHTP
 
 
@@ -1085,6 +1507,8 @@ contains
     integer,INTENT(IN):: J
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    call PRTP("ADJTIME_CAV4:0", X)
+
     IF(J==1) THEN
        EL%DELTA_E=X(5)
        IF(k%NOCAVITY.and.(.not.EL%always_on)) RETURN
@@ -1107,6 +1531,8 @@ contains
        EL%DELTA_E=(X(5)-EL%DELTA_E)*EL%P%P0C
     ENDIF
 
+    call PRTP("ADJTIME_CAV4:1", X)
+
   END SUBROUTINE ADJUSTP_TIME_CAV4
 
   SUBROUTINE track_slice4r(EL,X,kt,zi)
@@ -1115,12 +1541,12 @@ contains
     integer zi
     TYPE(CAV4),INTENT(INOUT):: EL
     TYPE(INTERNAL_STATE) kt !,OPTIONAL :: K
-    
+
     if(el%n_bessel/=-1) then
-     call INTER_CAV4(EL,X,kt)
+      call INTER_CAV4(EL,X,kt)
     else
-     call INTER_CAVbmad4(EL,X,kt,zi)
-    endif    
+      call INTER_CAVbmad4(EL,X,kt,zi)
+    endif
   end SUBROUTINE track_slice4r
 
   SUBROUTINE INTER_CAV4(EL,X,kt)
@@ -1206,10 +1632,8 @@ contains
 
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+
+       WRITE(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -1308,10 +1732,8 @@ contains
 
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+
+       WRITE(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -1320,7 +1742,7 @@ contains
 
   END SUBROUTINE INTEP_CAV4
 
-  
+
   SUBROUTINE track_slice4p(EL,X,kt,zi)
     IMPLICIT NONE
     TYPE(REAL_8), INTENT(INOUT) ::  X(6)
@@ -1328,12 +1750,12 @@ contains
     TYPE(REAL_8) z
     TYPE(CAV4P),INTENT(INOUT):: EL
     TYPE(INTERNAL_STATE) kt !,OPTIONAL :: K
-   
+
     if(el%n_bessel/=-1) then
      call INTEP_CAV4(EL,X,kt)
     else
      call INTEP_CAVbmad4(EL,X,kt,zi)
-    endif    
+    endif
   end SUBROUTINE track_slice4p
 
 
@@ -1369,6 +1791,115 @@ contains
 
   END SUBROUTINE CAVER
 
+    SUBROUTINE check_symplectic_bmad_cavity(f,norm,met,nst,kmax,turn_off_tpsa)
+    IMPLICIT NONE
+    TYPE(fibre),target:: f
+    TYPE(CAV4P),pointer:: EL
+    logical(lp),optional :: turn_off_tpsa
+     logical(lp) tpsa
+    real(dp) norm,symplectic_check_l
+    integer met,nst,nthin,met0,nst0,kmax
+
+!  INTEGER :: metcav=0, nstcav=0
+!  real(dp) :: xcav(1:6)=0.001d0, symplectic_check=1.d-10
+!  logical(lp) :: switch_to_fake=.true.
+
+    type(damap) m
+    type(real_8) y(6)
+!   integer :: limit_int0(2) =(/4,18/)
+    integer :: nlim(1:6) =(/0,1,0,3,0,7/)  ! multiplicative factors
+    integer :: nlimit(1:4) , k
+
+    EL=>f%magp%c4
+    EL%P%CHARGE=>f%charge
+    EL%P%dir=>f%dir
+
+     if(symplectic_check==0.0_dp) then
+       if(metcav>0.and.nstcav>0) then
+         met=metcav
+         nst=nstcav
+        else
+         met=el%p%method
+         nst=el%p%nst
+       endif
+       return
+     endif
+     symplectic_check_l=abs(symplectic_check)
+
+     nlimit=0
+     nlimit(1)=0
+     nlimit(2)=1*limit_int0(1)
+     nlimit(4)=3*limit_int0(2)
+
+
+    tpsa=my_true
+       if(present(turn_off_tpsa)) tpsa=.not.turn_off_tpsa
+    met0=el%p%method
+    nst0=el%p%nst
+    if(el%n_bessel/=-1) then
+     write(6,*) " this is not a BMAD cavity "
+     stop
+    endif
+
+     if(tpsa) call init(default0,1,0)
+    norm=1.d38
+    if(nstcav/=0) then
+     met=metcav
+     nst=nstcav
+     el%p%method=met
+     el%p%nst=nst
+     else
+     met=2
+     nst=2
+    endif
+     k=0
+    do while(norm>=symplectic_check_l.and.k<kmax)
+    call alloc(m)
+    call alloc(y)
+    m=1
+    y=m+xcav
+     call CAVEP(el,y,default0)
+    m=y
+     call checksymp(m,norm)
+    call kill(m)
+    call kill(y)
+    if(nstcav/=0) then
+     el%p%method=met0
+     el%p%nst=nst0
+     return
+    endif
+    nst=nst+1
+    nthin=nlim(met)*nst
+    if(nthin>=nlimit(4)) then
+     met=6
+     nst=nst/nlim(met)
+     if(met<=el%p%method.and.nst<=el%p%nst) then
+      nst=el%p%nst+1
+      met=el%p%method
+     endif
+    elseif(nthin>=nlimit(2)) then
+     met=4
+     nst=nst/nlim(met)
+     if(met<=el%p%method.and.nst<=el%p%nst) then
+      nst=el%p%nst+1
+      met=el%p%method
+     endif
+    else
+     met=2
+     if(met<=el%p%method.and.nst<=el%p%nst) then
+      nst=el%p%nst+1
+      met=el%p%method
+     endif
+    endif
+     k=k+1
+     if(symplectic_check<0) write(6,*) k,norm,met,nst
+    el%p%method=met
+    el%p%nst=nst
+    enddo
+    el%p%method=met0
+    el%p%nst=nst0
+    end SUBROUTINE check_symplectic_bmad_cavity
+
   SUBROUTINE CAVEP(EL,X,k)
     IMPLICIT NONE
     TYPE(REAL_8),INTENT(INOUT):: X(6)
@@ -1379,7 +1910,7 @@ contains
 
 
     CALL ADJUST_TIME_CAV4(EL,X,k,1)
-   ! IF(EL%N_BESSEL>0) 
+   ! IF(EL%N_BESSEL>0)
 CALL FRINGECAV(EL,X,k,1)
     !    IF(PRESENT(MID)) CALL XMID(MID,X,0)
 
@@ -1393,7 +1924,7 @@ CALL FRINGECAV(EL,X,k,1)
 
     !    k%TOTALPATH=TOTALPATH_FLAG
 
-  !  IF(EL%N_BESSEL>0) 
+  !  IF(EL%N_BESSEL>0)
 CALL FRINGECAV(EL,X,k,2)
     CALL ADJUST_TIME_CAV4(EL,X,k,2)
 
@@ -1407,18 +1938,27 @@ CALL FRINGECAV(EL,X,k,2)
     TYPE(CAV4),INTENT(INOUT):: EL
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     real(dp) O,X1,X3,BBYTWT,BBYTW,BBXTW
-    integer j,ko
+    integer j,ko,it
     real(dp) dir
+    it=tot_t*k%totalpath+(1-tot_t)
     IF(k%NOCAVITY.and.(.not.EL%always_on)) RETURN
     IF(PRESENT(MID)) CALL XMID(MID,X,0)
     !    EL%DELTA_E=x(5)
     IF(.NOT.PRESENT(MID)) then
        dir=EL%P%DIR*EL%P%CHARGE
-       O=twopi*EL%freq/CLIGHT
+       if(freq_redefine) then
+        O=EL%freq
+         else
+        O=twopi*EL%freq/CLIGHT
+       endif
+    if(.not.k%TIME.and.piotr_freq) then
+       O=O/EL%p%beta0
+    endif
 
        do ko=1,el%nf
 
-          x(5)=x(5)-el%f(ko)*dir*EL%volt*1e-3_dp*SIN(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO) &
+
+          x(5)=x(5)-el%f(ko)*dir*EL%volt*volt_c*SIN(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO) &
                +EL%phase0)/EL%P%P0C
           ! doing crabola
 
@@ -1442,8 +1982,8 @@ CALL FRINGECAV(EL,X,k,2)
 
           ! multipole * cos(omega t+ phi)/p0c
 
-          X(2)=X(2)-el%f(ko)*dir*BBYTW/EL%P%P0C*(el%a+ el%r*cos(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0))
-          X(4)=X(4)+el%f(ko)*DIR*BBXTW/EL%P%P0C*(el%a+ el%r*cos(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0))
+          X(2)=X(2)-el%f(ko)*dir*BBYTW/EL%P%P0C*(el%a+ el%r*cos(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0))
+          X(4)=X(4)+el%f(ko)*DIR*BBXTW/EL%P%P0C*(el%a+ el%r*cos(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0))
 
           IF(EL%P%NMUL>=1) THEN
              BBYTW=-EL%BN(EL%P%NMUL)/EL%P%NMUL
@@ -1462,7 +2002,7 @@ CALL FRINGECAV(EL,X,k,2)
              BBYTW=0.0_dp
              BBXTW=0.0_dp
           ENDIF
-          X(5)=X(5)+el%f(ko)*ko*O*dir*BBYTW/EL%P%P0C*el%r*sin(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)
+          X(5)=X(5)+el%f(ko)*ko*O*dir*BBYTW/EL%P%P0C*el%r*sin(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0)
 
        enddo
     endif
@@ -1481,18 +2021,30 @@ CALL FRINGECAV(EL,X,k,2)
     TYPE(CAV4P),INTENT(INOUT):: EL
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     type(real_8) O,X1,X3,BBYTWT,BBYTW,BBXTW
-    INTEGER J,ko
+    INTEGER J,ko,it
     real(dp) dir
+
+    call PRTP("CAVITY:0", X)
+
+    it=tot_t*k%totalpath+(1-tot_t)
     IF(k%NOCAVITY.and.(.not.EL%always_on)) RETURN
     !    IF(PRESENT(MID)) CALL XMID(MID,X,0)
     !    EL%DELTA_E=x(5)
     call alloc(BBYTWT,BBXTW,BBYTW,x1,x3,O)
     dir=EL%P%DIR*EL%P%CHARGE
-    O=twopi*EL%freq/CLIGHT
+       if(freq_redefine) then
+        O=EL%freq
+         else
+        O=twopi*EL%freq/CLIGHT
+       endif
+
+    if(.not.k%TIME.and.piotr_freq) then
+       O=O/EL%p%beta0
+    endif
 
     do ko=1,el%nf
 
-       x(5)=x(5)-el%f(ko)*dir*EL%volt*1e-3_dp*SIN(ko*O*(x(6)+EL%t)+EL%PHAS+ &
+       x(5)=x(5)-el%f(ko)*dir*EL%volt*volt_c*SIN(ko*O*(x(6)+EL%t*it)+EL%PHAS+ &
             EL%PH(KO)+EL%phase0)/EL%P%P0C
        ! doing crabola
 
@@ -1518,8 +2070,8 @@ CALL FRINGECAV(EL,X,k,2)
 
        ! multipole * cos(omega t+ phi)/p0c
 
-       X(2)=X(2)-el%f(ko)*dir*BBYTW/EL%P%P0C*(el%a+ el%r*cos(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0))
-       X(4)=X(4)+el%f(ko)*DIR*BBXTW/EL%P%P0C*(el%a+ el%r*cos(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0))
+       X(2)=X(2)-el%f(ko)*dir*BBYTW/EL%P%P0C*(el%a+ el%r*cos(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0))
+       X(4)=X(4)+el%f(ko)*DIR*BBXTW/EL%P%P0C*(el%a+ el%r*cos(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0))
 
        IF(EL%P%NMUL>=1) THEN
           BBYTW=-EL%BN(EL%P%NMUL)/EL%P%NMUL
@@ -1538,108 +2090,155 @@ CALL FRINGECAV(EL,X,k,2)
           BBYTW=0.0_dp
           BBXTW=0.0_dp
        ENDIF
-       X(5)=X(5)+el%f(ko)*ko*O*dir*BBYTW/EL%P%P0C*el%r*sin(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)
+       X(5)=X(5)+el%f(ko)*ko*O*dir*BBYTW/EL%P%P0C*el%r*sin(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0)
 
     enddo
 
     call KILL(BBYTWT,BBXTW,BBYTW,x1,x3,O)
+
+    call PRTP("CAVITY:1", X)
+
   END SUBROUTINE CAVITYP
 !!!!! Saga stuff !!!!!
-  SUBROUTINE Abmad_TRANSR(EL,Z,X,k,A,AD)    ! EXP(-I:(X^2+Y^2)/2*A_TRANS:)
+  SUBROUTINE Abmad_TRANSR(EL,Z,X,k,A,AD,B,E)    ! EXP(-I:(X^2+Y^2)/2*A_TRANS:)
     IMPLICIT NONE
     real(dp),INTENT(INOUT):: X(6)
-    real(dp),INTENT(INOUT):: Z,A(3),AD(2)
+    real(dp),INTENT(INOUT):: Z,A(3),AD(3)
+    real(dp),optional,INTENT(INOUT)::B(3),E(3)
     TYPE(CAV4),INTENT(INOUT):: EL
-    real(dp) C1,S1,V,O
-     INTEGER KO
+    real(dp) C1,S1,V,O,dad1dz
+     INTEGER KO,it
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
-
+    it=tot_t*k%totalpath+(1-tot_t)
     if(el%N_BESSEL/=-1) return
     IF(k%NOCAVITY.and.(.not.EL%always_on)) RETURN
     IF(EL%THIN) RETURN
 
 
-    O=EL%freq*twopi/CLIGHT
-    V=EL%P%CHARGE*EL%volt*1e-3_dp/EL%P%P0C
+       if(freq_redefine) then
+        O=EL%freq
+         else
+        O=twopi*EL%freq/CLIGHT
+       endif
+
+    if(.not.k%TIME.and.piotr_freq) then
+       O=O/EL%p%beta0
+    endif
+
+    V=EL%P%CHARGE*EL%volt*volt_c/EL%P%P0C
 
     A=0.0_dp
     ad=0.0_dp
    do ko=1,el%nf    ! over modes
-   
-    C1=el%f(ko)*V*sin(ko*O*z)*COS(ko*O*(x(6)+EL%t)+EL%PHAS+EL%phase0+EL%PH(KO))*0.5_dp
-    S1=-el%f(ko)*(ko*O)*V*sin(ko*O*z)*SIN(ko*O*(x(6)+EL%t)+EL%PHAS+EL%phase0+EL%PH(KO))/4.0_dp
+
+    C1=el%f(ko)*V*sin(ko*O*z)*COS(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%phase0+EL%PH(KO))*0.5_dp
+    S1=el%f(ko)*(ko*O)*V*sin(ko*O*z)*SIN(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%phase0+EL%PH(KO))/2.0_dp
     AD(1)=-C1+AD(1)
     AD(2)=S1+AD(2)
+    ad(3)=ad(3)-(ko*O)*el%f(ko)*V*cos(ko*O*z)*COS(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%phase0+EL%PH(KO))*0.5_dp
 
-    A(1)=AD(1)*X(1)+A(1)
-    A(2)=AD(1)*X(3)+A(2)
-!!!   DA_3/DT FOR KICK IN X(5)    
-    A(3)=A(3)-EL%P%DIR*el%f(ko)*V*COS(ko*O*z)*SIN(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)
+!!!   DA_3/DT FOR KICK IN X(5)
+    A(3)=A(3)-EL%P%DIR*el%f(ko)*V*COS(ko*O*z)*SIN(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0)
    enddo
 
-  !     x(5)=x(5)-el%f(ko)*F*VL*cos(kbmad*ko*O*z)*SIN(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)
- 
+    A(1)=AD(1)*X(1)  ! A_x
+    A(2)=AD(1)*X(3)  ! A_y
 
+     if(present(b)) then
+     b(1)=-ad(3)*x(3)/EL%P%CHARGE
+     b(2)= ad(3)*x(1)/EL%P%CHARGE
+     b(3)=0.0_dp
+    endif
 
+    if(present(e)) then
+     E(1)=-ad(2)*x(1)/EL%P%CHARGE
+     E(2)=-ad(2)*x(3)/EL%P%CHARGE
+     E(3)=A(3)/EL%P%CHARGE
+    endif
 
   END SUBROUTINE Abmad_TRANSR
 
- SUBROUTINE Abmad_TRANSP(EL,Z,X,k,A,AD)    ! EXP(-I:(X^2+Y^2)/2*A_TRANS:)
+ SUBROUTINE Abmad_TRANSP(EL,Z,X,k,A,AD,B,E)    ! EXP(-I:(X^2+Y^2)/2*A_TRANS:)
     IMPLICIT NONE
     TYPE(REAL_8),INTENT(INOUT):: X(6)
-    TYPE(REAL_8),INTENT(INOUT):: Z,A(3),AD(2)
+    TYPE(REAL_8),INTENT(INOUT):: Z,A(3),AD(3)
     TYPE(CAV4P),INTENT(INOUT):: EL
-    TYPE(REAL_8) C1,S1,V,O
-     INTEGER KO
+    TYPE(REAL_8),optional,INTENT(INOUT):: B(3),E(3)
+    TYPE(REAL_8) C1,S1,V,O,dad1dz
+     INTEGER KO,it
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
-
+    it=tot_t*k%totalpath+(1-tot_t)
     if(el%N_BESSEL/=-1) return
     IF(k%NOCAVITY.and.(.not.EL%always_on)) RETURN
     IF(EL%THIN) RETURN
-    
+
     CALL ALLOC(C1,S1,V,O)
 
-    O=EL%freq*twopi/CLIGHT
-    V=EL%P%CHARGE*EL%volt*1e-3_dp/EL%P%P0C
-    
+       if(freq_redefine) then
+        O=EL%freq
+         else
+        O=twopi*EL%freq/CLIGHT
+       endif
+    if(.not.k%TIME.and.piotr_freq) then
+       O=O/EL%p%beta0
+    endif
+
+    V=EL%P%CHARGE*EL%volt*volt_c/EL%P%P0C
+
     DO KO=1,3
      A(KO)=0.0_dp
     ENDDO
-    DO KO=1,2
+    DO KO=1,3
      AD(KO)=0.0_dp
     ENDDO
 
+
+
    do ko=1,el%nf    ! over modes
-   
-    C1=el%f(ko)*V*sin(ko*O*z)*COS(ko*O*(x(6)+EL%t)+EL%PHAS+EL%phase0+EL%PH(KO))*0.5_dp
-    S1=-el%f(ko)*(ko*O)*V*sin(ko*O*z)*SIN(ko*O*(x(6)+EL%t)+EL%PHAS+EL%phase0+EL%PH(KO))/4.0_dp
+
+    C1=el%f(ko)*V*sin(ko*O*z)*COS(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%phase0+EL%PH(KO))*0.5_dp
+    S1=el%f(ko)*(ko*O)*V*sin(ko*O*z)*SIN(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%phase0+EL%PH(KO))/2.0_dp
+
     AD(1)=-C1+AD(1)
     AD(2)=S1+AD(2)
 
-    A(1)=AD(1)*X(1)+A(1)
-    A(2)=AD(1)*X(3)+A(2)
-!!!   DA_3/DT FOR KICK IN X(5)    
-    A(3)=A(3)-EL%P%DIR*el%f(ko)*V*COS(ko*O*z)*SIN(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)
+    ad(3)=ad(3)-(ko*O)*el%f(ko)*V*cos(ko*O*z)*COS(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%phase0+EL%PH(KO))*0.5_dp
+
+!!!   DA_3/DT FOR KICK IN X(5)
+    A(3)=A(3)-EL%P%DIR*el%f(ko)*V*COS(ko*O*z)*SIN(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0)
    enddo
 
-  !     x(5)=x(5)-el%f(ko)*F*VL*cos(kbmad*ko*O*z)*SIN(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)
- 
+    A(1)=AD(1)*X(1)
+    A(2)=AD(1)*X(3)
+
+     if(present(b)) then
+     b(1)=-ad(3)*x(3)/EL%P%CHARGE
+     b(2)= ad(3)*x(1)/EL%P%CHARGE
+     b(3)=0.0_dp
+    endif
+
+    if(present(e)) then
+     E(1)=-ad(2)*x(1)/EL%P%CHARGE
+     E(2)=-ad(2)*x(3)/EL%P%CHARGE
+     E(3)=A(3)/EL%P%CHARGE
+    endif
 
     CALL KILL(C1,S1,V,O)
 
 
   END SUBROUTINE Abmad_TRANSP
 
-  subroutine fevalBMAD_CAVR(Z0,X,k,f,D)   ! MODELLED BASED ON DRIFT
+  subroutine feval_CAV_bmadr(Z0,X,k,f,D)   ! MODELLED BASED ON DRIFT
     IMPLICIT NONE
     real(dp), INTENT(INout) :: X(6)
     real(dp),INTENT(INOUT):: Z0
     real(dp), INTENT(INOUT) :: F(6)
-    REAL(DP) A(3),AD(2),PZ
+    REAL(DP) A(3),AD(3),PZ
     TYPE(CAV4),  INTENT(INOUT) :: D
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-
+    a=0
+    ad=0
     CALL Abmad_TRANS(D,Z0,X,k,A,AD)
 
     X(2)=X(2)-A(1)
@@ -1686,20 +2285,20 @@ CALL FRINGECAV(EL,X,k,2)
     X(2)=X(2)+A(1)
     X(4)=X(4)+A(2)
 
-  END subroutine fevalBMAD_CAVR
+  END subroutine feval_CAV_bmadr
 
 
-  subroutine fevalBMAD_CAVP(Z0,X,k,f,D)   ! MODELLED BASED ON DRIFT
+  subroutine feval_CAV_bmadp(Z0,X,k,f,D)   ! MODELLED BASED ON DRIFT
     IMPLICIT NONE
     TYPE(REAL_8), INTENT(INout) :: X(6)
     TYPE(REAL_8),INTENT(INOUT):: Z0
     TYPE(REAL_8), INTENT(INOUT) :: F(6)
-    TYPE(REAL_8)  A(3),AD(2),PZ
+    TYPE(REAL_8)  A(3),AD(3),PZ
     TYPE(CAV4P),  INTENT(INOUT) :: D
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-    call alloc(A,3)
-    call alloc(AD,2)
+    call alloc(A)
+    call alloc(AD)
     call alloc(PZ)
 
     CALL Abmad_TRANS(D,Z0,X,k,A,AD)
@@ -1748,11 +2347,617 @@ CALL FRINGECAV(EL,X,k,2)
     X(2)=X(2)+A(1)
     X(4)=X(4)+A(2)
 
-    call KILL(A,3)
-    call KILL(AD,2)
+    call KILL(A)
+    call KILL(AD)
     call KILL(PZ)
-  END subroutine fevalBMAD_CAVP
+  END subroutine feval_CAV_bmadp
 
+
+  SUBROUTINE get_z_abr(EL,i,z)
+    IMPLICIT NONE
+    TYPE(abell),INTENT(INOUT):: EL
+    integer i
+    real(dp),INTENT(INOUT):: z
+    real(dp) d
+
+    D=EL%L/EL%P%NST
+    IF(EL%P%DIR==1) THEN
+       Z=(i-1)*d
+    ELSE
+       Z=EL%L-(i-1)*d
+    ENDIF
+
+  end SUBROUTINE get_z_abr
+
+  SUBROUTINE get_z_abp(EL,i,z)
+    IMPLICIT NONE
+    TYPE(abellp),INTENT(INOUT):: EL
+    integer i
+    TYPE(REAL_8),INTENT(INOUT):: z
+    TYPE(REAL_8) d
+
+    CALL ALLOC(D)
+
+    D=EL%L/EL%P%NST
+    IF(EL%P%DIR==1) THEN
+       Z=(i-1)*d
+    ELSE
+       Z=EL%L-(i-1)*d
+    ENDIF
+
+    CALL KILL(D)
+
+  end SUBROUTINE get_z_abp
+
+  SUBROUTINE INTEr_abell_SLICE(EL,X,k,j)
+    IMPLICIT NONE
+    real(dp), INTENT(INOUT) :: X(6)
+    TYPE(abell),INTENT(INOUT):: EL
+
+    integer , INTENT(IN) :: j
+    real(dp) D1
+    REAL(DP) Z0
+
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+
+    D1=el%p%dir*EL%L/EL%P%NST
+    IF(EL%P%DIR==1) THEN
+
+       Z0=(j-1)*d1
+    ELSE
+
+       Z0=EL%L+(j-1)*d1
+    ENDIF
+
+    SELECT CASE(EL%P%METHOD)
+    CASE(2)
+       call rk2_abell(z0,d1,el,X,k)
+    CASE(4)
+       call rk4_abell(z0,d1,el,X,k)
+    CASE(6)
+       call rk6_abell(z0,d1,el,X,k)
+    CASE DEFAULT
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       ! call !write_e(357)
+    END SELECT
+
+    !    IF(k%FRINGE)
+
+
+
+  END SUBROUTINE INTEr_abell_SLICE
+
+  SUBROUTINE INTEP_abell_SLICE(EL,X,k,j)
+    IMPLICIT NONE
+    TYPE(REAL_8), INTENT(INOUT) :: X(6)
+    TYPE(abellp),INTENT(INOUT):: EL
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+
+    !    TYPE(REAL_8), INTENT(IN) :: Z
+    integer, INTENT(IN) :: j
+    TYPE(REAL_8) Z0,D1
+
+
+    CALL ALLOC(Z0,D1)
+
+    D1=el%p%dir*EL%L/EL%P%NST
+    IF(EL%P%DIR==1) THEN
+       Z0=(j-1)*d1
+    ELSE
+       Z0=EL%L+(j-1)*d1
+    ENDIF
+
+
+
+    SELECT CASE(EL%P%METHOD)
+    CASE(2)
+       call rk2_abell(z0,d1,el,X,k)
+    CASE(4)
+       call rk4_abell(z0,d1,el,X,k)
+    CASE(6)
+       call rk6_abell(z0,d1,el,X,k)
+    CASE DEFAULT
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       ! call !write_e(357)
+    END SELECT
+
+    !    IF(k%FRINGE)
+
+
+    CALL KILL(Z0,D1)
+
+
+  END SUBROUTINE INTEP_abell_SLICE
+
+  SUBROUTINE INTERabell(EL,X,k,MID)
+    IMPLICIT NONE
+    real(dp),INTENT(INOUT):: X(6)
+    TYPE(WORM),OPTIONAL,INTENT(INOUT):: MID
+    TYPE(ABELL),INTENT(INOUT):: EL
+    INTEGER I,ENT,EXI
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+    IF(EL%P%DIR==1) THEN
+       ENT=1;EXI=2;
+    ELSE
+       ENT=2;EXI=1;
+    ENDIF
+    !
+    IF(.NOT.PRESENT(MID))call ADJUST_ABELL(EL,X,k,ENT)
+
+    IF(PRESENT(MID)) CALL XMID(MID,X,0)
+
+    DO I=1,EL%P%NST
+       IF(.NOT.PRESENT(MID)) call track_slice(el,x,k,i)
+       IF(PRESENT(MID)) CALL XMID(MID,X,I)
+    ENDDO
+    !
+    IF(.NOT.PRESENT(MID))call ADJUST_ABELL(EL,X,k,EXI)
+
+  END SUBROUTINE INTErabell
+
+  SUBROUTINE INTEPabell(EL,X,k)
+    IMPLICIT NONE
+    TYPE(REAL_8),INTENT(INOUT):: X(6)
+    TYPE(ABELLP),INTENT(INOUT):: EL
+    INTEGER I,ENT,EXI
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+
+    IF(EL%P%DIR==1) THEN
+       ENT=1;EXI=2;
+    ELSE
+       ENT=2;EXI=1;
+    ENDIF
+    !
+     call ADJUST_ABELL(EL,X,k,ENT)
+
+
+
+    DO I=1,EL%P%NST
+     call track_slice(el,x,k,i)
+
+    ENDDO
+    !
+      call ADJUST_ABELL(EL,X,k,EXI)
+  END SUBROUTINE INTEPabell
+
+
+
+
+
+
+ subroutine rk2abellr(ti,h,GR,y,k)
+    IMPLICIT none
+
+    integer ne
+    parameter (ne=6)
+    real(dp), INTENT(INOUT)::  y(ne)
+    real(dp)  yt(ne),f(ne),a(ne),b(ne)
+    real(dp)  tt
+    type (abell) ,INTENT(INOUT)::  GR
+    integer j
+    real(dp), intent(inout) :: ti,h
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+
+    call feval_abell(tI,y,k,f,gr)
+    do  j=1,ne
+       a(j)=h*f(j)
+    enddo
+    do  j=1,ne
+       yt(j)=y(j)+a(j)/2.0_dp
+    enddo
+
+    tt=tI+h/2.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       b(j)=h*f(j)
+    enddo
+
+    do  j=1,ne
+       y(j) = y(j)+b(j)
+    enddo
+    tI=ti+h
+
+    return
+  end  subroutine rk2abellr
+
+ subroutine rk4abellr(ti,h,GR,y,k)
+    IMPLICIT none
+
+    integer ne
+    parameter (ne=6)
+    real(dp), INTENT(INOUT)::  y(ne)
+    real(dp)  yt(ne),f(ne),a(ne),b(ne),c(ne),d(ne)
+    type (abell) ,INTENT(INOUT)::  GR
+    integer j
+    real(dp), intent(inout) :: h
+    real(dp), intent(inout) :: ti
+    real(dp) TT
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+
+    call feval_abell(tI,y,k,f,gr)
+    do  j=1,ne
+       a(j)=h*f(j)
+    enddo
+    do  j=1,ne
+       yt(j)=y(j)+a(j)/2.0_dp
+    enddo
+
+    tt=tI+h/2.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       b(j)=h*f(j)
+    enddo
+    do   j=1,ne
+       yt(j)=y(j) + b(j)/2.0_dp
+    enddo
+
+
+    !      tt=tI+1
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       c(j)=h*f(j)
+    enddo
+    do  j=1,ne
+       yt(j)=y(j)+c(j)
+    enddo
+
+    tt=tI+h
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       d(j)=h*f(j)
+    enddo
+
+
+    do  j=1,ne
+       y(j) = y(j)+(a(j)+2.0_dp*b(j)+2.0_dp*c(j)+d(j))/6.0_dp
+    enddo
+    tI=tt
+
+    return
+  end  subroutine rk4abellr
+
+ subroutine rk6abellr(ti,h,GR,y,k)
+    IMPLICIT none
+    !  Written by Rob Ryne, Spring 1986, based on a routine of
+    !c  J. Milutinovic.
+    !c  For a reference, see page 76 of F. Ceschino and J Kuntzmann,
+    !c  Numerical Solution of Initial Value Problems, Prentice Hall 1966.
+    !c  This integration routine makes local truncation errors at each
+    !c  step of order h**7.
+    !c  That is, it is locally correct through terms of order h**6.
+    !c  Each step requires 8 function evaluations.
+
+    integer ne
+    parameter (ne=6)
+    real(dp), INTENT(INOUT)::  y(ne)
+    real(dp)  yt(ne),f(ne),a(ne),b(ne),c(ne),d(ne),e(ne),g(ne),o(ne),p(ne)
+    real(dp)  tt
+    type (abell) ,INTENT(INOUT)::  GR
+    integer j
+    real(dp), intent(inout) :: ti,h
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+
+    call feval_abell(tI,y,k,f,gr)
+    do  j=1,ne
+       a(j)=h*f(j)
+    enddo
+    do  j=1,ne
+       yt(j)=y(j)+a(j)/9.0_dp
+    enddo
+    tt=tI+h/9.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       b(j)=h*f(j)
+    enddo
+    do   j=1,ne
+       yt(j)=y(j) + (a(j) + 3.0_dp*b(j))/24.0_dp
+    enddo
+    tt=tI+h/6.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       c(j)=h*f(j)
+    enddo
+
+    do  j=1,ne
+       yt(j)=y(j)+(a(j)-3.0_dp*b(j)+4.0_dp*c(j))/6.0_dp
+    enddo
+
+    tt=tI+h/3.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       d(j)=h*f(j)
+    enddo
+
+    do  j=1,ne
+       yt(j)=y(j) + (-5.0_dp*a(j) + 27.0_dp*b(j) - 24.0_dp*c(j) + 6.0_dp*d(j))/8.0_dp
+    enddo
+    tt=tI+0.5_dp*h
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       e(j)=h*f(j)
+    enddo
+
+    do  j=1,ne
+       yt(j)=y(j) + (221.0_dp*a(j) - 981.0_dp*b(j) + 867.0_dp*c(j)- 102.0_dp*d(j) + e(j))/9.0_dp
+    enddo
+    tt = tI+2.0_dp*h/3.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do   j=1,ne
+       g(j)=h*f(j)
+    enddo
+    do  j=1,ne
+       yt(j) = y(j)+(-183.0_dp*a(j)+678.0_dp*b(j)-472.0_dp*c(j)-66.0_dp*d(j)+80.0_dp*e(j) + 3.0_dp*g(j))/48.0_dp
+    enddo
+    tt = tI + 5.0_dp*h/6.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       o(j)=h*f(j)
+    enddo
+    do  j=1,ne
+       yt(j) = y(j)+(716.0_dp*a(j)-2079.0_dp*b(j)+1002.0_dp*c(j)+834.0_dp*d(j)-454.0_dp*e(j)-9.0_dp*g(j)+72.0_dp*o(j))/82.0_dp
+    enddo
+
+    tt = tI + h
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       p(j)=h*f(j)
+    enddo
+
+    do  j=1,ne
+       y(j) = y(j)+(41.0_dp*a(j)+216.0_dp*c(j)+27.0_dp*d(j)+272.0_dp*e(j)+27.0_dp*g(j)+216.0_dp*o(j)+41.0_dp*p(j))/840.0_dp
+    enddo
+    tI=ti+h
+
+    return
+  end  subroutine rk6abellr
+
+  subroutine rk2abellp(ti,h,GR,y,k)
+    IMPLICIT none
+
+    integer ne
+    parameter (ne=6)
+    type (real_8), INTENT(INOUT)::  y(ne)
+    type (real_8)  yt(ne),f(ne),a(ne),b(ne)
+    type (real_8)  tt
+    type (abellp) ,INTENT(INOUT)::  GR
+    integer j
+    type(real_8), intent(inout) :: ti,h
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+    call alloc(yt,ne)
+    call alloc(f,ne)
+    call alloc(a,ne)
+    call alloc(b,ne)
+
+    call alloc(tt)
+
+    call feval_abell(tI,y,k,f,gr)
+    do  j=1,ne
+       a(j)=h*f(j)
+    enddo
+    do  j=1,ne
+       yt(j)=y(j)+a(j)/2.0_dp
+    enddo
+
+    tt=tI+h/2.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       b(j)=h*f(j)
+    enddo
+
+    do  j=1,ne
+       y(j) = y(j)+b(j)
+    enddo
+    tI=ti+h
+
+    call kill(tt)
+    call kill(yt,ne)
+    call kill(f,ne)
+    call kill(a,ne)
+    call kill(b,ne)
+
+    return
+  end  subroutine rk2abellp
+
+  subroutine rk4abellp(ti,h,GR,y,k)
+    IMPLICIT none
+
+    integer ne
+    parameter (ne=6)
+    type(real_8), INTENT(INOUT)::  y(ne)
+    type (abellp) ,INTENT(INOUT)::  GR
+    type(real_8), intent(inout) :: h
+    type(real_8), intent(inout) :: ti
+    type(real_8)  yt(ne),f(ne),a(ne),b(ne),c(ne),d(ne)
+    type(real_8) TT
+    integer j
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+    call alloc(tt)
+    call alloc(yt)
+    call alloc(f)
+    call alloc(a)
+    call alloc(b)
+    call alloc(c)
+    call alloc(d)
+
+    call feval_abell(tI,y,k,f,gr)
+    do  j=1,ne
+       a(j)=h*f(j)
+    enddo
+    do  j=1,ne
+       yt(j)=y(j)+a(j)/2.0_dp
+    enddo
+
+    tt=tI+h/2.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       b(j)=h*f(j)
+    enddo
+    do   j=1,ne
+       yt(j)=y(j) + b(j)/2.0_dp
+    enddo
+
+
+    !      tt=tI+1
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       c(j)=h*f(j)
+    enddo
+    do  j=1,ne
+       yt(j)=y(j)+c(j)
+    enddo
+
+    tt=tI+h
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       d(j)=h*f(j)
+    enddo
+
+
+    do  j=1,ne
+       y(j) = y(j)+(a(j)+2.0_dp*b(j)+2.0_dp*c(j)+d(j))/6.0_dp
+    enddo
+    tI=tt
+
+    call kill(tt)
+    call kill(yt)
+    call kill(f)
+    call kill(a)
+    call kill(b)
+    call kill(c)
+    call kill(d)
+
+    return
+  end  subroutine rk4abellp
+
+  ! sixth order Runge
+  subroutine rk6abellp(ti,h,GR,y,k)
+    IMPLICIT none
+
+
+    integer ne
+    parameter (ne=6)
+    type (real_8), INTENT(INOUT)::  y(ne)
+    type (real_8)  yt(ne),f(ne),a(ne),b(ne),c(ne),d(ne),e(ne),g(ne),o(ne),p(ne)
+    type (real_8)  tt
+    type (abellp) ,INTENT(INOUT)::  GR
+    integer j
+    type(real_8), intent(inout) :: ti,h
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+    call alloc(yt,ne)
+    call alloc(f,ne)
+    call alloc(a,ne)
+    call alloc(b,ne)
+    call alloc(c,ne)
+    call alloc(d,ne)
+    call alloc(e,ne)
+    call alloc(g,ne)
+    call alloc(o,ne)
+    call alloc(p,ne)
+    call alloc(tt)
+
+    call feval_abell(tI,y,k,f,gr)
+    do  j=1,ne
+       a(j)=h*f(j)
+    enddo
+    do  j=1,ne
+       yt(j)=y(j)+a(j)/9.0_dp
+    enddo
+    tt=tI+h/9.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       b(j)=h*f(j)
+    enddo
+    do   j=1,ne
+       yt(j)=y(j) + (a(j) + 3.0_dp*b(j))/24.0_dp
+    enddo
+    tt=tI+h/6.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       c(j)=h*f(j)
+    enddo
+
+    do  j=1,ne
+       yt(j)=y(j)+(a(j)-3.0_dp*b(j)+4.0_dp*c(j))/6.0_dp
+    enddo
+
+    tt=tI+h/3.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       d(j)=h*f(j)
+    enddo
+
+    do  j=1,ne
+       yt(j)=y(j) + (-5.0_dp*a(j) + 27.0_dp*b(j) - 24.0_dp*c(j) + 6.0_dp*d(j))/8.0_dp
+    enddo
+    tt=tI+0.5_dp*h
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       e(j)=h*f(j)
+    enddo
+
+    do  j=1,ne
+       yt(j)=y(j) + (221.0_dp*a(j) - 981.0_dp*b(j) + 867.0_dp*c(j)- 102.0_dp*d(j) + e(j))/9.0_dp
+    enddo
+    tt = tI+2.0_dp*h/3.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do   j=1,ne
+       g(j)=h*f(j)
+    enddo
+    do  j=1,ne
+       yt(j) = y(j)+(-183.0_dp*a(j)+678.0_dp*b(j)-472.0_dp*c(j)-66.0_dp*d(j)+80.0_dp*e(j) + 3.0_dp*g(j))/48.0_dp
+    enddo
+    tt = tI + 5.0_dp*h/6.0_dp
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       o(j)=h*f(j)
+    enddo
+    do  j=1,ne
+       yt(j) = y(j)+(716.0_dp*a(j)-2079.0_dp*b(j)+1002.0_dp*c(j)+834.0_dp*d(j)-454.0_dp*e(j)-9.0_dp*g(j)+72.0_dp*o(j))/82.0_dp
+    enddo
+
+    tt = tI + h
+    call feval_abell(tt,yt,k,f,gr)
+    do  j=1,ne
+       p(j)=h*f(j)
+    enddo
+
+    do  j=1,ne
+       y(j) = y(j)+(41.0_dp*a(j)+216.0_dp*c(j)+27.0_dp*d(j)+272.0_dp*e(j)+27.0_dp*g(j)+216.0_dp*o(j)+41.0_dp*p(j))/840.0_dp
+    enddo
+    tI=ti+h
+    call kill(tt)
+    call kill(yt,ne)
+    call kill(f,ne)
+    call kill(a,ne)
+    call kill(b,ne)
+    call kill(c,ne)
+    call kill(d,ne)
+    call kill(e,ne)
+    call kill(g,ne)
+    call kill(o,ne)
+    call kill(p,ne)
+
+    return
+  end  subroutine rk6abellp
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  subroutine rk2bmad_cavr(ti,h,GR,y,k)
     IMPLICIT none
 
@@ -1767,7 +2972,7 @@ CALL FRINGECAV(EL,X,k,2)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
 
-    call feval_cav(tI,y,k,f,gr)
+    call feval_CAV_bmad(tI,y,k,f,gr)
     do  j=1,ne
        a(j)=h*f(j)
     enddo
@@ -1776,7 +2981,7 @@ CALL FRINGECAV(EL,X,k,2)
     enddo
 
     tt=tI+h/2.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        b(j)=h*f(j)
     enddo
@@ -1804,7 +3009,7 @@ CALL FRINGECAV(EL,X,k,2)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
 
-    call feval_cav(tI,y,k,f,gr)
+    call feval_CAV_bmad(tI,y,k,f,gr)
     do  j=1,ne
        a(j)=h*f(j)
     enddo
@@ -1813,7 +3018,7 @@ CALL FRINGECAV(EL,X,k,2)
     enddo
 
     tt=tI+h/2.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        b(j)=h*f(j)
     enddo
@@ -1823,7 +3028,7 @@ CALL FRINGECAV(EL,X,k,2)
 
 
     !      tt=tI+1
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        c(j)=h*f(j)
     enddo
@@ -1832,7 +3037,7 @@ CALL FRINGECAV(EL,X,k,2)
     enddo
 
     tt=tI+h
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        d(j)=h*f(j)
     enddo
@@ -1868,7 +3073,7 @@ CALL FRINGECAV(EL,X,k,2)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
 
-    call feval_cav(tI,y,k,f,gr)
+    call feval_CAV_bmad(tI,y,k,f,gr)
     do  j=1,ne
        a(j)=h*f(j)
     enddo
@@ -1876,7 +3081,7 @@ CALL FRINGECAV(EL,X,k,2)
        yt(j)=y(j)+a(j)/9.0_dp
     enddo
     tt=tI+h/9.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        b(j)=h*f(j)
     enddo
@@ -1884,7 +3089,7 @@ CALL FRINGECAV(EL,X,k,2)
        yt(j)=y(j) + (a(j) + 3.0_dp*b(j))/24.0_dp
     enddo
     tt=tI+h/6.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        c(j)=h*f(j)
     enddo
@@ -1894,7 +3099,7 @@ CALL FRINGECAV(EL,X,k,2)
     enddo
 
     tt=tI+h/3.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        d(j)=h*f(j)
     enddo
@@ -1903,7 +3108,7 @@ CALL FRINGECAV(EL,X,k,2)
        yt(j)=y(j) + (-5.0_dp*a(j) + 27.0_dp*b(j) - 24.0_dp*c(j) + 6.0_dp*d(j))/8.0_dp
     enddo
     tt=tI+0.5_dp*h
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        e(j)=h*f(j)
     enddo
@@ -1912,7 +3117,7 @@ CALL FRINGECAV(EL,X,k,2)
        yt(j)=y(j) + (221.0_dp*a(j) - 981.0_dp*b(j) + 867.0_dp*c(j)- 102.0_dp*d(j) + e(j))/9.0_dp
     enddo
     tt = tI+2.0_dp*h/3.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do   j=1,ne
        g(j)=h*f(j)
     enddo
@@ -1920,7 +3125,7 @@ CALL FRINGECAV(EL,X,k,2)
        yt(j) = y(j)+(-183.0_dp*a(j)+678.0_dp*b(j)-472.0_dp*c(j)-66.0_dp*d(j)+80.0_dp*e(j) + 3.0_dp*g(j))/48.0_dp
     enddo
     tt = tI + 5.0_dp*h/6.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        o(j)=h*f(j)
     enddo
@@ -1929,7 +3134,7 @@ CALL FRINGECAV(EL,X,k,2)
     enddo
 
     tt = tI + h
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        p(j)=h*f(j)
     enddo
@@ -1962,7 +3167,7 @@ CALL FRINGECAV(EL,X,k,2)
 
     call alloc(tt)
 
-    call feval_cav(tI,y,k,f,gr)
+    call feval_CAV_bmad(tI,y,k,f,gr)
     do  j=1,ne
        a(j)=h*f(j)
     enddo
@@ -1971,7 +3176,7 @@ CALL FRINGECAV(EL,X,k,2)
     enddo
 
     tt=tI+h/2.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        b(j)=h*f(j)
     enddo
@@ -2012,7 +3217,7 @@ CALL FRINGECAV(EL,X,k,2)
     call alloc(c)
     call alloc(d)
 
-    call feval_cav(tI,y,k,f,gr)
+    call feval_CAV_bmad(tI,y,k,f,gr)
     do  j=1,ne
        a(j)=h*f(j)
     enddo
@@ -2021,7 +3226,7 @@ CALL FRINGECAV(EL,X,k,2)
     enddo
 
     tt=tI+h/2.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        b(j)=h*f(j)
     enddo
@@ -2031,7 +3236,7 @@ CALL FRINGECAV(EL,X,k,2)
 
 
     !      tt=tI+1
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        c(j)=h*f(j)
     enddo
@@ -2040,7 +3245,7 @@ CALL FRINGECAV(EL,X,k,2)
     enddo
 
     tt=tI+h
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        d(j)=h*f(j)
     enddo
@@ -2089,7 +3294,7 @@ CALL FRINGECAV(EL,X,k,2)
     call alloc(p,ne)
     call alloc(tt)
 
-    call feval_cav(tI,y,k,f,gr)
+    call feval_CAV_bmad(tI,y,k,f,gr)
     do  j=1,ne
        a(j)=h*f(j)
     enddo
@@ -2097,7 +3302,7 @@ CALL FRINGECAV(EL,X,k,2)
        yt(j)=y(j)+a(j)/9.0_dp
     enddo
     tt=tI+h/9.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        b(j)=h*f(j)
     enddo
@@ -2105,7 +3310,7 @@ CALL FRINGECAV(EL,X,k,2)
        yt(j)=y(j) + (a(j) + 3.0_dp*b(j))/24.0_dp
     enddo
     tt=tI+h/6.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        c(j)=h*f(j)
     enddo
@@ -2115,7 +3320,7 @@ CALL FRINGECAV(EL,X,k,2)
     enddo
 
     tt=tI+h/3.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        d(j)=h*f(j)
     enddo
@@ -2124,7 +3329,7 @@ CALL FRINGECAV(EL,X,k,2)
        yt(j)=y(j) + (-5.0_dp*a(j) + 27.0_dp*b(j) - 24.0_dp*c(j) + 6.0_dp*d(j))/8.0_dp
     enddo
     tt=tI+0.5_dp*h
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        e(j)=h*f(j)
     enddo
@@ -2133,7 +3338,7 @@ CALL FRINGECAV(EL,X,k,2)
        yt(j)=y(j) + (221.0_dp*a(j) - 981.0_dp*b(j) + 867.0_dp*c(j)- 102.0_dp*d(j) + e(j))/9.0_dp
     enddo
     tt = tI+2.0_dp*h/3.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do   j=1,ne
        g(j)=h*f(j)
     enddo
@@ -2141,7 +3346,7 @@ CALL FRINGECAV(EL,X,k,2)
        yt(j) = y(j)+(-183.0_dp*a(j)+678.0_dp*b(j)-472.0_dp*c(j)-66.0_dp*d(j)+80.0_dp*e(j) + 3.0_dp*g(j))/48.0_dp
     enddo
     tt = tI + 5.0_dp*h/6.0_dp
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        o(j)=h*f(j)
     enddo
@@ -2150,7 +3355,7 @@ CALL FRINGECAV(EL,X,k,2)
     enddo
 
     tt = tI + h
-    call feval_cav(tt,yt,k,f,gr)
+    call feval_CAV_bmad(tt,yt,k,f,gr)
     do  j=1,ne
        p(j)=h*f(j)
     enddo
@@ -2209,10 +3414,10 @@ CALL FRINGECAV(EL,X,k,2)
 
        call rk6_cav(z0,d1,el,X,k)
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -2261,10 +3466,8 @@ CALL FRINGECAV(EL,X,k,2)
        call rk6_cav(z0,d1,el,X,k)
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+
+       WRITE(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -2284,15 +3487,15 @@ CALL FRINGECAV(EL,X,k,2)
     REAL(DP), INTENT(INOUT) ::  X(6)
     TYPE(CAV4),INTENT(INOUT):: EL
     integer,INTENT(IN):: J
-    integer JC,ko
+    integer JC,ko,it
     REAL(DP) C1,S1,V,O,z
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
-    REAL(DP) KBMAD 
+    REAL(DP) KBMAD
     !return
     !  As of June 2007, Etienne believes that the fringe approximately cancels
     ! it is a mystery perhaps due to the use of canonical variables.
     ! as of 2012 David Sagan said that this is needed after all
-
+    it=tot_t*k%totalpath+(1-tot_t)
     JC=-2*J+3
     if(jc==1) then
      z=0.0_dp
@@ -2301,26 +3504,33 @@ CALL FRINGECAV(EL,X,k,2)
     endif
 
     IF(k%NOCAVITY.and.(.not.EL%always_on)) RETURN
-    IF(.NOT.(k%FRINGE.or.el%p%permfringe.or.el%N_BESSEL==-1)) RETURN  ! 2012 forcing fringes if n_bessel > 0
+    IF(.NOT.(k%FRINGE.or.EL%P%permfringe/=0.or.el%N_BESSEL==-1)) RETURN  ! 2012 forcing fringes if n_bessel > 0
     IF(EL%THIN) RETURN
     IF(jC==1.AND.EL%P%KILL_ENT_FRINGE) RETURN
     IF(jC==-1.AND.EL%P%KILL_EXI_FRINGE) RETURN
     IF(el%N_BESSEL==-1) THEN
      KBMAD=1
     ELSE
-     KBMAD=0 
+     KBMAD=0
     ENDIF
 
-       
+       if(freq_redefine) then
+        O=EL%freq
+         else
+        O=twopi*EL%freq/CLIGHT
+       endif
 
-    O=EL%freq*twopi/CLIGHT
-    V=jC*EL%P%CHARGE*EL%volt*1e-3_dp/EL%P%P0C
+    if(.not.k%TIME.and.piotr_freq) then
+       O=O/EL%p%beta0
+    endif
+
+    V=jC*EL%P%CHARGE*EL%volt*volt_c/EL%P%P0C
 
 
    do ko=1,el%nf    ! over modes
-   
-    s1=cos(kbmad*ko*O*z)*sin(ko*O*(x(6)+EL%t)+EL%PHAS+EL%phase0+EL%PH(KO))
-    c1=cos(kbmad*ko*O*z)*cos(ko*O*(x(6)+EL%t)+EL%PHAS+EL%phase0+EL%PH(KO))
+
+    s1=cos(kbmad*ko*O*z)*sin(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%phase0+EL%PH(KO))
+    c1=cos(kbmad*ko*O*z)*cos(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%phase0+EL%PH(KO))
 
 
     X(2)=X(2)+V*S1*X(1)*0.5_dp
@@ -2328,6 +3538,7 @@ CALL FRINGECAV(EL,X,k,2)
     x(5)=x(5)-0.25e0_dp*(X(1)**2+X(3)**2)*V*C1*O*ko
 
    enddo
+
   END SUBROUTINE FRINGECAVR
 
   SUBROUTINE FRINGECAVP(EL,X,k,J)
@@ -2335,17 +3546,18 @@ CALL FRINGECAV(EL,X,k,2)
     TYPE(REAL_8), INTENT(INOUT) ::  X(6)
     TYPE(CAV4P),INTENT(INOUT):: EL
     integer,INTENT(IN):: J
-    integer JC,ko
+    integer JC,ko,it
     TYPE(REAL_8) C1,S1,V,O,z
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
-    REAL(DP) KBMAD 
+    REAL(DP) KBMAD
     !return
     !  As of June 2007, Etienne believes that the fringe approximately cancels
     ! it is a mystery perhaps due to the use of canonical variables.
     ! as of 2012 David Sagan said that this is needed after all
+
     CALL ALLOC(C1,S1,V,O,z)
-    
- 
+
+     it=tot_t*k%totalpath+(1-tot_t)
     JC=-2*J+3
     if(jc==1) then
      z=0.0_dp
@@ -2354,31 +3566,43 @@ CALL FRINGECAV(EL,X,k,2)
     endif
 
     IF(k%NOCAVITY.and.(.not.EL%always_on)) RETURN
-    IF(.NOT.(k%FRINGE.or.el%p%permfringe.or.el%N_BESSEL==-1)) RETURN  ! 2012 forcing fringes if n_bessel > 0
+    IF(.NOT.(k%FRINGE.or.EL%P%permfringe/=0.or.el%N_BESSEL==-1)) RETURN  ! 2012 forcing fringes if n_bessel > 0
     IF(EL%THIN) RETURN
     IF(jC==1.AND.EL%P%KILL_ENT_FRINGE) RETURN
     IF(jC==-1.AND.EL%P%KILL_EXI_FRINGE) RETURN
     IF(el%N_BESSEL==-1) THEN
      KBMAD=1
     ELSE
-     KBMAD=0 
+     KBMAD=0
     ENDIF
 
-    O=EL%freq*twopi/CLIGHT
-    V=jC*EL%P%CHARGE*EL%volt*1e-3_dp/EL%P%P0C
+    call PRTP("FRNG_CAV4:0", X)
 
-   do ko=1,el%nf    ! over modes
-   
-    s1=cos(kbmad*ko*O*z)*sin(ko*O*(x(6)+EL%t)+EL%PHAS+EL%phase0+EL%PH(KO))
-    c1=cos(kbmad*ko*O*z)*cos(ko*O*(x(6)+EL%t)+EL%PHAS+EL%phase0+EL%PH(KO))
+    if(freq_redefine) then
+      O=EL%freq
+    else
+      O=twopi*EL%freq/CLIGHT
+    endif
+    if(.not.k%TIME.and.piotr_freq) then
+       O=O/EL%p%beta0
+    endif
+
+    V=jC*EL%P%CHARGE*EL%volt*volt_c/EL%P%P0C
+
+    do ko=1,el%nf    ! over modes
+
+    s1=cos(kbmad*ko*O*z)*sin(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%phase0+EL%PH(KO))
+    c1=cos(kbmad*ko*O*z)*cos(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%phase0+EL%PH(KO))
 
 
     X(2)=X(2)+V*S1*X(1)*0.5_dp
     X(4)=X(4)+V*S1*X(3)*0.5_dp
     x(5)=x(5)-0.25e0_dp*(X(1)**2+X(3)**2)*V*C1*O*ko
 
-   enddo
+    enddo
     CALL KILL(C1,S1,V,O,z)
+
+    call PRTP("FRNG_CAV4:1", X)
 
   END SUBROUTINE FRINGECAVP
 
@@ -2386,7 +3610,7 @@ CALL FRINGECAV(EL,X,k,2)
 
 
 
- 
+
   SUBROUTINE KICKCAVR(EL,YL,X,k)
     IMPLICIT NONE
     real(dp),INTENT(INOUT):: X(6)
@@ -2396,15 +3620,24 @@ CALL FRINGECAV(EL,X,k,2)
     INTEGER I
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     real(dp) BBYTWT,BBXTW,BBYTW,x1,x3
-    integer j,ko
+    integer j,ko,it
     real(dp) dir
-
+    it=tot_t*k%totalpath+(1-tot_t)
     IF(k%NOCAVITY.and.(.not.EL%always_on)) RETURN
 
     DIR=EL%P%DIR*EL%P%CHARGE
 
-    O=twopi*EL%freq/CLIGHT
-    VL=dir*YL*EL%volt*1e-3_dp/EL%P%P0C
+       if(freq_redefine) then
+        O=EL%freq
+         else
+        O=twopi*EL%freq/CLIGHT
+       endif
+
+    if(.not.k%TIME.and.piotr_freq) then
+       O=O/EL%p%beta0
+    endif
+
+    VL=dir*YL*EL%volt*volt_c/EL%P%P0C
 
     do ko=1,el%nf    ! over modes
 
@@ -2423,13 +3656,15 @@ CALL FRINGECAV(EL,X,k,2)
        !    EL%DELTA_E=x(5)
 
        IF(EL%N_BESSEL>0) THEN
-          X(2)=X(2)-X(1)*el%f(ko)*DF*VL*COS(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)/(ko*O)
-          X(4)=X(4)-X(3)*el%f(ko)*DF*VL*COS(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)/(ko*O)
+          X(2)=X(2)-X(1)*el%f(ko)*DF*VL*COS(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0)/(ko*O)
+          X(4)=X(4)-X(3)*el%f(ko)*DF*VL*COS(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0)/(ko*O)
        ENDIF
 
-
-       x(5)=x(5)-el%f(ko)*F*VL*SIN(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)
-
+!!!!!   el%t should be the "phase" of the cavity if many modes are used
+!!!!!   indeed EL%PH(KO) should be used to shape the harmonic profile of the cavity only
+!!!!!   if tot_t=1 (default)  then it=1 if totalpath=1 other zero
+!!!!!   if tot_t=0 it=1 always
+       x(5)=x(5)-el%f(ko)*F*VL*SIN(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0)
 
        ! doing crabola
 
@@ -2454,8 +3689,8 @@ CALL FRINGECAV(EL,X,k,2)
 
        ! multipole * cos(omega t+ phi)/p0c
 
-       X(2)=X(2)-el%f(ko)*YL*DIR*BBYTW/EL%P%P0C*(EL%A+EL%R*cos(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0))
-       X(4)=X(4)+el%f(ko)*YL*DIR*BBXTW/EL%P%P0C*(EL%A+EL%R*cos(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0))
+       X(2)=X(2)-el%f(ko)*YL*DIR*BBYTW/EL%P%P0C*(EL%A+EL%R*cos(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0))
+       X(4)=X(4)+el%f(ko)*YL*DIR*BBXTW/EL%P%P0C*(EL%A+EL%R*cos(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0))
 
        IF(EL%P%NMUL>=1) THEN
           BBYTW=-EL%BN(EL%P%NMUL)/EL%P%NMUL
@@ -2475,31 +3710,45 @@ CALL FRINGECAV(EL,X,k,2)
           BBXTW=0.0_dp
        ENDIF
 
-       X(5)=X(5)+el%f(ko)*(ko*O)*YL*DIR*BBYTW/EL%P%P0C*EL%R*sin(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)
+       X(5)=X(5)+el%f(ko)*(ko*O)*YL*DIR*BBYTW/EL%P%P0C*EL%R*sin(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0)
     enddo    ! over modes
 
-
-  END SUBROUTINE KICKCAVR
+END SUBROUTINE KICKCAVR
 
 SUBROUTINE KICKCAVP(EL,YL,X,k)
     IMPLICIT NONE
     TYPE(REAL_8),INTENT(INOUT):: X(6),YL
     TYPE(CAV4P),INTENT(INOUT):: EL
-    TYPE(REAL_8) DF,R2,F,DR2,O,VL
-    INTEGER I
+    TYPE(REAL_8) DF,R2,F,DR2,O,VL,C1
+    INTEGER I,it
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     TYPE(REAL_8) BBYTWT,BBXTW,BBYTW,x1,x3
     integer j,ko
     real(dp) dir
 
     IF(k%NOCAVITY.and.(.not.EL%always_on)) RETURN
-    CALL ALLOC(DF,R2,F,DR2,O,VL)
-    call alloc(BBYTWT,BBXTW,BBYTW,x1,x3)
 
+    call PRTP("KICKCAV:0", X)
+
+    CALL ALLOC(DF,R2,F,DR2,O,VL,C1)
+    call alloc(BBYTWT,BBXTW,BBYTW,x1,x3)
+    it=tot_t*k%totalpath+(1-tot_t)
     DIR=EL%P%DIR*EL%P%CHARGE
 
-    O=twopi*EL%freq/CLIGHT
-    VL=dir*YL*EL%volt*1e-3_dp/EL%P%P0C
+       if(freq_redefine) then
+        O=EL%freq
+         else
+        O=twopi*EL%freq/CLIGHT
+       endif
+
+    if(.not.k%TIME.and.piotr_freq) then
+       O=O/EL%p%beta0
+    endif
+
+    VL=dir*YL*EL%volt*volt_c/EL%P%P0C
+
+    ! Ph0 = Pi
+!    write (*,'(5(a,E25.16))') '@@ VL= ', VL%r, ' O= ', O%r, ' Ph= ', EL%PHAS%r, ' YL= ', YL%r, ' IT= ', IT*1.0_dp
 
     do ko=1,el%nf    ! over modes
 
@@ -2518,12 +3767,15 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        !    EL%DELTA_E=x(5)
 
        IF(EL%N_BESSEL>0) THEN
-          X(2)=X(2)-X(1)*el%f(ko)*DF*VL*COS(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)/(ko*O)
-          X(4)=X(4)-X(3)*el%f(ko)*DF*VL*COS(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)/(ko*O)
+          C1 = el%f(ko)*DF*VL*COS(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0)/(ko*O)
+          X(2)=X(2)-X(1)*C1
+          X(4)=X(4)-X(3)*C1
+!          call PRTP1("C1", C1)
        ENDIF
 
+!      write (*,'(6(a,E25.16))') '@@ KO= ', ko*1.0_dp, ' F= ', F%r, ' F(KO)= ', el%f(ko)%r, ' P(KO)= ', EL%PH(KO)%r, ' T= ', EL%t
 
-       x(5)=x(5)-el%f(ko)*F*VL*SIN(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)
+       x(5)=x(5)-el%f(ko)*F*VL*SIN(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0)
 
 
        ! doing crabola
@@ -2549,8 +3801,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
        ! multipole * cos(omega t+ phi)/p0c
 
-       X(2)=X(2)-el%f(ko)*YL*DIR*BBYTW/EL%P%P0C*(EL%A+EL%R*cos(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0))
-       X(4)=X(4)+el%f(ko)*YL*DIR*BBXTW/EL%P%P0C*(EL%A+EL%R*cos(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0))
+       X(2)=X(2)-el%f(ko)*YL*DIR*BBYTW/EL%P%P0C*(EL%A+EL%R*cos(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0))
+       X(4)=X(4)+el%f(ko)*YL*DIR*BBXTW/EL%P%P0C*(EL%A+EL%R*cos(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0))
 
        IF(EL%P%NMUL>=1) THEN
           BBYTW=-EL%BN(EL%P%NMUL)/EL%P%NMUL
@@ -2570,11 +3822,13 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           BBXTW=0.0_dp
        ENDIF
 
-       X(5)=X(5)+el%f(ko)*(ko*O)*YL*DIR*BBYTW/EL%P%P0C*EL%R*sin(ko*O*(x(6)+EL%t)+EL%PHAS+EL%PH(KO)+EL%phase0)
+       X(5)=X(5)+el%f(ko)*(ko*O)*YL*DIR*BBYTW/EL%P%P0C*EL%R*sin(ko*O*(x(6)+EL%t*it)+EL%PHAS+EL%PH(KO)+EL%phase0)
 
     enddo    ! over modes
-    CALL kill(DF,R2,F,DR2,O,VL)
+    CALL kill(DF,R2,F,DR2,O,VL,C1)
     call kill(BBYTWT,BBXTW,BBYTW,x1,x3)
+
+    call PRTP("KICKCAV:1", X)
 
   END SUBROUTINE KICKCAVP
 
@@ -2587,7 +3841,6 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     INTEGER,INTENT(IN):: T
     real(dp) PZ,b
     logical(lp) EXACT,CTIME
-
 
     IF(EXACT) THEN
        if(CTIME) then
@@ -2629,6 +3882,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     logical(lp) EXACT,ctime
     real(dp) b
 
+    call PRTP("DRIFT:0", X)
+
     IF(EXACT) THEN
        CALL ALLOC(PZ)
        if(ctime) then
@@ -2637,6 +3892,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           X(3)=X(3)+L*X(4)/PZ
           X(6)=X(6)+L*(1.0_dp/b+X(5))/PZ-(1-T)*LD/b
        else
+          call PRTP("********* UNEXPECTED TIME=FALSE **********")
+
           PZ=SQRT((1.0_dp+X(5))**2-X(2)**2-X(4)**2)
           X(1)=X(1)+L*X(2)/PZ
           X(3)=X(3)+L*X(4)/PZ
@@ -2644,6 +3901,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        endif
        CALL KILL(PZ)
     ELSE
+       call PRTP("********* UNEXPECTED EXACT=FALSE **********")
        if(ctime) then
           CALL ALLOC(PZ)
           PZ=SQRT(1.0_dp+2.0_dp*X(5)/b+x(5)**2)
@@ -2661,6 +3919,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        endif
     ENDIF
 
+    call PRTP("DRIFT:1", X)
+
   END SUBROUTINE DRIFTP
 
   SUBROUTINE KICKTR(EL,X,k,MID)
@@ -2673,7 +3933,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     real(dp) myCOS,mySIN,ANG,XT(6)
 
-
+    x(1)=x(1)-el%dx   ! sadistic stuff
+    x(3)=x(3)-el%dy
 
     X1=X(1)
     X3=X(3)
@@ -2772,6 +4033,9 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     endif
 
 
+    x(1)=x(1)+el%dx
+    x(3)=x(3)+el%dy
+
 
   END SUBROUTINE KICKTR
 
@@ -2788,6 +4052,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(REAL_8) myCOS,mySIN,ANG,XT(6)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    call PRTP("KICK:0", X)
+
     CALL ALLOC(X1)
     CALL ALLOC(X3)
     CALL ALLOC(BBYTW)
@@ -2797,6 +4063,9 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     CALL ALLOC(XT)
 
 
+
+    x(1)=x(1)-el%dx
+    x(3)=x(3)-el%dy
 
     X1=X(1)
     X3=X(3)
@@ -2893,6 +4162,9 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     endif
 
 
+    x(1)=x(1)+el%dx
+    x(3)=x(3)+el%dy
+
 
     CALL KILL(myCOS,mySIN,ANG)
     CALL KILL(XT)
@@ -2901,6 +4173,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     CALL KILL(BBYTW)
     CALL KILL(BBXTW)
     CALL KILL(BBYTWT)
+
+    call PRTP("KICK:1", X)
 
   END SUBROUTINE KICKTP
 
@@ -2942,7 +4216,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     !   RX=X(1)
     !   IX=X(3)
 
-    DO J=1,MIN(EL%NMUL,HIGHEST_FRINGE)
+    DO J=1,MIN(EL%NMUL,el%HIGHEST_FRINGE)
        DRX=  RX
        DIX=  IX
        RX =  DRX*X(1)-DIX*X(3)
@@ -3032,6 +4306,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     IF(K1==1.AND.EL%KILL_ENT_FRINGE) RETURN
     IF(K1==2.AND.EL%KILL_EXI_FRINGE) RETURN
 
+    call PRTP("FRNG_MULT:0", X)
+
     CALL ALLOC(DUX,DUY,DVX,DVY,FX_X,FX_Y,FY_X,FY_Y,FX,FY)
     CALL ALLOC(RX,IX,DRX,DIX,U,V,DU,DV)
     CALL ALLOC(A,B,C,D,DEL,X2)
@@ -3054,7 +4330,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     !   RX=X(1)
     !   IX=X(3)
 
-    DO J=1,MIN(EL%NMUL,HIGHEST_FRINGE)
+    DO J=1,MIN(EL%NMUL,el%HIGHEST_FRINGE)
        DRX=  RX
        DIX=  IX
        RX =  DRX*X(1)-DIX*X(3)
@@ -3124,10 +4400,11 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     CALL KILL(RX,IX,DRX,DIX,U,V,DU,DV)
     CALL KILL(A,B,C,D,DEL,X2)
 
+    call PRTP("FRNG_MULT:1", X)
 
   END SUBROUTINE MULTIPOLE_FRINGEP
 
-  SUBROUTINE NEWFACER(EL,BN,H,X,k)
+  SUBROUTINE NEWFACER(EL,BN,H,X,k) ! CALL FACE(EL%P,EL%BN,EL%H1,X,k)
     IMPLICIT NONE
     TYPE(MAGNET_CHART),INTENT(IN):: EL
     real(dp),INTENT(INOUT):: X(6)
@@ -3135,7 +4412,6 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     real(dp),INTENT(IN),dimension(:)::BN
     real(dp) XI,PM,DXI_PX,DXI_DDEL
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
-
 
     IF(EL%DIR==1) THEN   ! NOT IMPORTANT; JUST TO INSURE REVERSAL SYMMETRY
        ! HORIZONTAL WEDGE
@@ -3176,6 +4452,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(REAL_8) XI,PM,DXI_PX,DXI_DDEL
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    call PRTP("NEWFACE:0", X)
 
     CALL ALLOC(XI,PM,DXI_PX,DXI_DDEL)
 
@@ -3208,6 +4485,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     CALL KILL(XI,PM,DXI_PX,DXI_DDEL)
 
+    call PRTP("NEWFACE:1", X)
 
   END SUBROUTINE NEWFACEP
 
@@ -3219,7 +4497,6 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     real(dp),INTENT(IN):: DIR
     real(dp) C
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
-
 
     C=1.0_dp/COS(E)**3
 
@@ -3239,12 +4516,15 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     real(dp) C
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    call PRTP("FACE:0", X)
 
     C=1.0_dp/COS(E)**3
 
     X(2)=X(2)+(DIR*BN(1)*H/2.0_dp)*X(1)**2
     X(2)=X(2)-(DIR*BN(1)*H*C/2.0_dp)*X(3)**2
     X(4)=X(4)-(DIR*BN(1)*H*C)*X(1)*X(3)
+
+    call PRTP("FACE:1", X)
 
   END SUBROUTINE FACEP
 
@@ -3257,6 +4537,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     INTEGER, INTENT(IN) :: K1
     real(dp) PZ,XP,YP,TIME_FAC
     real(dp) D(3,3),FI(3),FI0,B,co1,co2
+    real(dp) fsad,c3,rel_p
     integer i
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
@@ -3265,11 +4546,15 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     !     write(6,*) " Fringer should be called in exact magnets only "
     !     stop 101
     !    endif
-
+    IF(.not.EL%exact) RETURN
     IF(.not.EL%BEND_FRINGE) RETURN
     IF(K1==1.AND.EL%KILL_ENT_FRINGE) RETURN
     IF(K1==2.AND.EL%KILL_EXI_FRINGE) RETURN
 
+    fsad=0.0_dp
+    if(fint*hgap/=0.0_dp) then
+      fsad=1.d0/(fint*hgap*2)/36.0_dp
+    endif
 
     IF(K1==1) THEN
        B=EL%CHARGE*BN(1)
@@ -3281,10 +4566,15 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     if(k%TIME) then
        PZ=ROOT(1.0_dp+2.0_dp*X(5)/el%beta0+x(5)**2-X(2)**2-X(4)**2)
        TIME_FAC=1.0_dp/el%beta0+X(5)
+       rel_p=root(1.0_dp+2.0_dp*X(5)/el%beta0+x(5)**2)
     else
        PZ=ROOT((1.0_dp+X(5))**2-X(2)**2-X(4)**2)
        TIME_FAC=1.0_dp+X(5)
+       rel_p=time_fac
     endif
+
+    c3=b**2*fsad/rel_p
+
     XP=X(2)/PZ ; YP=X(4)/PZ;
 
     D(1,1)=(1.0_dp+XP**2)/PZ
@@ -3309,7 +4599,6 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     FI0=B*TAN(FI0)
 
-
     !       X(4)=X(4)-TAN(EL%EDGE(I)-EL%DIR*EL%CHARGE*two*FINT*HGAP*(ONE+SIN(EL%EDGE(I))**2)*BN(1)/COS(EL%EDGE(I))) &
     !       & *EL%DIR*EL%CHARGE*BN(1)*X(3)   ! SECTOR WEDGE (PROT) + FRINGE
 
@@ -3331,6 +4620,13 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        B=FI(I)*D(I,3)+B
     ENDDO
     X(6)=X(6)-0.5_dp*B*X(3)**2
+
+!!! coming to you with sadistic delight
+
+     x(4)=x(4)-4*c3*x(3)**3
+     x(6)=x(6)+c3*x(3)**4/rel_p**2*time_fac
+!!!
+
     !    CALL check_stability(X)
     call check_root_drift(el,X,k)
   END SUBROUTINE FRINGE_dipoleR
@@ -3345,6 +4641,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     INTEGER, INTENT(IN) :: K1
     TYPE(REAL_8) PZ,XP,YP,TIME_FAC,FI0,B
     TYPE(REAL_8) D(3,3),FI(3),CO1,CO2
+    TYPE(REAL_8) fsad,c3,rel_p
     integer i,J
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
@@ -3355,12 +4652,16 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     !     stop 102
     !    endif
 
-
+    IF(.not.EL%exact) RETURN
     IF(.not.EL%BEND_FRINGE) RETURN
     IF(K1==1.AND.EL%KILL_ENT_FRINGE) RETURN
     IF(K1==2.AND.EL%KILL_EXI_FRINGE) RETURN
 
+    call PRTP("FRNG_DIPOLE:0", X)
+
     CALL ALLOC(PZ,XP,YP,TIME_FAC,FI0,B,CO1,CO2)
+    call alloc(fsad,c3,rel_p)
+
     DO I=1,3
        CALL ALLOC(FI(I))
        DO J=1,3
@@ -3374,16 +4675,24 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        B=-EL%CHARGE*BN(1)
     ENDIF
 
-
+    fsad=0.0_dp
+    if(fint*hgap/=0.0_dp) then
+      fsad=1.d0/(fint*hgap*2)/36.0_dp
+    endif
 
 
     if(k%TIME) then
        PZ=sqrt(1.0_dp+2.0_dp*X(5)/el%beta0+x(5)**2-X(2)**2-X(4)**2)
        TIME_FAC=1.0_dp/el%beta0+X(5)
+       rel_p=sqrt(1.0_dp+2.0_dp*X(5)/el%beta0+x(5)**2)
     else
        PZ=sqrt((1.0_dp+X(5))**2-X(2)**2-X(4)**2)
        TIME_FAC=1.0_dp+X(5)
+       rel_p=time_fac
     endif
+
+    c3=b**2*fsad/rel_p
+
     XP=X(2)/PZ ; YP=X(4)/PZ;
 
     D(1,1)=(1.0_dp+XP**2)/PZ
@@ -3432,7 +4741,13 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     ENDDO
     X(6)=X(6)-0.5_dp*B*X(3)**2
 
+!!! coming to you with sadistic delight
 
+     x(4)=x(4)-4*c3*x(3)**3
+     x(6)=x(6)+c3*x(3)**4/rel_p**2*time_fac
+!!!
+
+    call KILL(fsad,c3,rel_p)
     CALL KILL(PZ,XP,YP,TIME_FAC,FI0,B,CO1,CO2)
     DO I=1,3
        CALL KILL(FI(I))
@@ -3441,17 +4756,20 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        ENDDO
     ENDDO
 
+    call PRTP("FRNG_DIPOLE:1", X)
+
   END SUBROUTINE FRINGE_dipoleP
 
-  SUBROUTINE FRINGE2SOLR(EL,BSOL,FINT,HGAP,K1,X,k)
+  SUBROUTINE FRINGE2QUADR(EL,b2,a2,FINT,HGAP,K1,X,k)
     IMPLICIT NONE
     real(dp),INTENT(INOUT):: X(6)
     real(dp),INTENT(IN)::FINT,HGAP
     INTEGER, INTENT(IN) :: K1
-    real(dp),INTENT(IN) :: BSOL
+    real(dp),INTENT(IN) :: b2,a2
     TYPE(MAGNET_CHART),INTENT(IN):: EL
     real(dp) PZ,TIME_FAC
-    real(dp) B
+    real(dp) f1,f2,b,ang
+    integer i
 
     TYPE(INTERNAL_STATE) k
 
@@ -3466,53 +4784,107 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        TIME_FAC=1.0_dp
     endif
 
-    B=BSOL**2*FINT*HGAP
 
-    X(2)=X(2)+X(1)*B/PZ
-    X(4)=X(4)+X(3)*B/PZ
+    IF(K1==1) THEN
+       I= EL%CHARGE
+    ELSE
+       I=-EL%CHARGE
+    ENDIF
 
-    X(6)=X(6)-0.5_dp*B*(X(1)**2+X(3)**2)*TIME_FAC/PZ**2
 
-  END SUBROUTINE FRINGE2SOLR
+    b=sqrt(b2**2+a2**2)
+    f1=-i*fint*abs(fint)*b/pz/24.0_dp
+    f2=hgap*b/pz
 
-  SUBROUTINE FRINGE2SOLP(EL,BSOL,FINT,HGAP,K1,X,k)
+    ang=-atan2(a2,b2)/2.0_dp
+
+    call ROT_XY(Ang,X)
+
+    x(6)=x(6)+time_fac*(f1*x(1)+f2*(1+f1/2)*x(2)/pz*exp(-f1))*x(2)/pz  &
+             -time_fac*(f1*x(3)+f2*(1-f1/2)*x(4)/pz*exp( f1))*x(4)/pz
+
+    x(1)=x(1)*exp(f1)+x(2)*f2/pz
+    x(3)=x(3)*exp(-f1)-x(4)*f2/pz
+
+    x(2)=x(2)*exp(-f1)
+    x(4)=x(4)*exp(f1)
+
+    call ROT_XY(-Ang,X)
+
+  END SUBROUTINE FRINGE2QUADR
+
+
+
+  SUBROUTINE FRINGE2QUADp(EL,b2,a2,FINT,HGAP,K1,X,k)
     IMPLICIT NONE
     TYPE(REAL_8),INTENT(INOUT):: X(6)
-    TYPE(REAL_8),INTENT(IN)::FINT,HGAP
+    TYPE(REAL_8),INTENT(IN)::FINT,HGAP,b2,a2
     INTEGER, INTENT(IN) :: K1
-    TYPE(REAL_8),INTENT(IN) :: BSOL
     TYPE(MAGNET_CHART),INTENT(IN):: EL
-    TYPE(REAL_8) PZ,TIME_FAC
-    TYPE(REAL_8) B
+    TYPE(REAL_8) PZ,TIME_FAC,f1,f2
+    real(dp) b,ang
+    integer i
 
     TYPE(INTERNAL_STATE) k
-
-!    L. Deniau: moved down to avoid memory leaks, reported to Etienne.
-!    CALL ALLOC(PZ,TIME_FAC,B)
 
     IF(K1==1.AND.EL%KILL_ENT_FRINGE) RETURN
     IF(K1==2.AND.EL%KILL_EXI_FRINGE) RETURN
 
-    CALL ALLOC(PZ,TIME_FAC,B)
+    call PRTP("FRNG_QUAD:0", X)
+
+    if(.not. tpsa_quad_sad) then
+    if(a2%kind/=1.or.b2%kind/=1) then
+     write(6,*) " quadrupole strengths cannot be Taylors in FRINGE2QUADP "
+     stop
+    endif
+    endif
+
+    call alloc(PZ,TIME_FAC,f1,f2)
 
     if(k%TIME) then
-       PZ=SQRT(1.0_dp+2.0_dp*X(5)/el%beta0+x(5)**2)
+       PZ=sqrt(1.0_dp+2.0_dp*X(5)/el%beta0+x(5)**2)
        TIME_FAC=(1.0_dp/el%beta0+X(5))/PZ
     else
        PZ=1.0_dp+X(5)
        TIME_FAC=1.0_dp
     endif
 
-    B=BSOL**2*FINT*HGAP
 
-    X(2)=X(2)+X(1)*B/PZ
-    X(4)=X(4)+X(3)*B/PZ
+    IF(K1==1) THEN
+       I= EL%CHARGE
+    ELSE
+       I=-EL%CHARGE
+    ENDIF
 
-    X(6)=X(6)-0.5_dp*B*(X(1)**2+X(3)**2)*TIME_FAC/PZ**2
+    if(tpsa_quad_sad) then
+     b=sqrt(b2**2+a2**2)
+    else
+     b=sqrt(b2%r**2+a2%r**2)
+    endif
 
-    CALL KILL(PZ,TIME_FAC,B)
+    f1=-i*fint*abs(fint)*b/pz/24.0_dp
+    f2=hgap*b/pz
 
-  END SUBROUTINE FRINGE2SOLP
+    ang=-atan2(a2%r,b2%r)/2.0_dp
+
+    call ROT_XY(Ang,X)
+
+    x(6)=x(6)+time_fac*(f1*x(1)+f2*(1+f1/2)*x(2)/pz*exp(-f1))*x(2)/pz  &
+             -time_fac*(f1*x(3)+f2*(1-f1/2)*x(4)/pz*exp( f1))*x(4)/pz
+
+    x(1)=x(1)*exp(f1)+x(2)*f2/pz
+    x(3)=x(3)*exp(-f1)-x(4)*f2/pz
+
+    x(2)=x(2)*exp(-f1)
+    x(4)=x(4)*exp(f1)
+
+    call ROT_XY(-Ang,X)
+
+    call KILL(PZ,TIME_FAC,f1,f2)
+
+    call PRTP("FRNG_QUAD:1", X)
+
+  END SUBROUTINE FRINGE2QUADP
 
 
   SUBROUTINE EDGE_TRUE_PARALLELR(EL,BN,H1,H2,FINT,HGAP,I,X,k)
@@ -3567,6 +4939,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     INTEGER, INTENT(IN) :: I
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    call PRTP("EDGE_PARALLEL:0", X)
+
     IF(EL%EXACT) THEN
        IF(EL%DIR==1) THEN
           IF(I==1) then                !doubling entrance angle if first half  (1/2 magnet for designer)
@@ -3597,6 +4971,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     ENDIF
 
+    call PRTP("EDGE_PARALLEL:1", X)
 
   END SUBROUTINE EDGE_TRUE_PARALLELP
 
@@ -3604,10 +4979,11 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     IMPLICIT NONE
     logical(lp) :: doneitt=.true.
     real(dp),INTENT(INOUT):: X(6)
-    real(dp),INTENT(IN)::FINT,HGAP,H1,H2
+    real(dp),INTENT(IN)::FINT(2),HGAP(2),H1,H2
     real(dp),INTENT(IN),dimension(:)::BN
     TYPE(MAGNET_CHART),INTENT(IN):: EL
     INTEGER, INTENT(IN) :: I
+    real(dp) c3,fsad
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
     IF(EL%EXACT) THEN
@@ -3616,7 +4992,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
              call ROT_XZ(EL%EDGE(1),X,EL%BETA0,DONEITT,k%TIME)
              CALL FACE(EL,BN,H1,X,k)
           endif
-          CALL FRINGE_dipole(EL,BN,FINT,HGAP,I,X,k)
+          CALL FRINGE_dipole(EL,BN,FINT(I),HGAP(I),I,X,k)
           IF(I==2) then                !doubling exit angle if second half
              CALL FACE(EL,BN,H2,X,k)
              x(1)=x(1)+EL%LC*SIN((EL%EDGE(2)-EL%EDGE(1))*0.5_dp)
@@ -3628,7 +5004,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
              x(1)=x(1)+EL%DIR*EL%LC*SIN((EL%EDGE(2)-EL%EDGE(1))*0.5_dp)
              CALL FACE(EL,BN,H2,X,k)
           endif
-          CALL FRINGE_dipole(EL,BN,FINT,HGAP,I,X,k)
+          CALL FRINGE_dipole(EL,BN,FINT(I),HGAP(I),I,X,k)
           IF(I==1) then                !doubling entrance angle if first half  (1/2 magnet for designer)
              CALL FACE(EL,BN,H1,X,k)
              call ROT_XZ(EL%EDGE(1),X,EL%BETA0,DONEITT,k%TIME)
@@ -3646,25 +5022,44 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        ENDIF
 
        if(el%b0/=0.0_dp) then
-                
+
           X(2)=X(2)+TAN(EL%EDGE(I))*EL%DIR*EL%CHARGE*BN(1)*X(1)   ! SECTOR WEDGE
 
           IF(EL%BEND_FRINGE.and.(.NOT.((I==1.AND.EL%KILL_ENT_FRINGE).OR.(I==2.AND.EL%KILL_EXI_FRINGE)))) THEN
 
-             X(4)=X(4)-TAN(EL%EDGE(I)-EL%DIR*EL%CHARGE*2.0_dp*FINT*HGAP*(1.0_dp+SIN(EL%EDGE(I))**2)*BN(1)/COS(EL%EDGE(I))) &
-                  & *EL%DIR*EL%CHARGE*BN(1)*X(3)   ! SECTOR WEDGE (PROT) + FRINGE
+             X(4)=X(4)-TAN(EL%EDGE(I)-EL%DIR*EL%CHARGE*2.0_dp*FINT(I)*HGAP(I)*(1.0_dp+SIN(EL%EDGE(I))**2)*BN(1)/COS(EL%EDGE(I))) &
+                   & *EL%DIR*EL%CHARGE*BN(1)*X(3)   ! SECTOR WEDGE (PROT) + FRINGE
+
+!!! coming to you with sadistic delight
+
+                 fsad=0.0_dp
+                 if(fint(i)*hgap(i)/=0.0_dp) then
+                        fsad=1.d0/(fint(i)*hgap(I)*2)/36.0_dp
+                 endif
+                 c3=bn(1)**2*fsad
+                 x(4)=x(4)-4*c3*x(3)**3
+
           ENDIF
 
        else
           IF(EL%BEND_FRINGE.and.(.NOT.((I==1.AND.EL%KILL_ENT_FRINGE).OR.(I==2.AND.EL%KILL_EXI_FRINGE)))) THEN
-             CALL FRINGE_dipole(EL,BN,FINT,HGAP,I,X,k)
+
+             CALL FRINGE_dipole(EL,BN,FINT(I),HGAP(I),I,X,k)
+
+                 fsad=0.0_dp
+                 if(fint(I)*hgap(I)/=0.0_dp) then
+                        fsad=1.d0/(fint(I)*hgap(I)*2)/36.0_dp
+                 endif
+                 c3=bn(1)**2*fsad
+                 x(4)=x(4)-4*c3*x(3)**3
           endif
+
        endif
 
        IF(EL%DIR==1) THEN
           IF(I==1) CALL FACE(EL%DIR*EL%CHARGE,BN,H1,EL%EDGE(1),X,k)
        ELSE
-          IF(I==2) THEN 
+          IF(I==2) THEN
          endif
            CALL FACE(EL%DIR*EL%CHARGE,BN,H2,EL%EDGE(2),X,k)
           ENDIF
@@ -3676,11 +5071,15 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
   SUBROUTINE EDGEP(EL,BN,H1,H2,FINT,HGAP,I,X,k)
     IMPLICIT NONE
     TYPE(REAL_8),INTENT(INOUT):: X(6)
-    TYPE(REAL_8),INTENT(IN)::FINT,HGAP,H1,H2
+    TYPE(REAL_8),INTENT(IN)::FINT(2),HGAP(2),H1,H2
     TYPE(REAL_8),INTENT(IN),dimension(:)::BN
     TYPE(MAGNET_CHART),INTENT(IN):: EL
     INTEGER, INTENT(IN) :: I
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+    TYPE(REAL_8) fsad,c3
+integer :: kkk=0
+
+    call PRTP("EDGE:0", X)
 
     IF(EL%EXACT) THEN
        IF(EL%DIR==1) THEN
@@ -3688,7 +5087,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
              !   call ROT_XZ(EL%EDGE(1),X,EL%BETA0,DONEITT,k%TIME)       !DONE IN TRUE_PARALLEL ROUTINE!!!!!
              CALL FACE(EL,BN,H1,X,k)
           endif
-          CALL FRINGE_dipole(EL,BN,FINT,HGAP,I,X,k)
+          CALL FRINGE_dipole(EL,BN,FINT(I),HGAP(I),I,X,k)
           IF(I==2) then                !doubling exit angle if second half
              CALL FACE(EL,BN,H2,X,k)
              !   x(1)=x(1)+EL%LC*SIN((EL%EDGE(2)-EL%EDGE(1))*half)
@@ -3700,7 +5099,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
              !   x(1)=x(1)+EL%DIR*EL%LC*SIN((EL%EDGE(2)-EL%EDGE(1))*half)
              CALL FACE(EL,BN,H2,X,k)
           endif
-          CALL FRINGE_dipole(EL,BN,FINT,HGAP,I,X,k)
+          CALL FRINGE_dipole(EL,BN,FINT(I),HGAP(I),I,X,k)
           IF(I==1) then                !doubling entrance angle if first half  (1/2 magnet for designer)
              CALL FACE(EL,BN,H1,X,k)
              !   call ROT_XZ(EL%EDGE(1),X,EL%BETA0,DONEITT,k%TIME)
@@ -3722,13 +5121,32 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
           IF(EL%BEND_FRINGE.and.(.NOT.((I==1.AND.EL%KILL_ENT_FRINGE).OR.(I==2.AND.EL%KILL_EXI_FRINGE)))) THEN
 
-             X(4)=X(4)-TAN(EL%EDGE(I)-EL%DIR*EL%CHARGE*2.0_dp*FINT*HGAP*(1.0_dp+SIN(EL%EDGE(I))**2)*BN(1)/COS(EL%EDGE(I))) &
-                  & *EL%DIR*EL%CHARGE*BN(1)*X(3)   ! SECTOR WEDGE (PROT) + FRINGE
+             X(4)=X(4)-TAN(EL%EDGE(I)-EL%DIR*EL%CHARGE*2.0_dp*FINT(I)*HGAP(I)*(1.0_dp+SIN(EL%EDGE(I))**2)*BN(1)/COS(EL%EDGE(I))) &
+                   & *EL%DIR*EL%CHARGE*BN(1)*X(3)   ! SECTOR WEDGE (PROT) + FRINGE
+
+!!! coming to you with sadistic delight
+            call alloc(fsad,c3)
+                 fsad=0.0_dp
+                 if(fint(I)*hgap(I)/=0.0_dp) then
+                        fsad=1.d0/(fint(I)*hgap(I)*2)/36.0_dp
+                 endif
+                 c3=bn(1)**2*fsad
+                 x(4)=x(4)-4*c3*x(3)**3
+            call kill(fsad,c3)
           ENDIF
 
        else
           IF(EL%BEND_FRINGE.and.(.NOT.((I==1.AND.EL%KILL_ENT_FRINGE).OR.(I==2.AND.EL%KILL_EXI_FRINGE)))) THEN
-             CALL FRINGE_dipole(EL,BN,FINT,HGAP,I,X,k)
+             call alloc(fsad,c3)
+             CALL FRINGE_dipole(EL,BN,FINT(I),HGAP(I),I,X,k)
+
+                 fsad=0.0_dp
+                 if(fint(I)*hgap(I)/=0.0_dp) then
+                        fsad=1.d0/(fint(I)*hgap(I)*2)/36.0_dp
+                 endif
+                 c3=bn(1)**2*fsad
+                 x(4)=x(4)-4*c3*x(3)**3
+            call kill(fsad,c3)
           endif
        endif
 
@@ -3736,7 +5154,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        IF(EL%DIR==1) THEN
           IF(I==1) CALL FACE(EL%DIR*EL%CHARGE,BN,H1,EL%EDGE(1),X,k)
        ELSE
-          IF(I==2) THEN 
+          IF(I==2) THEN
            CALL FACE(EL%DIR*EL%CHARGE,BN,H2,EL%EDGE(2),X,k)
           ENDIF
        ENDIF
@@ -3745,6 +5163,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     ENDIF
 
+    call PRTP("EDGE:1", X)
 
   END SUBROUTINE EDGEP
 
@@ -3821,6 +5240,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     INTEGER J,DIR
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    call PRTP("KICK:0", X)
 
     CALL ALLOC(X1)
     CALL ALLOC(X3)
@@ -3883,6 +5303,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     CALL KILL(BBXTW)
     CALL KILL(BBYTWT)
 
+    call PRTP("KICK:1", X)
+
   END SUBROUTINE KICKP
 
   SUBROUTINE INTER_dkd2 (EL,X,k,pos)
@@ -3922,10 +5344,14 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
 
        CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,EL%P%EXACT,k%TIME,X)
+       if(e1_cas/=0.and.el%p%nmul>1) then
+          X(1)=X(1)+DH*X(2)/ROOT(1.0_dp+2.0_dp*X(5)/EL%P%beta0+x(5)**2)*e1_cas*el%bn(2)
+       endif
        CALL KICK (EL,D,X,k)
        CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,EL%P%EXACT,k%TIME,X)
-
-
+       if(e1_cas/=0.and.el%p%nmul>1) then
+          X(1)=X(1)+DH*X(2)/ROOT(1.0_dp+2.0_dp*X(5)/EL%P%beta0+x(5)**2)*e1_cas*el%bn(2)
+       endif
 
     CASE(4)
        D1=EL%L*FD1/EL%P%NST
@@ -3977,10 +5403,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+
+       WRITE(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -4025,8 +5449,14 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        DD=EL%P%LD/2.0_dp/EL%P%NST
 
        CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,EL%P%EXACT,k%TIME,X)
+       if(e1_cas/=0.and.el%p%nmul>1) then
+          X(1)=X(1)+DH*X(2)/sqrt(1.0_dp+2.0_dp*X(5)/EL%P%beta0+x(5)**2)*e1_cas*el%bn(2)
+       endif
        CALL KICK (EL,D,X,k)
        CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,EL%P%EXACT,k%TIME,X)
+       if(e1_cas/=0.and.el%p%nmul>1) then
+          X(1)=X(1)+DH*X(2)/sqrt(1.0_dp+2.0_dp*X(5)/EL%P%beta0+x(5)**2)*e1_cas*el%bn(2)
+       endif
 
        CALL KILL(DH,D)
 
@@ -4083,10 +5513,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -4164,8 +5594,6 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     integer i
 
-
-
     bsol=EL%B_SOL*EL%P%CHARGE
     xp=x(2)+bsol*x(3)/2.0_dp
     yp=x(4)-bsol*x(1)/2.0_dp
@@ -4189,6 +5617,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        endif
     endif
     yh=yl/h
+
     c=cos(yh*bsol/2.0_dp)
     sh=SINX_X(yh*bsol/2.0_dp)
 
@@ -4223,8 +5652,6 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        x(6)=x(6)+yl*dl*(1.0_dp+X(5))/h-(1-k%totalpath)*yl
     endif
 
-
-
   END SUBROUTINE KICK_SOLR
 
   SUBROUTINE KICK_SOLP(EL,YL,X,k)
@@ -4235,6 +5662,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(REAL_8)  BSOL,xp,yp,h,yh,xt(4),sh,c,ang,dl
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     integer i
+
+    call PRTP("KICK_SOL:0", X)
 
     CALL ALLOC(BSOL,xp,yp,h,yh,sh,c,ang,dl)
     CALL ALLOC(xt,4)
@@ -4296,12 +5725,74 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        x(6)=x(6)+yl*dl*(1.0_dp+X(5))/h-(1-k%totalpath)*yl
     endif
 
-
-
     CALL kill(xt,4)
     CALL kill(BSOL,xp,yp,h,yh,sh,c,ang,dl)
 
+    call PRTP("KICK_SOL:1", X)
+
   END SUBROUTINE KICK_SOLP
+
+  SUBROUTINE GETNEWBR(an,bn,b_sol,nmul,B,X)
+    IMPLICIT NONE
+    real(dp),INTENT(INOUT):: X(6),B(3)
+    real(dp),INTENT(IN):: an(:),bn(:),b_sol
+    integer,INTENT(IN):: nmul
+    real(dp) X1,X3,BBYTW,BBXTW,BBYTWT
+    INTEGER J
+
+    X1=X(1)
+    X3=X(3)
+
+    IF(NMUL>=1) THEN
+       BBYTW=BN(NMUL)
+       BBXTW=AN(NMUL)
+
+       DO  J=NMUL-1,1,-1
+          BBYTWT=X1*BBYTW-X3*BBXTW+BN(J)
+          BBXTW=X3*BBYTW+X1*BBXTW+AN(J)
+          BBYTW=BBYTWT
+       ENDDO
+    ELSE
+       BBYTW=0.0_dp
+       BBXTW=0.0_dp
+    ENDIF
+    B(1)=BBXTW;B(2)=BBYTW;B(3)=B_SOL;
+
+  END SUBROUTINE GETNEWBR
+
+  SUBROUTINE GETNEWBP(an,bn,b_sol,nmul,B,X)
+    IMPLICIT NONE
+    type(REAL_8),INTENT(INOUT):: X(6),B(3)
+    type(REAL_8),INTENT(IN):: an(:),bn(:),b_sol
+    integer,INTENT(IN):: nmul
+    type(REAL_8) X1,X3,BBYTW,BBXTW,BBYTWT
+    INTEGER J
+
+    call PRTP("GETNEWB:0", X)
+
+    CALL ALLOC(X1,X3,BBYTW,BBXTW,BBYTWT)
+    X1=X(1)
+    X3=X(3)
+
+    IF(NMUL>=1) THEN
+       BBYTW=BN(NMUL)
+       BBXTW=AN(NMUL)
+
+       DO  J=NMUL-1,1,-1
+          BBYTWT=X1*BBYTW-X3*BBXTW+BN(J)
+          BBXTW=X3*BBYTW+X1*BBXTW+AN(J)
+          BBYTW=BBYTWT
+       ENDDO
+    ELSE
+       BBYTW=0.0_dp
+       BBXTW=0.0_dp
+    ENDIF
+    B(1)=BBXTW;B(2)=BBYTW;B(3)=B_SOL;
+
+    CALL kill(X1,X3,BBYTW,BBXTW,BBYTWT)
+
+    call PRTP("GETNEWB:1", X)
+  END SUBROUTINE GETNEWBP
 
   SUBROUTINE GETMULB_SOLR(EL,B,X,k)
     IMPLICIT NONE
@@ -4311,24 +5802,13 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     INTEGER J
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-    X1=X(1)
-    X3=X(3)
+    x(1)=x(1)-el%dx
+    x(3)=x(3)-el%dy
+    call GETNEWB(el%an,el%bn,el%b_sol,EL%P%NMUL,B,X)
+    x(1)=x(1)+el%dx
+    x(3)=x(3)+el%dy
 
-    IF(EL%P%NMUL>=1) THEN
-       BBYTW=EL%BN(EL%P%NMUL)
-       BBXTW=EL%AN(EL%P%NMUL)
 
-
-       DO  J=EL%P%NMUL-1,1,-1
-          BBYTWT=X1*BBYTW-X3*BBXTW+EL%BN(J)
-          BBXTW=X3*BBYTW+X1*BBXTW+EL%AN(J)
-          BBYTW=BBYTWT
-       ENDDO
-    ELSE
-       BBYTW=0.0_dp
-       BBXTW=0.0_dp
-    ENDIF
-    B(1)=BBXTW;B(2)=BBYTW;B(3)=EL%B_SOL;
     !outvalishev    if(valishev.and.ABS(el%VS)>eps)   then  !valishev
     !outvalishev     call elliptical_b(el%VA,el%VS,x,BBXTW,BBYTW) !valishev
     !outvalishev     B(1)=B(1)+BBXTW; B(2)=B(2)+BBYTW;
@@ -4340,35 +5820,19 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     IMPLICIT NONE
     TYPE(REAL_8),INTENT(INOUT):: X(6),B(3)
     TYPE(SOL5P),INTENT(IN):: EL
-    TYPE(REAL_8) X1,X3,BBYTW,BBXTW,BBYTWT
+
     INTEGER J
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-    CALL ALLOC(X1,X3,BBYTW,BBXTW,BBYTWT)
-    X1=X(1)
-    X3=X(3)
+    call PRTP("GETMULB_SOL:0", X)
 
-    IF(EL%P%NMUL>=1) THEN
-       BBYTW=EL%BN(EL%P%NMUL)
-       BBXTW=EL%AN(EL%P%NMUL)
+    x(1)=x(1)-el%dx
+    x(3)=x(3)-el%dy
+    call GETNEWB(el%an,el%bn,el%b_sol,EL%P%NMUL,B,X)
+    x(1)=x(1)+el%dx
+    x(3)=x(3)+el%dy
 
-
-       DO  J=EL%P%NMUL-1,1,-1
-          BBYTWT=X1*BBYTW-X3*BBXTW+EL%BN(J)
-          BBXTW=X3*BBYTW+X1*BBXTW+EL%AN(J)
-          BBYTW=BBYTWT
-       ENDDO
-    ELSE
-       BBYTW=0.0_dp
-       BBXTW=0.0_dp
-    ENDIF
-    B(1)=BBXTW;B(2)=BBYTW;B(3)=EL%B_SOL;
-    !outvalishev    if(valishev.and.ABS(el%VS)>eps)   then  !valishev
-    !outvalishev     call elliptical_b(el%VA,el%VS,x,BBXTW,BBYTW) !valishev
-    !outvalishev     B(1)=B(1)+BBXTW; B(2)=B(2)+BBYTW;
-    !outvalishev    endif !valishev
-
-    CALL KILL(X1,X3,BBYTW,BBXTW,BBYTWT)
+    call PRTP("GETMULB_SOL:1", X)
 
   END SUBROUTINE GETMULB_SOLP
 
@@ -4395,6 +5859,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(REAL_8) B(3)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    call PRTP("KICKMUL:0", X)
+
     CALL ALLOC(B,3)
 
     CALL GETMULB_SOL(EL,B,X,k)
@@ -4403,6 +5869,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     X(4)=X(4)+YL*EL%P%DIR*EL%P%CHARGE*B(1)
 
     CALL KILL(B,3)
+
+    call PRTP("KICKMUL:1", X)
 
   END SUBROUTINE KICKMULP
 
@@ -4420,21 +5888,15 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     INTEGER I,J
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-
-
-
     SELECT CASE(EL%P%METHOD)
     CASE(2)
        DH=EL%L/2.0_dp/EL%P%NST
        D=EL%L/EL%P%NST
        DD=(EL%P%LD)/2.0_dp/EL%P%NST
 
-
        CALL KICK_SOL(EL,DH,X,k)
        CALL KICKMUL(EL,D,X,k)
        CALL KICK_SOL(EL,DH,X,k)
-
-
 
     CASE(4)
 
@@ -4456,8 +5918,6 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        CALL KICK_SOL(EL,D1,X,k)
        CALL KICKMUL(EL,DK1,X,k)
        CALL KICK_SOL(EL,D1,X,k)
-
-
 
     CASE(6)
        DO I =1,4
@@ -4483,10 +5943,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -4539,14 +5999,13 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        CALL KICKMUL(EL,DK1,X,k)
        CALL KICK_SOL(EL,D1,X,k)
        CALL KICK_SOL(EL,D2H,X,k)
-       CALL KICKMUL(EL,DK2,X,k)
+       CALL KICKMUL(EL,DK2,X,k) ! middle
        CALL KICK_SOL(EL,D2H,X,k)
        CALL KICK_SOL(EL,D1,X,k)
        CALL KICKMUL(EL,DK1,X,k)
        CALL KICK_SOL(EL,D1,X,k)
 
        CALL KILL(D1,D2,DK1,DK2,D2H)
-
 
     CASE(6)
        CALL ALLOC(DF,4);CALL ALLOC(DK,4);
@@ -4574,10 +6033,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        CALL KILL(DF,4);CALL KILL(DK,4);
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -4592,9 +6051,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     INTEGER I
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-
     IF(PRESENT(MID)) CALL XMID(MID,X,0)
-
 
     DO I=1,EL%P%NST
 
@@ -4758,6 +6215,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     real(dp) dir
 
+    call PRTP("GETMAT:0", X)
+
     DIR=EL%P%DIR*EL%P%CHARGE
 
     DO I=1,3
@@ -4857,6 +6316,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     ENDDO
     CALL KILL(DH);CALL KILL(X5);CALL KILL(X6);
 
+    call PRTP("GETMAT:1", X)
 
   END SUBROUTINE GETMATD
 
@@ -4923,10 +6383,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     ENDDO
 
-    w_p=0
-    w_p%nc=1
-    w_p%fc='(1(1X,A72))'
-    write(w_p%c(1),'(A31,1X,I4,1X,A11)') " EXPSOLR FAILED TO CONVERGE IN ",NMAXI," ITERATIONS"
+    !w_p=0
+    !w_p%nc=1
+    !w_p%fc='(1(1X,A72))'
+      write(6,'(a31,1X,I4,1X,A11)') " EXPSOLR FAILED TO CONVERGE IN ",NMAXI," ITERATIONS"
     ! call !write_e(0)
 
 100 CONTINUE
@@ -4996,10 +6456,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     ENDDO
 
-    w_p=0
-    w_p%nc=1
-    w_p%fc='(1(1X,A72))'
-    write(w_p%c(1),'(A31,1X,I4,1X,A11)') " EXPSOLR FAILED TO CONVERGE IN ",NMAXI," ITERATIONS"
+    !w_p=0
+    !w_p%nc=1
+    !w_p%fc='(1(1X,A72))'
+      write(6,'(a31,1X,I4,1X,A11)') " EXPSOLR FAILED TO CONVERGE IN ",NMAXI," ITERATIONS"
     ! call !write_e(0)
 
 100 CONTINUE
@@ -5063,10 +6523,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     ENDDO
 
-    w_p=0
-    w_p%nc=1
-    w_p%fc='(1(1X,A72))'
-    write(w_p%c(1),'(A31,1X,I4,1X,A11)') " EXPSOLR FAILED TO CONVERGE IN ",NMAXI," ITERATIONS"
+    !w_p=0
+    !w_p%nc=1
+    !w_p%fc='(1(1X,A72))'
+      write(6,'(a31,1X,I4,1X,A11)') " EXPSOLR FAILED TO CONVERGE IN ",NMAXI," ITERATIONS"
     ! call !write_e(0)
 
 100 CONTINUE
@@ -5125,10 +6585,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     ENDDO
 
-    w_p=0
-    w_p%nc=1
-    w_p%fc='(1(1X,A72))'
-    write(w_p%c(1),'(A31,1X,I4,1X,A11)') " EXPSOLR FAILED TO CONVERGE IN ",NMAXI," ITERATIONS"
+    !w_p=0
+    !w_p%nc=1
+    !w_p%fc='(1(1X,A72))'
+      write(6,'(a31,1X,I4,1X,A11)') " EXPSOLR FAILED TO CONVERGE IN ",NMAXI," ITERATIONS"
     ! call !write_e(0)
 
 100 CONTINUE
@@ -5221,10 +6681,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        CALL KICKKTK(EL,DK,X,k)   ! NEW
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -5320,10 +6780,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        CALL KILL(DK,DK2,DK4,DK5,DK6)
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
     CALL kill(EL)
@@ -5397,6 +6857,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(KTKP),INTENT(IN):: EL
     TYPE(REAL_8) T(6)
 
+    call PRTP("PUSHKTK:0", X)
+
     CALL ALLOC(T)
     T(1)=EL%MATX(1,1)*X(1)+EL%MATX(1,2)*X(2)+EL%MATX(1,3)*X(5)
     T(2)=EL%MATX(2,1)*X(1)+EL%MATX(2,2)*X(2)+EL%MATX(2,3)*X(5)
@@ -5409,6 +6871,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     X(1)=T(1);X(2)=T(2);X(3)=T(3);X(4)=T(4);X(6)=T(6);
 
     CALL KILL(T)
+
+    call PRTP("PUSHKTK:1", X)
 
   END SUBROUTINE PUSHKTKD
 
@@ -5474,6 +6938,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     real(dp) dir
 
+    call PRTP("KICKKTK:0", X)
+
     DIR=EL%P%DIR*EL%P%CHARGE
 
     CALL ALLOC(X1)
@@ -5526,6 +6992,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     CALL KILL(BBXTW)
     CALL KILL(BBYTWT)
 
+    call PRTP("KICKKTK:1", X)
+
   END SUBROUTINE KICKKTKP
 
   SUBROUTINE SYMPINTKTKR(EL,X,k,MID)
@@ -5577,7 +7045,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     IF(MOD(EL%P%METHOD,2)==1) THEN
        DH=(EL%L/EL%P%NST)  ! method=1,3,5
     ELSEIF(EL%P%METHOD/=6) THEN
-       DH=(EL%L/EL%P%NST)/EL%P%METHOD   ! method=1,2
+       DH=(EL%L/EL%P%NST)/EL%P%METHOD   ! method=2,4
        IF(EL%P%METHOD==4) DH=DH*2.0_dp
     ELSE
        DH=EL%L/EL%P%NST/4.0_dp
@@ -5615,7 +7083,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           EL%MATX(2,3)= EL%P%B0*EL%MATX(1,2);
           EL%LX(1)=EL%P%B0*EL%MATX(1,2);   EL%LX(2)=EL%MATX(1,3);
           EL%LX(3)=-EL%P%B0**2*S_OMEGA*(DH-EL%MATX(1,2))/OMEGA2;
-       ELSE
+       ELSE ! DRIFT like matrix
           EL%MATX(1,1)=1.0_dp;EL%MATX(1,2)=DH;
           EL%MATX(2,1)=0.0_dp
           EL%MATX(2,2)=1.0_dp
@@ -5813,6 +7281,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 !!!!  SPEED STUFF !!!
     real(dp) OMEGA, OMEGA2,C,S
     INTEGER S_OMEGA
+
+    call PRTP("GETMAT7:0")
 
     DO I=1,4
        DO J=1,4
@@ -6041,9 +7511,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     ENDDO
     CALL KILL(DH)
 
-
-
-
+    call PRTP("GETMAT7:1")
 
   END SUBROUTINE GETMAT7D
 
@@ -6057,7 +7525,6 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     ! BUG FOUND BY SCHMIDT (SUBTLE ONE; AFFECTS PTC LOGIC; YUCK!)
     !    T(1)=EL%MATX(1,1)*X(1)+EL%MATX(1,2)*X(2)+EL%MATX(1,3)*X(5)
     !    T(2)=EL%MATX(2,1)*X(1)+EL%MATX(2,2)*X(2)+EL%MATX(2,3)*X(5)
-
 
     IF(EL%P%DIR*EL%P%CHARGE>0) THEN
        IF(k%TIME) THEN
@@ -6100,6 +7567,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(REAL_8) T(4)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    call PRTP("PUSHTKT7:0", X)
+
     CALL ALLOC(T,4)
 
     ! BUG FOUND BY SCHMIDT (SUBTLE ONE; AFFECTS PTC LOGIC; YUCK!)
@@ -6107,6 +7576,9 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     !    T(2)=EL%MATX(2,1)*X(1)+EL%MATX(2,2)*X(2)+EL%MATX(2,3)*X(5)
     IF(EL%P%DIR*EL%P%CHARGE>0) THEN
        IF(k%TIME) THEN
+!        write (*,'(a,(3(E25.16)))') "@@ . MATX", EL%MATX(1,1)%r, EL%MATX(1,2)%r, EL%MATX(1,3)%r
+!        write (*,'(a,(2(E25.16)))') "@@ . MATY", EL%MATY(1,1)%r, EL%MATX(1,2)%r
+
           T(1)=EL%MATX(1,1)*X(1)+EL%MATX(1,2)*X(2)+EL%MATX(1,3)*X(5)/el%P%beta0
           T(2)=EL%MATX(2,1)*X(1)+EL%MATX(2,2)*X(2)+EL%MATX(2,3)*X(5)/el%P%beta0
           T(3)=EL%MATY(1,1)*X(3)+EL%MATY(1,2)*X(4)
@@ -6138,6 +7610,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     X(1)=T(1);X(2)=T(2);X(3)=T(3);X(4)=T(4);
 
     CALL KILL(T,4)
+
+    call PRTP("PUSHTKT7:1", X)
 
   END SUBROUTINE PUSHTKT7D
 
@@ -6206,6 +7680,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     real(dp) dir
 
+    call PRTP("KICKTKT7:0", X)
+
     DIR=EL%P%DIR*EL%P%CHARGE
 
 
@@ -6261,6 +7737,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     CALL KILL(BBXTW)
     CALL KILL(BBYTWT)
 
+    call PRTP("KICKTKT7:1", X)
+
   END SUBROUTINE KICKTKT7P
 
 
@@ -6300,7 +7778,11 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(REAL_8) PZ,PZ0
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     ! ETIENNE
+
     IF(.NOT.EL%P%EXACT) RETURN
+
+    call PRTP("KICKPATH6:0", X)
+
     CALL ALLOC(PZ,PZ0)
     if(k%TIME) then
        PZ=sqrt(1.0_dp+2.0_dp*X(5)/EL%P%beta0+x(5)**2-X(2)**2-X(4)**2)
@@ -6319,6 +7801,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        X(3)=X(3)+YL*X(4)*PZ
     endif
     CALL KILL(PZ,PZ0)
+
+    call PRTP("KICKPATH6:1", X)
 
   END SUBROUTINE KICKPATH6P
 
@@ -6370,6 +7854,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(REAL_8) X1,X5,PZ
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    call PRTP("KICKPATH:0", X)
+
     if(k%TIME) then
        if(EL%P%EXACT) THEN
           CALL ALLOC(PZ)
@@ -6405,6 +7891,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        endif
 
     endif
+
+    call PRTP("KICKPATH:1", X)
 
   END SUBROUTINE KICKPATHD
 
@@ -6581,10 +8069,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        CALL KICKTKT7(EL,DK,X,k)  ! NEW
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
     !       if(s_aperture_CHECK.and.associated(el%p%A).AND.CHECK_MADX_APERTURE) &
@@ -6686,12 +8174,15 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
        CALL KICKTKT7(EL,DK,X,k)    ! NEW
        CALL KICKPATH(EL,DK,X,k)
+
        CALL PUSHTKT7(EL,X,k)
-       CALL KICKPATH(EL,DK2,X,k)
-       CALL KICKTKT7(EL,DK6,X,k)
 
        CALL KICKPATH(EL,DK2,X,k)
+       CALL KICKTKT7(EL,DK6,X,k) ! middle
+       CALL KICKPATH(EL,DK2,X,k)
+
        CALL PUSHTKT7(EL,X,k)
+
        CALL KICKPATH(EL,DK,X,k)
        CALL KICKTKT7(EL,DK,X,k) ! NEW
 
@@ -6768,7 +8259,6 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
        CALL KICKPATH(EL,DK5,X,k)
        CALL KICKTKT7(EL,DK6,X,k)   ! SYMMETRY POINT
-
        CALL KICKPATH(EL,DK5,X,k)
 
        CALL PUSHTKT7(EL,X,k)
@@ -6777,16 +8267,17 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        CALL KICKTKT7(EL,DK4,X,k)
 
        CALL PUSHTKT7(EL,X,k)
+
        CALL KICKPATH(EL,DK,X,k)
        CALL KICKTKT7(EL,DK,X,k)  ! NEW
 
        CALL KILL(DK,DK2,DK6,DK4,DK5)
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -6953,10 +8444,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     ENDDO
 
-    w_p=0
-    w_p%nc=1
-    w_p%fc='(1(1X,A72))'
-    write(w_p%c(1),'(A31,1X,I4,1X,A11)') " EXPSOLR FAILED TO CONVERGE IN ",NMAXI," ITERATIONS"
+    !w_p=0
+    !w_p%nc=1
+    !w_p%fc='(1(1X,A72))'
+      write(6,'(a31,1X,I4,1X,A11)') " EXPSOLR FAILED TO CONVERGE IN ",NMAXI," ITERATIONS"
     ! call !write_e(0)
 
 100 CONTINUE
@@ -7039,10 +8530,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     ENDDO
 
-    w_p=0
-    w_p%nc=1
-    w_p%fc='(1(1X,A72))'
-    write(w_p%c(1),'(A31,1X,I4,1X,A11)') " EXPSOLR FAILED TO CONVERGE IN ",NMAXI," ITERATIONS"
+    !w_p=0
+    !w_p%nc=1
+    !w_p%fc='(1(1X,A72))'
+      write(6,'(a31,1X,I4,1X,A11)') " EXPSOLR FAILED TO CONVERGE IN ",NMAXI," ITERATIONS"
     ! call !write_e(0)
 
 100 CONTINUE
@@ -8389,27 +9880,47 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     !    nmul=EL%P%NMUL
     !    IF(EL%P%NMUL> SECTOR_NMUL) THEN
 
-    nmul=SECTOR_NMUL
+    nmul=SECTOR_NMUL_max
 
     !    ENDIF
 
-    DO I=1,S_B(NMUL)%N_MONO
+    DO I=1,S_B_from_V%N_MONO
        EL%BF_X(I)=0.0_dp
        EL%BF_Y(I)=0.0_dp
     ENDDO
     DO I=1,NMUL
-       DO J=1,S_B(NMUL)%N_MONO
-          K=S_B(NMUL)%I(J)+S_B(NMUL)%J(J)
+       DO J=1,S_B_from_V%N_MONO
+          K=S_B_from_V%I(J)+S_B_from_V%J(J)
           POW=K+1-I
           IF(K+1>=I) THEN
 
 
-             EL%BF_X(J)=EL%BF_X(J)+(EL%AN(I)*S_B(NMUL)%A_X(I,J)+EL%BN(I)*S_B(NMUL)%B_X(I,J))*EL%P%B0**POW
-             EL%BF_Y(J)=EL%BF_Y(J)+(EL%AN(I)*S_B(NMUL)%A_Y(I,J)+EL%BN(I)*S_B(NMUL)%B_Y(I,J))*EL%P%B0**POW
+!             EL%BF_X(J)=EL%BF_X(J)+(EL%AN(I)*S_B%A_X(I,J)+EL%BN(I)*S_B%B_X(I,J))*EL%P%B0**POW
+!             EL%BF_Y(J)=EL%BF_Y(J)+(EL%AN(I)*S_B%A_Y(I,J)+EL%BN(I)*S_B%B_Y(I,J))*EL%P%B0**POW
+             EL%BF_X(J)=EL%BF_X(J)+(EL%AN(I)*S_B_from_V%A_X(I,J)+EL%BN(I)*S_B_from_V%B_X(I,J))*EL%P%B0**POW
+             EL%BF_Y(J)=EL%BF_Y(J)+(EL%AN(I)*S_B_from_V%A_Y(I,J)+EL%BN(I)*S_B_from_V%B_Y(I,J))*EL%P%B0**POW
 
           ENDIF
        ENDDO
     ENDDO
+
+    DO I=1,S_B_from_V%N_MONO
+       EL%VM(I)=0.0_dp
+    ENDDO
+
+    DO I=1,NMUL
+       DO J=1,S_B_from_V%N_MONO
+          K=S_B_from_V%i(J)+S_B_from_V%j(J)
+          POW=K-I      !+1
+          IF(K>=I) THEN   ! changed
+
+             EL%VM(J)=EL%VM(J)+(EL%An(I)*S_B_from_V%VA(I,J)+EL%Bn(I)*S_B_from_V%VB(I,J))*EL%P%B0**POW
+
+          ENDIF
+       ENDDO
+    ENDDO
+
+
 
 
   END SUBROUTINE GETANBNR
@@ -8422,235 +9933,492 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     !    nmul=EL%P%NMUL
     !    IF(EL%P%NMUL> SECTOR_NMUL) THEN
 
-    nmul=SECTOR_NMUL
+    nmul=SECTOR_NMUL_max
 
     !    ENDIF
 
-    DO I=1,S_B(NMUL)%N_MONO
+    DO I=1,S_B_from_V%N_MONO
        EL%BF_X(I)=0.0_dp
        EL%BF_Y(I)=0.0_dp
     ENDDO
     DO I=1,NMUL
-       DO J=1,S_B(NMUL)%N_MONO
-          K=S_B(NMUL)%I(J)+S_B(NMUL)%J(J)
+       DO J=1,S_B_from_V%N_MONO
+          K=S_B_from_V%I(J)+S_B_from_V%J(J)
           POW=K+1-I
           IF(K+1>=I) THEN
 
-             EL%BF_X(J)=EL%BF_X(J)+(EL%AN(I)*S_B(NMUL)%A_X(I,J)+EL%BN(I)*S_B(NMUL)%B_X(I,J))*EL%P%B0**POW
-             EL%BF_Y(J)=EL%BF_Y(J)+(EL%AN(I)*S_B(NMUL)%A_Y(I,J)+EL%BN(I)*S_B(NMUL)%B_Y(I,J))*EL%P%B0**POW
+!             EL%BF_X(J)=EL%BF_X(J)+(EL%AN(I)*S_B%A_X(I,J)+EL%BN(I)*S_B%B_X(I,J))*EL%P%B0**POW
+!             EL%BF_Y(J)=EL%BF_Y(J)+(EL%AN(I)*S_B%A_Y(I,J)+EL%BN(I)*S_B%B_Y(I,J))*EL%P%B0**POW
+             EL%BF_X(J)=EL%BF_X(J)+(EL%AN(I)*S_B_from_V%A_X(I,J)+EL%BN(I)*S_B_from_V%B_X(I,J))*EL%P%B0**POW
+             EL%BF_Y(J)=EL%BF_Y(J)+(EL%AN(I)*S_B_from_V%A_Y(I,J)+EL%BN(I)*S_B_from_V%B_Y(I,J))*EL%P%B0**POW
 
           ENDIF
        ENDDO
     ENDDO
 
+    DO I=1,S_B_from_V%N_MONO
+       EL%VM(I)=0.0_dp
+    ENDDO
+
+    DO I=1,NMUL
+       DO J=1,S_B_from_V%N_MONO
+          K=S_B_from_V%i(J)+S_B_from_V%j(J)
+          POW=K-I      !+1
+          IF(K>=I) THEN   ! changed
+
+             EL%VM(J)=EL%VM(J)+(EL%An(I)*S_B_from_V%VA(I,J)+EL%Bn(I)*S_B_from_V%VB(I,J))*EL%P%B0**POW
+
+          ENDIF
+       ENDDO
+    ENDDO
+
+
   END SUBROUTINE GETANBNP
 
-
-
-  SUBROUTINE GETELECTRICR(EL,X)
+ SUBROUTINE GETAEBER(EL)
     IMPLICIT NONE
     TYPE(TEAPOT),INTENT(INOUT):: EL
-    REAL(DP), INTENT(IN) :: X(6)
-    REAL(DP) VAL(0:NO_E,0:NO_E),V
-    INTEGER I,J,K,POW
+    INTEGER I,J,K,POW,nmul
 
-!    VAL(0,0)=1
+    !    nmul=EL%P%NMUL
+    !    IF(EL%P%NMUL> SECTOR_NMUL) THEN
 
-    val(0,0)=1.0_dp
-    val(1,0)=x(1)
-    val(0,1)=x(3)
-    
-    do pow=2,NO_E
-     val(0,pow)=val(0,pow-1)*x(3)
-     val(pow,0)=val(pow-1,0)*x(1)
-     do j=1,pow-1
-      k=pow-j
-      val(j,k)=val(j-1,k-1)*x(1)*x(3)
+    nmul=SECTOR_NMUL_max
+
+    !    ENDIF
+
+    DO I=1,S_E%N_MONO
+       EL%E_X(I)=0.0_dp
+       EL%E_Y(I)=0.0_dp
+       EL%BF_X(I)=0.0_dp
+       EL%BF_Y(I)=0.0_dp
+    ENDDO
+    DO I=1,NMUL
+       DO J=1,S_E%N_MONO
+          K=S_E%I(J)+S_E%J(J)
+          POW=K+1-I
+
+          IF(K+1>=I) THEN
+
+        if(el%p%exact.or.pow==0) then
+             EL%E_X(J)=EL%E_X(J)+(EL%AE(I)*S_E%A_X(I,J)+EL%BE(I)*S_E%B_X(I,J))*EL%P%B0**POW
+             EL%E_Y(J)=EL%E_Y(J)+(EL%AE(I)*S_E%A_Y(I,J)+EL%BE(I)*S_E%B_Y(I,J))*EL%P%B0**POW
+!             EL%BF_X(J)=EL%BF_X(J)+(EL%AN(I)*S_EB%A_X(I,J)+EL%BN(I)*S_EB%B_X(I,J))*EL%P%B0**POW
+!             EL%BF_Y(J)=EL%BF_Y(J)+(EL%AN(I)*S_EB%A_Y(I,J)+EL%BN(I)*S_EB%B_Y(I,J))*EL%P%B0**POW
+             EL%BF_X(J)=EL%BF_X(J)+(EL%AN(I)*S_B_from_V%A_X(I,J)+EL%BN(I)*S_B_from_V%B_X(I,J))*EL%P%B0**POW
+             EL%BF_Y(J)=EL%BF_Y(J)+(EL%AN(I)*S_B_from_V%A_Y(I,J)+EL%BN(I)*S_B_from_V%B_Y(I,J))*EL%P%B0**POW
+        endif
+        if(i==1.and.(.not.el%p%exact).and.pow>0) then
+             EL%BF_X(J)=EL%BF_X(J)+(EL%BN(I)*S_B_from_V%B_X(I,J))*EL%P%B0**POW
+             EL%BF_Y(J)=EL%BF_Y(J)+(EL%BN(I)*S_B_from_V%B_Y(I,J))*EL%P%B0**POW
+        endif
+          ENDIF
+       ENDDO
+    ENDDO
+
+    DO I=1,S_E%N_MONO
+       EL%PHI(I)=0.0_dp
+       EL%VM(I)=0.0_dp
+    ENDDO
+
+    DO I=1,NMUL
+       DO J=1,S_E%N_MONO
+          K=S_E%i(J)+S_E%j(J)
+          POW=K-I      !+1
+          IF(K>=I) THEN   ! changed
+
+        if(el%p%exact.or.pow==0) then
+             EL%PHI(J)=EL%PHI(J)+(EL%AE(I)*S_E%VA(I,J)+EL%BE(I)*S_E%VB(I,J))*EL%P%B0**POW
+
+             EL%VM(J)=EL%VM(J)+(EL%AN(I)*S_B_from_V%VA(I,J)+EL%BN(I)*S_B_from_V%VB(I,J))*EL%P%B0**POW
+        endif
+
+          ENDIF
+       ENDDO
+    ENDDO
+
+  END SUBROUTINE GETAEBER
+
+ SUBROUTINE GETAEBEP(EL)
+    IMPLICIT NONE
+    TYPE(TEAPOTP),INTENT(INOUT):: EL
+    INTEGER I,J,K,POW,nmul
+
+    !    nmul=EL%P%NMUL
+    !    IF(EL%P%NMUL> SECTOR_NMUL) THEN
+
+    nmul=SECTOR_NMUL_max
+
+    !    ENDIF
+
+    DO I=1,S_E%N_MONO
+       EL%E_X(I)=0.0_dp
+       EL%E_Y(I)=0.0_dp
+       EL%BF_X(I)=0.0_dp
+       EL%BF_Y(I)=0.0_dp
+    ENDDO
+    DO I=1,NMUL
+       DO J=1,S_E%N_MONO
+          K=S_E%I(J)+S_E%J(J)
+          POW=K+1-I
+          IF(K+1>=I) THEN
+
+        if(el%p%exact.or.pow==0) then
+             EL%E_X(J)=EL%E_X(J)+(EL%AE(I)*S_E%A_X(I,J)+EL%BE(I)*S_E%B_X(I,J))*EL%P%B0**POW
+             EL%E_Y(J)=EL%E_Y(J)+(EL%AE(I)*S_E%A_Y(I,J)+EL%BE(I)*S_E%B_Y(I,J))*EL%P%B0**POW
+!             EL%BF_X(J)=EL%BF_X(J)+(EL%AN(I)*S_EB%A_X(I,J)+EL%BN(I)*S_EB%B_X(I,J))*EL%P%B0**POW
+!             EL%BF_Y(J)=EL%BF_Y(J)+(EL%AN(I)*S_EB%A_Y(I,J)+EL%BN(I)*S_EB%B_Y(I,J))*EL%P%B0**POW
+             EL%BF_X(J)=EL%BF_X(J)+(EL%AN(I)*S_B_from_V%A_X(I,J)+EL%BN(I)*S_B_from_V%B_X(I,J))*EL%P%B0**POW
+             EL%BF_Y(J)=EL%BF_Y(J)+(EL%AN(I)*S_B_from_V%A_Y(I,J)+EL%BN(I)*S_B_from_V%B_Y(I,J))*EL%P%B0**POW
+        endif
+        if(i==1.and.(.not.el%p%exact).and.pow>0) then
+             EL%BF_X(J)=EL%BF_X(J)+(EL%BN(I)*S_B_from_V%B_X(I,J))*EL%P%B0**POW
+             EL%BF_Y(J)=EL%BF_Y(J)+(EL%BN(I)*S_B_from_V%B_Y(I,J))*EL%P%B0**POW
+        endif
+          ENDIF
+       ENDDO
+    ENDDO
+
+    DO I=1,S_E%N_MONO
+       EL%PHI(I)=0.0_dp
+       EL%VM(I)=0.0_dp
+    ENDDO
+
+    DO I=1,NMUL
+       DO J=1,S_E%N_MONO
+          K=S_E%i(J)+S_E%j(J)
+          POW=K-I      !+1
+          IF(K>=I) THEN   ! changed
+
+        if(el%p%exact.or.pow==0) then
+             EL%PHI(J)=EL%PHI(J)+(EL%AE(I)*S_E%VA(I,J)+EL%BE(I)*S_E%VB(I,J))*EL%P%B0**POW
+
+             EL%VM(J)=EL%VM(J)+(EL%AN(I)*S_B_from_V%VA(I,J)+EL%BN(I)*S_B_from_V%VB(I,J))*EL%P%B0**POW
+        endif
+
+          ENDIF
+       ENDDO
+    ENDDO
+
+  END SUBROUTINE GETAEBEP
+
+  SUBROUTINE GETMAGNETICR(EL,B,X,kick)
+     IMPLICIT NONE
+     real(dp),INTENT(INOUT):: X(6),B(3)
+     TYPE(TEAPOT),INTENT(IN):: EL
+     real(dp) X1,X3,BX,BY,BTX,BTY
+     logical(lp), optional :: kick
+     logical(lp) kic
+     INTEGER J,M,A,K
+
+     kic=my_false
+     if(present(kick)) kic=kick
+
+     X1=X(1)
+     X3=X(3)
+
+     BX=0.0_dp
+     BY=0.0_dp
+
+
+     k=0
+     m=EL%P%nmul
+     do a=m,1,-1
+        BTX=0.0_dp
+        BTY=0.0_dp
+        do j=m-a,1,-1
+           k=k+1
+           BTX= (BTX+EL%BF_X(k))*X3  !x1
+           BTY= (BTY+EL%BF_Y(k))*X3
+        enddo
+
+        k=k+1
+        BTX= (BTX+EL%BF_X(k))
+        BTY= (BTY+EL%BF_Y(k))
+        BX= (BX+BTX)*X1
+        BY= (BY+BTY)*X1
      enddo
-    enddo
 
-      EL%E_X=0.0_dp
-      EL%E_Y=0.0_dp
-      EL%PHI=0.0_dp
-      
-      do i=0,NO_E
-      do j=0,NO_E  
-      if(i+j>NO_E) cycle 
-      DO K=1,NO_E
-       V=EL%AE(K)*EL%AS(k,i,j)+EL%BE(K)*EL%BS(k,i,j)
-                     
-       EL%PHI=EL%PHI+val(i,j)*V
-       IF(I/=0) EL%E_X=EL%E_X-val(i-1,j)*I*V
-       IF(J/=0) EL%E_Y=EL%E_Y-val(i,j-1)*I*V
-      enddo
-      
-      enddo
-      enddo
+     BTX=0.0_dp
+     BTY=0.0_dp
+     do j=m,1,-1
+        k=k+1
+        BTX= (BTX+EL%BF_X(k))*X3
+        BTY= (BTY+EL%BF_Y(k))*X3
+     enddo
+     k=k+1
+
+     BX= BX+BTX+EL%BF_X(k)
+     BY= BY+BTY+EL%BF_Y(k)
+
+     if(kic) then
+      if(EL%P%exact) then
+        B(1)=-BY*(1.0_dp+EL%P%B0*X(1))
+        B(2)=BX*(1.0_dp+EL%P%B0*X(1))
+      else
+        B(1)=-BY-el%bn(1)*EL%P%B0*X(1)
+        B(2)=BX
+      endif
+
+      B(3)=0.0_dp
+
+     else
+      B(1)=BX
+      B(2)=BY
+      B(3)=0.0_dp
+     endif
+
+
+ END SUBROUTINE GETMAGNETICR
+
+ SUBROUTINE GETMAGNETICP(EL,B,X,kick)
+     IMPLICIT NONE
+     TYPE(REAL_8),INTENT(INOUT):: X(6),B(3)
+     TYPE(TEAPOTP),INTENT(IN):: EL
+     TYPE(REAL_8) X1,X3,BX,BY,BTX,BTY
+     logical(lp), optional :: kick
+     logical(lp) kic
+     INTEGER J,M,A,K
+
+!    call PRTP("GETMAGNETIC:0", X)
+
+     CALL ALLOC(X1,X3,BX,BY,BTX,BTY)
+
+
+     kic=my_false
+     if(present(kick)) kic=kick
+
+     X1=X(1)
+     X3=X(3)
+
+     BX=0.0_dp
+     BY=0.0_dp
+
+
+     k=0
+     m=EL%P%nmul
+     do a=m,1,-1
+        BTX=0.0_dp
+        BTY=0.0_dp
+        do j=m-a,1,-1
+           k=k+1
+           BTX= (BTX+EL%BF_X(k))*X3  !x1
+           BTY= (BTY+EL%BF_Y(k))*X3
+        enddo
+
+        k=k+1
+        BTX= (BTX+EL%BF_X(k))
+        BTY= (BTY+EL%BF_Y(k))
+        BX= (BX+BTX)*X1
+        BY= (BY+BTY)*X1
+     enddo
+
+     BTX=0.0_dp
+     BTY=0.0_dp
+     do j=m,1,-1
+        k=k+1
+        BTX= (BTX+EL%BF_X(k))*X3
+        BTY= (BTY+EL%BF_Y(k))*X3
+     enddo
+     k=k+1
+
+     BX= BX+BTX+EL%BF_X(k)
+     BY= BY+BTY+EL%BF_Y(k)
+
+     if(kic) then
+      if(EL%P%exact) then
+        B(1)=-BY*(1.0_dp+EL%P%B0*X(1))
+        B(2)=BX*(1.0_dp+EL%P%B0*X(1))
+      else
+        B(1)=-BY-el%bn(1)*EL%P%B0*X(1)
+        B(2)=BX
+      endif
+
+      B(3)=0.0_dp
+
+     else
+      B(1)=BX
+      B(2)=BY
+      B(3)=0.0_dp
+     endif
+
+
+     CALL KILL(X1,X3,BX,BY,BTX,BTY)
+
+!    call PRTP("GETMAGNETIC:1", X)
+
+ END SUBROUTINE GETMAGNETICP
+
+ SUBROUTINE GETELECTRICR(EL,E,phi,B,VM,X,kick)
+    IMPLICIT NONE
+    real(dp),INTENT(INOUT):: X(6),E(3),B(3),phi,VM  !  is actually the elecric field
+    TYPE(TEAPOT),INTENT(IN):: EL
+    real(dp) X1,X3,BX,BY,BTX,BTY,BtYT,phit,VMT
+    real(dp) EX,ETX,EY,ETY
+    logical(lp), optional :: kick
+    logical(lp) kic
+    INTEGER J,M,A,K
+!VM is the scalar potential of the magnetic field!!!!!
+    kic=my_false
+    if(present(kick)) kic=kick
+
+    X1=X(1)
+    X3=X(3)
+
+    BX=0.0_dp
+    BY=0.0_dp
+    EX=0.0_dp
+    EY=0.0_dp
+    phi=0.0_dp
+    VM=0.0_dp
+
+    k=0
+    m=EL%P%nmul
+    do a=m,1,-1
+       ETX=0.0_dp
+       ETY=0.0_dp
+       BTX=0.0_dp
+       BTY=0.0_dp
+       phit=0.0_dp
+       VMt=0.0_dp
+       do j=m-a,1,-1
+          k=k+1
+          !b%i(k)=a
+          !b%j(k)=j
+          BTX= (BTX+EL%BF_X(k))*X3  !x1
+          BTY= (BTY+EL%BF_Y(k))*X3
+          ETX= (ETX+EL%E_X(k))*X3  !x1
+          ETY= (ETY+EL%E_Y(k))*X3
+          phit= (phit+EL%phi(k))*X3
+          VMt= (VMt+EL%VM(k))*X3
+       enddo
+
+       k=k+1
+       !  b%i(k)=a
+       !  b%j(k)=0
+       BTX= (BTX+EL%BF_X(k))
+       BTY= (BTY+EL%BF_Y(k))
+       ETX= (ETX+EL%E_X(k))
+       ETY= (ETY+EL%E_Y(k))
+       phit= (phit+EL%phi(k))
+       VMt= (VMt+EL%VM(k))
+       BX= (BX+BTX)*X1
+       BY= (BY+BTY)*X1
+       EX= (EX+ETX)*X1
+       EY= (EY+ETY)*X1
+       phi= (phi+phit)*X1
+       VM= (VM+VMt)*X1
+    enddo
+    BTX=0.0_dp
+    BTY=0.0_dp
+    ETX=0.0_dp
+    ETY=0.0_dp
+    phit=0.0_dp
+    VMt=0.0_dp
+    do j=m,1,-1
+       k=k+1
+       !  b%i(k)=0
+       !  b%j(k)=j
+       BTX= (BTX+EL%BF_X(k))*X3
+       BTY= (BTY+EL%BF_Y(k))*X3
+       ETX= (ETX+EL%E_X(k))*X3
+       ETY= (ETY+EL%E_Y(k))*X3
+       phit= (phit+EL%phi(k))*X3
+       VMt= (VMt+EL%VM(k))*X3
+    enddo
+    k=k+1
+    !    b%i(k)=0
+    !    b%j(k)=0
+    BX= BX+BTX+EL%BF_X(k)  !+X3
+    BY= BY+BTY+EL%BF_Y(k)  !+X3
+    EX= EX+ETX+EL%E_X(k)  !+X3
+    EY= EY+ETY+EL%E_Y(k)  !+X3
+    phi= phi+phit+EL%phi(k)  !+X3
+    VM= VM+VMt+EL%VM(k)  !+X3
+
+ !   if(kic) then
+ !    B(1)=BX
+ !    B(2)=BY
+ !    B(3)=0.0_dp
+ !   else
+ !    B(1)=BY/(1.0_dp+EL%P%B0*X(1))
+ !    B(2)=-BX/(1.0_dp+EL%P%B0*X(1))
+ !    B(3)=0.0_dp
+ !   endif
+
+    if(kic) then
+     if(EL%P%exact) then
+      B(1)=-BY*(1.0_dp+EL%P%B0*X(1))
+      B(2)=BX*(1.0_dp+EL%P%B0*X(1))
+    else
+      B(1)=-BY-el%bn(1)*EL%P%B0*X(1)
+      B(2)=BX
+    endif
+      B(3)=0.0_dp
+    else
+     B(1)=BX
+     B(2)=BY
+     B(3)=0.0_dp
+    endif
+
+
+    E(1)=Ex*volt_c/EL%P%P0C
+    E(2)=Ey*volt_c/EL%P%P0C
+    E(3)=0.0_dp
+    phi=phi*volt_c/EL%P%P0C
+
+
+
 
   END SUBROUTINE GETELECTRICR
 
-  SUBROUTINE GETELECTRICP(EL,X)
+
+  SUBROUTINE GETELECTRICP(EL,E,phi,B,VM,X,kick)
     IMPLICIT NONE
-    TYPE(TEAPOTP),INTENT(INOUT):: EL
-    type(real_8), INTENT(IN) :: X(6)
-    type(real_8)  VAL(0:NO_E,0:NO_E),V
-    INTEGER I,J,K,POW
-
-    call alloc(v)
-    do i=0,no_e
-    do j=0,no_e
-    call alloc(val(i,j))
-    enddo
-    enddo
-
-!    VAL(0,0)=1
-
-    val(0,0)=1.0_dp
-    val(1,0)=x(1)
-    val(0,1)=x(3)
-    
-    do pow=2,NO_E
-     val(0,pow)=val(0,pow-1)*x(3)
-     val(pow,0)=val(pow-1,0)*x(1)
-     do j=1,pow-1
-      k=pow-j
-      val(j,k)=val(j-1,k-1)*x(1)*x(3)
-     enddo
-    enddo
-
-      EL%E_X=0.0_dp
-      EL%E_Y=0.0_dp
-      EL%PHI=0.0_dp
-      
-      do i=0,NO_E
-      do j=0,NO_E  
-      if(i+j>NO_E) cycle 
-      DO K=1,NO_E
-       V=EL%AE(K)*EL%AS(k,i,j)+EL%BE(K)*EL%BS(k,i,j)
-                     
-       EL%PHI=EL%PHI+val(i,j)*V
-       IF(I/=0) EL%E_X=EL%E_X-val(i-1,j)*I*V
-       IF(J/=0) EL%E_Y=EL%E_Y-val(i,j-1)*I*V
-      enddo
-      
-      enddo
-      enddo
-
-    call kill(v)
-    do i=0,no_e
-    do j=0,no_e
-    call kill(val(i,j))
-    enddo
-    enddo
-
-  END SUBROUTINE GETELECTRICP
-
-  SUBROUTINE GETMULB_TEAPOTR(EL,B,X)
-    IMPLICIT NONE
-    real(dp),INTENT(INOUT):: X(6),B(3)
-    TYPE(TEAPOT),INTENT(IN):: EL
-    real(dp) X1,X3,BX,BY,BTX,BTY,BtYT
-    INTEGER J,M,A,K
-
-    X1=X(1)
-    X3=X(3)
-
-    BX=0.0_dp
-    BY=0.0_dp
-
-    k=0
-    m=EL%P%nmul-1
-    do a=m,1,-1
-       BTX=0.0_dp
-       BTY=0.0_dp
-       do j=m-a,1,-1
-          k=k+1
-          !b%i(k)=a
-          !b%j(k)=j
-          BTX= (BTX+EL%BF_X(k))*X3  !x1
-          BTY= (BTY+EL%BF_Y(k))*X3
-       enddo
-
-       k=k+1
-       !  b%i(k)=a
-       !  b%j(k)=0
-       BTX= (BTX+EL%BF_X(k))
-       BTY= (BTY+EL%BF_Y(k))
-       BX= (BX+BTX)*X1
-       BY= (BY+BTY)*X1
-    enddo
-    BTX=0.0_dp
-    BTY=0.0_dp
-    do j=m,1,-1
-       k=k+1
-       !  b%i(k)=0
-       !  b%j(k)=j
-       BTX= (BTX+EL%BF_X(k))*X3
-       BTY= (BTY+EL%BF_Y(k))*X3
-    enddo
-    k=k+1
-    !    b%i(k)=0
-    !    b%j(k)=0
-    BX= BX+BTX+EL%BF_X(k)  !+X3
-    BY= BY+BTY+EL%BF_Y(k)  !+X3
-
-    ! etienne
-    IF(EL%P%NMUL>SECTOR_NMUL) THEN
-       BtY=EL%BN(EL%P%NMUL)
-       BtX=EL%AN(EL%P%NMUL)
-
-
-       DO  J=EL%P%NMUL-1,SECTOR_NMUL+1,-1
-          BtYT=X1*BtY-X3*BtX+EL%BN(J)
-          BtX =X3*BtY+X1*BtX+EL%AN(J)
-          BtY =BtYT
-       ENDDO
-
-       DO  J=SECTOR_NMUL, 1,-1
-          BtYT=X1*BtY-X3*BtX
-          BtX =X3*BtY+X1*BtX
-          BtY =BtYT
-       ENDDO
-
-       BX= BX-BTy       !!!! bug 2011 JUly 18
-       BY= BY+BTx       !!!! bug 2011 JUly 18
-
-    ENDIF
-
-
-
-    B(1)=BY/(1.0_dp+EL%P%B0*X(1))
-    B(2)=-BX/(1.0_dp+EL%P%B0*X(1))
-    B(3)=0.0_dp
-
-  END SUBROUTINE GETMULB_TEAPOTR
-
-  SUBROUTINE GETMULB_TEAPOTP(EL,B,X)
-    IMPLICIT NONE
-    TYPE(REAL_8),INTENT(INOUT):: X(6),B(3)
+    TYPE(REAL_8),INTENT(INOUT):: X(6),B(3),E(3),phi,VM
     TYPE(TEAPOTP),INTENT(IN):: EL
     TYPE(REAL_8) X1,X3,BX,BY,BTX,BTY,BtYT
+    TYPE(REAL_8) phit,EX,ETX,EY,ETY,VMT
+    logical(lp), optional :: kick
+    logical(lp) kic
     INTEGER J,M,A,K
+    kic=my_false
+    if(present(kick)) kic=kick
+
+!    call PRTP("GETELECTRIC:0", X)
 
     CALL ALLOC(X1,X3,BX,BY,BTX,BTY,BtYT)
+    CALL ALLOC(phit,EX,ETX,EY,ETY,VMT)
 
     X1=X(1)
     X3=X(3)
 
     BX=0.0_dp
     BY=0.0_dp
+    EX=0.0_dp
+    EY=0.0_dp
+    phi=0.0_dp
+    VM=0.0_dp
 
     k=0
-    m=EL%P%nmul-1
+    m=EL%P%nmul
     do a=m,1,-1
+       ETX=0.0_dp
+       ETY=0.0_dp
        BTX=0.0_dp
        BTY=0.0_dp
+       phit=0.0_dp
+       VMt=0.0_dp
        do j=m-a,1,-1
           k=k+1
           !b%i(k)=a
           !b%j(k)=j
           BTX= (BTX+EL%BF_X(k))*X3  !x1
           BTY= (BTY+EL%BF_Y(k))*X3
+          ETX= (ETX+EL%E_X(k))*X3  !x1
+          ETY= (ETY+EL%E_Y(k))*X3
+          phit= (phit+EL%phi(k))*X3
+          VMt= (VMt+EL%VM(k))*X3
        enddo
 
        k=k+1
@@ -8658,144 +10426,207 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        !  b%j(k)=0
        BTX= (BTX+EL%BF_X(k))
        BTY= (BTY+EL%BF_Y(k))
+       ETX= (ETX+EL%E_X(k))
+       ETY= (ETY+EL%E_Y(k))
+       phit= (phit+EL%phi(k))
+       VMt= (VMt+EL%VM(k))
        BX= (BX+BTX)*X1
        BY= (BY+BTY)*X1
+       EX= (EX+ETX)*X1
+       EY= (EY+ETY)*X1
+       phi= (phi+phit)*X1
+       VM= (VM+VMT)*X1
     enddo
     BTX=0.0_dp
     BTY=0.0_dp
+    ETX=0.0_dp
+    ETY=0.0_dp
+    phit=0.0_dp
+    VMt=0.0_dp
     do j=m,1,-1
        k=k+1
        !  b%i(k)=0
        !  b%j(k)=j
        BTX= (BTX+EL%BF_X(k))*X3
        BTY= (BTY+EL%BF_Y(k))*X3
+       ETX= (ETX+EL%E_X(k))*X3
+       ETY= (ETY+EL%E_Y(k))*X3
+       phit= (phit+EL%phi(k))*X3
+       VMt= (VMt+EL%VM(k))*X3
     enddo
     k=k+1
     !    b%i(k)=0
     !    b%j(k)=0
     BX= BX+BTX+EL%BF_X(k)  !+X3
     BY= BY+BTY+EL%BF_Y(k)  !+X3
+    EX= EX+ETX+EL%E_X(k)  !+X3
+    EY= EY+ETY+EL%E_Y(k)  !+X3
+    phi= phi+phit+EL%phi(k)  !+X3
+    VM= VM+VMt+EL%VM(k)  !+X3
 
-    ! etienne
-    IF(EL%P%NMUL>SECTOR_NMUL) THEN
-       BtY=EL%BN(EL%P%NMUL)
-       BtX=EL%AN(EL%P%NMUL)
+!    if(kic) then
+!     B(1)=BX
+!     B(2)=BY
+!     B(3)=0.0_dp
+!    else
+!     B(1)=BY/(1.0_dp+EL%P%B0*X(1))
+!     B(2)=-BX/(1.0_dp+EL%P%B0*X(1))
+!     B(3)=0.0_dp
+!    endif
 
+    if(kic) then
+     if(EL%P%exact) then
+      B(1)=-BY*(1.0_dp+EL%P%B0*X(1))
+      B(2)=BX*(1.0_dp+EL%P%B0*X(1))
+    else
+      B(1)=-BY-el%bn(1)*EL%P%B0*X(1)
+      B(2)=BX
+    endif
+     B(3)=0.0_dp
+    else
+     B(1)=BX
+     B(2)=BY
+     B(3)=0.0_dp
+    endif
 
-       DO  J=EL%P%NMUL-1,SECTOR_NMUL+1,-1
-          BtYT=X1*BtY-X3*BtX+EL%BN(J)
-          BtX =X3*BtY+X1*BtX+EL%AN(J)
-          BtY =BtYT
-       ENDDO
-
-       DO  J=SECTOR_NMUL, 1,-1
-          BtYT=X1*BtY-X3*BtX
-          BtX =X3*BtY+X1*BtX
-          BtY =BtYT
-       ENDDO
-
-       BX= BX-BTy       !!!! bug 2011 JUly 18
-       BY= BY+BTx       !!!! bug 2011 JUly 18
-
-    ENDIF
-
-
-
-    B(1)=BY/(1.0_dp+EL%P%B0*X(1))
-    B(2)=-BX/(1.0_dp+EL%P%B0*X(1))
-    B(3)=0.0_dp
+    E(1)=Ex*volt_c/EL%P%P0C
+    E(2)=Ey*volt_c/EL%P%P0C
+    E(3)=0.0_dp
+    phi=phi*volt_c/EL%P%P0C
 
     CALL KILL(X1,X3,BX,BY,BTX,BTY,BtYT)
+    CALL KILL(phit,EX,ETX,EY,ETY,VMT)
 
-  END SUBROUTINE GETMULB_TEAPOTP
+!    call PRTP("GETELECTRIC:1", X)
+  END SUBROUTINE GETELECTRICP
 
 
-  ! cav_trav
-
-  subroutine feval_teapotr(X,k,f,EL)   ! MODELLED BASED ON DRIFT
+ subroutine feval_teapotr(X,k,f,EL)   !electric teapot s
     IMPLICIT NONE
     real(dp), INTENT(INout) :: X(6)
     real(dp), INTENT(INOUT) :: F(6)
-    REAL(DP) PZ,DEL,H,B(3)
-    TYPE(teapot),  INTENT(INOUT) :: EL
+    REAL(DP) PZ,DEL,H,B(3),E(3),dir,VM
+    TYPE(teapot),  INTENT(IN) :: EL
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
- 
-     call GETELECTRIC(EL,X)
-     CALL GETMULB_TEAPOT(EL,B,X)
+
+     call GETELECTRIC(EL,E,DEL,B,VM,X,kick=my_true)
+     e(3)=del
+     DIR=EL%P%DIR*EL%P%CHARGE
+
      IF(EL%P%EXACT) THEN
         if(k%TIME) then
            H=1.0_dp+EL%P%B0*X(1)
-           DEL=1.0_dp/EL%P%BETA0+x(5)-EL%PHI
-           PZ=ROOT(DEL**2-1.0_dp/EL%P%GAMBET**2-X(2)**2-X(4)**2)
+           DEL=x(5)-E(3)*EL%P%CHARGE
+           PZ=ROOT(1.0_dp+2*del/EL%P%BETA0+del**2-x(2)**2-x(4)**2)
            F(1)=X(2)*H/PZ
            F(3)=X(4)*H/PZ
-           F(2)=EL%P%B0*PZ-B(2)*H+H*DEL*EL%E_X/PZ
-           F(4)=B(1)*H+H*DEL*EL%E_Y/PZ
+           F(2)=EL%P%B0*PZ+dir*B(1)+H*(1.0_dp/EL%P%BETA0+del)/pz*E(1)*EL%P%CHARGE
+           F(4)=dir*B(2)+H*(1.0_dp/EL%P%BETA0+del)/pz*E(2)*EL%P%CHARGE
            F(5)=0.0_dp
-           F(6)=H*DEL/PZ
+           F(6)=H*(1.0_dp/EL%P%BETA0+del)/PZ+(k%TOTALPATH-1)/EL%P%BETA0  !! ld=L in sector bend
         else
-           H=1.0_dp+X(1)
-           DEL=1.0_dp+x(5)-EL%PHI
-           PZ=ROOT(DEL**2-X(2)**2-X(4)**2)
+           H=1.0_dp+EL%P%B0*X(1)
+           DEL=x(5)-E(3)*EL%P%CHARGE
+           PZ=ROOT(1.0_dp+2*del+del**2-x(2)**2-x(4)**2)
            F(1)=X(2)*H/PZ
            F(3)=X(4)*H/PZ
-           F(2)=EL%P%B0*PZ-B(2)*H+H*DEL*EL%E_X/PZ
-           F(4)=B(1)*H+H*DEL*EL%E_Y/PZ
+           F(2)=EL%P%B0*PZ+dir*B(1)+H*(1.0_dp+del)/pz*E(1)*EL%P%CHARGE
+           F(4)=dir*B(2)+H*(1.0_dp+del)/pz*E(2)*EL%P%CHARGE
            F(5)=0.0_dp
-           F(6)=H*DEL/PZ
+           F(6)=H*(1.0_dp+del)/PZ+(k%TOTALPATH-1)
         endif
      ELSE
-      STOP 468
-!        if(k%TIME) then
-!        else
-!        endif
+        if(k%TIME) then
+           DEL=x(5)-E(3)*EL%P%CHARGE
+           PZ=ROOT(1.0_dp+2*del/EL%P%BETA0+del**2)
+           F(1)=X(2)/PZ
+           F(3)=X(4)/PZ
+           F(2)=EL%P%B0*pz+dir*B(1)+(1.0_dp/EL%P%BETA0+del)/pz*E(1)*EL%P%CHARGE* &
+            (1.0_dp+0.5_dp*(x(2)**2+x(4)**2)/pz**2)
+           F(4)=dir*B(2)+(1.0_dp/EL%P%BETA0+del)/pz*E(2)*EL%P%CHARGE*(1.0_dp+0.5_dp*(x(2)**2+x(4)**2)/pz**2)
+           F(5)=0.0_dp
+           F(6)=(1.0_dp/EL%P%BETA0+del)/PZ*(1.0_dp+0.5_dp*(x(2)**2+x(4)**2)/pz**2)+(k%TOTALPATH-1)/EL%P%BETA0 &
+           +EL%P%B0*x(1)/EL%P%BETA0  !! ld=L in sector bend
+        else
+           DEL=x(5)-E(3)*EL%P%CHARGE
+           PZ=1.0_dp+del
+           F(1)=X(2)/PZ
+           F(3)=X(4)/PZ
+           F(2)=EL%P%B0*pz+dir*B(1)+(1.0_dp+del)/pz*E(1)*EL%P%CHARGE*(1.0_dp+0.5_dp*(x(2)**2+x(4)**2)/pz**2)
+           F(4)=dir*B(2)+(1.0_dp+del)/pz*E(2)*EL%P%CHARGE*(1.0_dp+0.5_dp*(x(2)**2+x(4)**2)/pz**2)
+           F(5)=0.0_dp
+           F(6)=(1.0_dp+del)/PZ*(1.0_dp+0.5_dp*(x(2)**2+x(4)**2)/pz**2)+(k%TOTALPATH-1)+EL%P%B0*x(1)   !! ld=L in sector bend
+        endif
      ENDIF
-     
+     global_e= DEL*el%p%p0c
    END subroutine feval_teapotr
- 
+
   subroutine feval_teapotp(X,k,f,EL)   ! MODELLED BASED ON DRIFT
     IMPLICIT NONE
     type(real_8), INTENT(INout) :: X(6)
     type(real_8),  INTENT(INOUT) :: F(6)
-    type(real_8) PZ,DEL,H,B(3)
-    TYPE(teapotp),  INTENT(INOUT) :: EL
+    type(real_8) PZ,DEL,H,B(3),E(3),VM
+    TYPE(teapotp),  INTENT(IN) :: EL
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
-     
-     call alloc(PZ,DEL,H,B(1),B(2),B(3))
-     call GETELECTRIC(EL,X)
-     CALL GETMULB_TEAPOT(EL,B,X)
+    real(dp) dir
+
+     call alloc(PZ,DEL,H,B(1),B(2),B(3),VM)
+      call alloc(E,3)
+
+     DIR=EL%P%DIR*EL%P%CHARGE
+     call GETELECTRIC(EL,E,del,B,VM,X,kick=my_true)
+     E(3)=del
+
      IF(EL%P%EXACT) THEN
         if(k%TIME) then
            H=1.0_dp+EL%P%B0*X(1)
-           DEL=1.0_dp/EL%P%BETA0+x(5)-EL%PHI
-           PZ=SQRT(DEL**2-1.0_dp/EL%P%GAMBET**2-X(2)**2-X(4)**2)
+           DEL=x(5)-E(3)*EL%P%CHARGE
+           PZ=sqrt(1.0_dp+2*del/EL%P%BETA0+del**2-x(2)**2-x(4)**2)
            F(1)=X(2)*H/PZ
            F(3)=X(4)*H/PZ
-           F(2)=EL%P%B0*PZ-B(2)*H+H*DEL*EL%E_X/PZ
-           F(4)=B(1)*H+H*DEL*EL%E_Y/PZ
+           F(2)=EL%P%B0*PZ+dir*B(1)+H*(1.0_dp/EL%P%BETA0+del)/pz*E(1)*EL%P%CHARGE
+           F(4)=dir*B(2)+H*(1.0_dp/EL%P%BETA0+del)/pz*E(2)*EL%P%CHARGE
            F(5)=0.0_dp
-           F(6)=H*DEL/PZ
+           F(6)=H*(1.0_dp/EL%P%BETA0+del)/PZ+(k%TOTALPATH-1)/EL%P%BETA0  !! ld=L in sector bend
         else
-           H=1.0_dp+X(1)
-           DEL=1.0_dp+x(5)-EL%PHI
-           PZ=SQRT(DEL**2-X(2)**2-X(4)**2)
+           H=1.0_dp+EL%P%B0*X(1)
+           DEL=x(5)-E(3)*EL%P%CHARGE
+           PZ=sqrt(1.0_dp+2*del+del**2-x(2)**2-x(4)**2)
            F(1)=X(2)*H/PZ
            F(3)=X(4)*H/PZ
-           F(2)=EL%P%B0*PZ-B(2)*H+H*DEL*EL%E_X/PZ
-           F(4)=B(1)*H+H*DEL*EL%E_Y/PZ
+           F(2)=EL%P%B0*PZ+dir*B(1)+H*(1.0_dp+del)/pz*E(1)*EL%P%CHARGE
+           F(4)=dir*B(2)+H*(1.0_dp+del)/pz*E(2)*EL%P%CHARGE
            F(5)=0.0_dp
-           F(6)=H*DEL/PZ
+           F(6)=H*(1.0_dp+del)/PZ+(k%TOTALPATH-1)
         endif
      ELSE
-      STOP 468
-!        if(k%TIME) then
-!        else
-!        endif
+        if(k%TIME) then
+           DEL=x(5)-E(3)*EL%P%CHARGE
+           PZ=sqrt(1.0_dp+2*del/EL%P%BETA0+del**2)
+           F(1)=X(2)/PZ
+           F(3)=X(4)/PZ
+           F(2)=EL%P%B0*pz+dir*B(1)+(1.0_dp/EL%P%BETA0+del)/pz*E(1)*EL%P%CHARGE*  &
+            (1.0_dp+0.5_dp*(x(2)**2+x(4)**2)/pz**2)
+           F(4)=dir*B(2)+(1.0_dp/EL%P%BETA0+del)/pz*E(2)*EL%P%CHARGE*(1.0_dp+0.5_dp*(x(2)**2+x(4)**2)/pz**2)
+           F(5)=0.0_dp
+           F(6)=(1.0_dp/EL%P%BETA0+del)/PZ*(1.0_dp+0.5_dp*(x(2)**2+x(4)**2)/pz**2)+ &
+            (k%TOTALPATH-1)/EL%P%BETA0+EL%P%B0*x(1)/EL%P%BETA0  !! ld=L in sector bend
+        else
+           DEL=x(5)-E(3)*EL%P%CHARGE
+           PZ=1.0_dp+del
+           F(1)=X(2)/PZ
+           F(3)=X(4)/PZ
+           F(2)=EL%P%B0*pz+dir*B(1)+(1.0_dp+del)/pz*E(1)*EL%P%CHARGE*(1.0_dp+0.5_dp*(x(2)**2+x(4)**2)/pz**2)
+           F(4)=dir*B(2)+(1.0_dp+del)/pz*E(2)*EL%P%CHARGE*(1.0_dp+0.5_dp*(x(2)**2+x(4)**2)/pz**2)
+           F(5)=0.0_dp
+           F(6)=(1.0_dp+del)/PZ*(1.0_dp+0.5_dp*(x(2)**2+x(4)**2)/pz**2)+(k%TOTALPATH-1)+EL%P%B0*x(1)   !! ld=L in sector bend
+        endif
      ENDIF
-     call KILL(PZ,DEL,H,B(1),B(2),B(3))
-     
+     global_e= DEL*el%p%p0c
+     call KILL(PZ,DEL,H,B(1),B(2),B(3),VM)
+     call KILL(E,3)
    END subroutine feval_teapotp
- 
+
    subroutine rk2_teapotr(h,GR,y,k)
     IMPLICIT none
 
@@ -8803,7 +10634,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     parameter (ne=6)
     real(dp), INTENT(INOUT)::  y(ne)
     real(dp)  yt(ne),f(ne),a(ne),b(ne)
-    type (teapot) ,INTENT(INOUT)::  GR
+    type (teapot) ,INTENT(IN)::  GR
     integer j
     real(dp), intent(inout) :: h
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
@@ -8836,7 +10667,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     parameter (ne=6)
     type (real_8), INTENT(INOUT)::  y(ne)
     type (real_8)  yt(ne),f(ne),a(ne),b(ne)
-    type (teapotp) ,INTENT(INOUT)::  GR
+    type (teapotp) ,INTENT(IN)::  GR
     integer j
     type(real_8), intent(inout) :: h
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
@@ -8879,7 +10710,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     parameter (ne=6)
     real(dp), INTENT(INOUT)::  y(ne)
     real(dp)  yt(ne),f(ne),a(ne),b(ne),c(ne),d(ne)
-    type (teapot) ,INTENT(INOUT)::  GR
+    type (teapot) ,INTENT(IN)::  GR
     integer j
     real(dp), intent(inout) :: h
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
@@ -8929,7 +10760,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     integer ne
     parameter (ne=6)
     type(real_8), INTENT(INOUT)::  y(ne)
-    type (teapotp) ,INTENT(INOUT)::  GR
+    type (teapotp) ,INTENT(IN)::  GR
     type(real_8), intent(inout) :: h
     type(real_8)  yt(ne),f(ne),a(ne),b(ne),c(ne),d(ne)
     integer j
@@ -9002,7 +10833,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     parameter (ne=6)
     real(dp), INTENT(INOUT)::  y(ne)
     real(dp)  yt(ne),f(ne),a(ne),b(ne),c(ne),d(ne),e(ne),g(ne),o(ne),p(ne)
-    type (teapot) ,INTENT(INOUT)::  GR
+    type (teapot) ,INTENT(IN)::  GR
     integer j
     real(dp), intent(inout) :: h
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
@@ -9092,7 +10923,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     parameter (ne=6)
     type (real_8), INTENT(INOUT)::  y(ne)
     type (real_8)  yt(ne),f(ne),a(ne),b(ne),c(ne),d(ne),e(ne),g(ne),o(ne),p(ne)
-    type (teapotp) ,INTENT(INOUT)::  GR
+    type (teapotp) ,INTENT(IN)::  GR
     integer j
     type(real_8), intent(inout) :: h
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
@@ -9190,7 +11021,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     return
   end  subroutine rk6_teapotp
- 
+
    SUBROUTINE SSECH1R(EL,YL,DL,X,k)
     IMPLICIT NONE
     real(dp),INTENT(INOUT):: X(6)
@@ -9279,6 +11110,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     real(dp)  b,R
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    call PRTP("SPROT:0", X)
+
     if(EL%P%B0/=0.0_dp) then
        CALL ALLOC( XN,6)
        CALL ALLOC( PZ)
@@ -9318,6 +11151,9 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     else
        CALL DRIFT(YL,DL,EL%P%beta0,k%TOTALPATH,EL%P%EXACT,k%TIME,X)
     endif
+
+    call PRTP("SPROT:1", X)
+
   END SUBROUTINE SPROTP
 
   SUBROUTINE Ssecr(EL,YL,DL,X,k)
@@ -9332,8 +11168,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     DIR=EL%P%DIR*EL%P%CHARGE
 
+
     A=YL*EL%P%B0
     R=1.0_dp/EL%P%B0
+
     if(k%TIME) then
        B=EL%P%BETA0
        PZ=ROOT(1.0_dp+2.0_dp*x(5)/b+X(5)**2-X(2)**2-X(4)**2)
@@ -9342,12 +11180,9 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        PT=ROOT(1.0_dp+2.0_dp*x(5)/b+X(5)**2-X(4)**2)
        PZS=ROOT(1.0_dp+2.0_dp*x(5)/b+X(5)**2-XN(2)**2-X(4)**2)
        XN(1)=PZS/DIR/EL%BN(1)-DPX-R
-
        XN(3)=(A+ARCSIN(X(2)/PT)-ARCSIN(XN(2)/PT))/DIR/EL%BN(1)
-
        XN(6)=X(6)+XN(3)*(1.0_dp/b+x(5))
        XN(6)=XN(6)+(k%TOTALPATH-1)*DL/EL%P%BETA0
-
        XN(3)=X(3)+X(4)*XN(3)
     else
        PZ=ROOT((1.0_dp+X(5))**2-X(2)**2-X(4)**2)
@@ -9384,6 +11219,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     real(dp) dir
 
+    call PRTP("SSEC:0", X)
+
     DIR=EL%P%DIR*EL%P%CHARGE
 
 
@@ -9399,6 +11236,11 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        DPX=(-X(2)*SIN(A)+(PZ-DIR*EL%BN(1)*(R+X(1)))*COS(A))/DIR/EL%BN(1)  !DPX*R/B1
        PT=SQRT(1.0_dp+2.0_dp*x(5)/b+X(5)**2-X(4)**2)
        PZS=SQRT(1.0_dp+2.0_dp*x(5)/b+X(5)**2-XN(2)**2-X(4)**2)
+
+!       write (*,('(4(A,E25.16))')) "@@ . beta0= ", B, " Rho= ", R, " A= ", A%r, " B1= ", EL%BN(1)%r
+!       call PRTP1("PZS", PZS)
+!       call PRTP1("DPX", DPX)
+
        XN(1)=PZS/DIR/EL%BN(1)-DPX-R
 
        XN(3)=(A+ASIN(X(2)/PT)-ASIN(XN(2)/PT))/DIR/EL%BN(1)
@@ -9429,6 +11271,9 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     CALL KILL( XN,6)
     CALL KILL( PZ,PT,A,PZS,DPX)
+
+    call PRTP("SSEC:1", X)
+
   END SUBROUTINE SsecP
 
   SUBROUTINE SKICKR(EL,YL,X,k)
@@ -9436,97 +11281,19 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     real(dp),INTENT(INOUT):: X(6)
     real(dp),INTENT(IN):: YL
     TYPE(TEAPOT),INTENT(IN):: EL
-    real(dp) X1,X3,X5,BX,BY,BTX,BTY,BtYT
-    INTEGER J,M,A,K1
+    real(dp) b(3),VM,e(3),phi
+
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     real(dp) dir
 
-    !    if(abs(x(1))+abs(x(3))+abs(x(2))+abs(x(4))>absolute_aperture.or.(.not.CHECK_MADX_APERTURE)) then
-    !       if(CHECK_MADX_APERTURE) c_%message="exceed absolute_aperture in SKICKR"
-    !       CHECK_STABLE=.false.
-    !    endif
-    !    if(.not.CHECK_STABLE) return
-
     DIR=EL%P%DIR*EL%P%CHARGE
 
+!    call GETMULB_TEAPOT(EL,B,VM,X,kick=my_true)
+    call GETELECTRIC(EL,E,phi,B,VM,X,kick=my_true)
+!    call GETMAGNETIC(EL,B, X, kick=my_true)
 
-    X1=X(1)
-    X3=X(3)
-
-    if(k%TIME) then
-       X5=ROOT(1.0_dp+2.0_dp*X(5)/EL%P%beta0+x(5)**2)-1.0_dp
-    else
-       X5=X(5)
-    endif
-
-
-    BX=0.0_dp
-    BY=0.0_dp
-
-    k1=0
-
-    m=SECTOR_NMUL-1
-    !    m=EL%P%nmul-1
-    do a=m,1,-1
-       BTX=0.0_dp
-       BTY=0.0_dp
-       do j=m-a,1,-1
-          k1=k1+1
-          !b%i(k)=a
-          !b%j(k)=j
-          BTX= (BTX+EL%BF_X(k1))*X3  !x1
-          BTY= (BTY+EL%BF_Y(k1))*X3
-       enddo
-
-       k1=k1+1
-       !  b%i(k)=a
-       !  b%j(k)=0
-       BTX= (BTX+EL%BF_X(k1))
-       BTY= (BTY+EL%BF_Y(k1))
-       BX= (BX+BTX)*X1
-       BY= (BY+BTY)*X1
-    enddo
-    BTX=0.0_dp
-    BTY=0.0_dp
-    do j=m,1,-1
-       k1=k1+1
-       !  b%i(k)=0
-       !  b%j(k)=j
-       BTX= (BTX+EL%BF_X(k1))*X3
-       BTY= (BTY+EL%BF_Y(k1))*X3
-    enddo
-    k1=k1+1
-    !    b%i(k)=0
-    !    b%j(k)=0
-    BX= BX+BTX+EL%BF_X(k1)  !+X3
-    BY= BY+BTY+EL%BF_Y(k1)  !+X3
-    ! etienne
-
-    IF(EL%P%NMUL>SECTOR_NMUL) THEN
-       BtY=EL%BN(EL%P%NMUL)
-       BtX=EL%AN(EL%P%NMUL)
-
-
-       DO  J=EL%P%NMUL-1,SECTOR_NMUL+1,-1
-          BtYT=X1*BtY-X3*BtX+EL%BN(J)
-          BtX =X3*BtY+X1*BtX+EL%AN(J)
-          BtY =BtYT
-       ENDDO
-
-       DO  J=SECTOR_NMUL, 1,-1
-          BtYT=X1*BtY-X3*BtX
-          BtX =X3*BtY+X1*BtX
-          BtY =BtYT
-       ENDDO
-
-       BX= BX-BTy
-       BY= BY+BTx
-       ! 2010 january 4
-
-    ENDIF
-
-    X(2)=X(2)+YL*DIR*BX
-    X(4)=X(4)+YL*DIR*BY
+    X(2)=X(2)+YL*DIR*B(1)
+    X(4)=X(4)+YL*DIR*B(2)
     IF(.NOT.EL%DRIFTKICK) THEN
        X(2)=X(2)+YL*DIR*EL%BN(1)*(1.0_dp+X(1)*EL%P%B0)
     ENDIF
@@ -9539,111 +11306,38 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(REAL_8),INTENT(INOUT):: X(6)
     TYPE(REAL_8),INTENT(IN):: YL
     TYPE(TEAPOTP),INTENT(IN):: EL
-    TYPE(REAL_8) X1,X3,BX,BY,BTX,BTY,X5,B(3),B2,BTYt
-    INTEGER J,M,A,K1
+    TYPE(REAL_8) B(3),VM,e(3),phi
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     real(dp) dir
 
+    call PRTP("SKICK:0", X)
 
+    CALL ALLOC(B,3)
+    CALL ALLOC(VM)
+    CALL ALLOC(E,3)
+    CALL ALLOC(phi)
     DIR=EL%P%DIR*EL%P%CHARGE
 
-    CALL ALLOC(X1,X3,BX,BY,BTX,BTY,X5,B2,BTYt)
-    CALL ALLOC(B,3)
-!!!!!!!!!!!!!!!!!!!!!!!!!
-    X1=X(1)
-    X3=X(3)
-    !x1=1.d0.mono.1
-    !x3=1.d0.mono.3
-    !pause  23423423
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    if(k%TIME) then
-       X5=SQRT(1.0_dp+2.0_dp*X(5)/EL%P%beta0+x(5)**2)-1.0_dp
-    else
-       X5=X(5)
-    endif
+   !call GETMULB_TEAPOT(EL,B,VM,X,kick=my_true)
+    call GETELECTRIC(EL,E,phi,B,VM,X,kick=my_true)
+   !call GETMAGNETIC(EL,B, X, kick=my_true)
 
 
-    BX=0.0_dp
-    BY=0.0_dp
 
-    ! x1=one.mono.'1'
-    ! x3=one.mono.'01'
-    k1=0
-    m=SECTOR_NMUL-1
-    !    m=EL%P%nmul-1
-    do a=m,1,-1
-       BTX=0.0_dp
-       BTY=0.0_dp
-       do j=m-a,1,-1
-          k1=k1+1
-          !b%i(k)=a
-          !b%j(k)=j
-          BTX= (BTX+EL%BF_X(k1))*X3
-          BTY= (BTY+EL%BF_Y(k1))*X3
-       enddo
+    X(2)=X(2)+YL*DIR*B(1)
+    X(4)=X(4)+YL*DIR*B(2)
 
-       k1=k1+1
-       !  b%i(k)=a
-       !  b%j(k)=0
-       BTX= (BTX+EL%BF_X(k1))
-       BTY= (BTY+EL%BF_Y(k1))
-       BX= (BX+BTX)*X1
-       BY= (BY+BTY)*X1
-    enddo
-    BTX=0.0_dp
-    BTY=0.0_dp
-    do j=m,1,-1
-       k1=k1+1
-       !  b%i(k)=0
-       !  b%j(k)=j
-       BTX= (BTX+EL%BF_X(k1))*X3
-       BTY= (BTY+EL%BF_Y(k1))*X3
-    enddo
-    k1=k1+1
-    !    b%i(k)=0
-    !    b%j(k)=0
-    BX= BX+BTX+EL%BF_X(k1)  !+X3
-    BY= BY+BTY+EL%BF_Y(k1)  !+X3
-
-    ! etienne
-    IF(EL%P%NMUL>SECTOR_NMUL) THEN
-       BtY=EL%BN(EL%P%NMUL)
-       BtX=EL%AN(EL%P%NMUL)
-
-
-       DO  J=EL%P%NMUL-1,SECTOR_NMUL+1,-1
-          BtYT=X1*BtY-X3*BtX+EL%BN(J)
-          BtX =X3*BtY+X1*BtX+EL%AN(J)
-          BtY =BtYT
-       ENDDO
-
-       DO  J=SECTOR_NMUL, 1,-1
-          BtYT=X1*BtY-X3*BtX
-          BtX =X3*BtY+X1*BtX
-          BtY =BtYT
-       ENDDO
-
-       BX= BX-BTy
-       BY= BY+BTx
-       ! 2010 january 4
-
-    ENDIF
-!!!!!!!!!!!!!!!!!
-    !bx=-bx/(one+EL%P%B0*X(1))
-    !by=by/(one+EL%P%B0*X(1))
-    !call print(bx,6)
-    !pause 2341
-    !call print(by,6)
-    !pause 2342
-!!!!!!!!!!!!!!
-    X(2)=X(2)+YL*DIR*BX
-    X(4)=X(4)+YL*DIR*BY
     IF(.NOT.EL%DRIFTKICK) THEN
        X(2)=X(2)+YL*DIR*EL%BN(1)*(1.0_dp+X(1)*EL%P%B0)
     ENDIF
 
-    CALL KILL(X1,X3,BX,BY,BTX,BTY,X5,B2,BtYT)
+
     CALL KILL(B,3)
+    CALL KILL(VM)
+    CALL KILL(E,3)
+    CALL KILL(phi)
+
+    call PRTP("SKICK:1", X)
 
   END SUBROUTINE SKICKP
 
@@ -9659,6 +11353,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     integer,optional :: pos
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    if(.not.el%electric) then
 
     SELECT CASE(EL%P%METHOD)
     CASE(1)
@@ -9725,12 +11420,49 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
+
+    else
+    SELECT CASE(EL%P%METHOD)
+
+    CASE(2)
+
+       DH=EL%L/2.0_dp/EL%P%NST
+       D=EL%L/EL%P%NST
+       DD=EL%P%LD/2.0_dp/EL%P%NST
+
+       call rk2_teapot(d,el,x,k)
+
+    CASE(4)
+       DH=EL%L/2.0_dp/EL%P%NST
+       D=EL%L/EL%P%NST
+       DD=EL%P%LD/2.0_dp/EL%P%NST
+
+       call rk4_teapot(d,el,x,k)
+
+
+    CASE(6)
+       DH=EL%L/2.0_dp/EL%P%NST
+       D=EL%L/EL%P%NST
+       DD=EL%P%LD/2.0_dp/EL%P%NST
+
+       call rk6_teapot(d,el,x,k)
+
+    CASE DEFAULT
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       ! call !write_e(357)
+    END SELECT
+
+    endif
+
 
   END SUBROUTINE INTER_TEAPOT
 
@@ -9746,7 +11478,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     integer,optional :: pos
 
-
+    if(.not.el%electric) then
     SELECT CASE(EL%P%METHOD)
     CASE(1)
        CALL ALLOC(DH,D)
@@ -9822,12 +11554,52 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        CALL KILL(DF,4);CALL KILL(DK,4);
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
+
+    else
+    SELECT CASE(EL%P%METHOD)
+
+    CASE(2)
+       CALL ALLOC(DH,D)
+       DH=EL%L/2.0_dp/EL%P%NST
+       D=EL%L/EL%P%NST
+       DD=EL%P%LD/2.0_dp/EL%P%NST
+
+       call rk2_teapot(d,el,x,k)
+       CALL kill(DH,D)
+    CASE(4)
+       CALL ALLOC(D1,D2,DK1,DK2)
+       DH=EL%L/2.0_dp/EL%P%NST
+       D=EL%L/EL%P%NST
+       DD=EL%P%LD/2.0_dp/EL%P%NST
+
+       call rk4_teapot(d,el,x,k)
+
+       CALL kill(D1,D2,DK1,DK2)
+
+    CASE(6)
+       CALL ALLOC(DF,4);CALL ALLOC(DK,4);
+       DH=EL%L/2.0_dp/EL%P%NST
+       D=EL%L/EL%P%NST
+       DD=EL%P%LD/2.0_dp/EL%P%NST
+
+       call rk6_teapot(d,el,x,k)
+       CALL kill(DF,4);CALL kill(DK,4);
+
+    CASE DEFAULT
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       ! call !write_e(357)
+    END SELECT
+
+    endif
 
   END SUBROUTINE INTEP_TEAPOT
 
@@ -9854,19 +11626,25 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(TEAPOTP),INTENT(INOUT):: EL
     INTEGER I
     logical(lp) CHECK_KNOB
-    integer(2), pointer,dimension(:)::AN,BN
+    integer(2), pointer,dimension(:)::AN,BN,AE,BE
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
     !    IF(PRESENT(MID)) CALL XMID(MID,X,0)
-
-    CALL MAKEPOTKNOB(EL,CHECK_KNOB,AN,BN)
+    IF(EL%ELECTRIC) THEN
+     CALL MAKEPOTKNOB_ELEC(EL,CHECK_KNOB,AN,BN,AE,BE)
+    ELSE
+     CALL MAKEPOTKNOB(EL,CHECK_KNOB,AN,BN)
+    ENDIF
 
     DO I=1,EL%P%NST
        CALL TRACK_SLICE(EL,X,k,I)
     ENDDO
 
-
-    CALL UNMAKEPOTKNOB(EL,CHECK_KNOB,AN,BN)
+    IF(EL%ELECTRIC) THEN
+         CALL UNMAKEPOTKNOB_ELEC(EL,CHECK_KNOB,AN,BN,AE,BE)
+    ELSE
+         CALL UNMAKEPOTKNOB(EL,CHECK_KNOB,AN,BN)
+    ENDIF
 
 
 
@@ -9886,6 +11664,14 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        IF(EL%AN(I)%KIND>=2) CHECK_KNOB=.TRUE.
        I=I+1
     ENDDO
+    IF(EL%ELECTRIC.AND.(.NOT.CHECK_KNOB)) THEN
+    I=1
+    DO WHILE(I<=SIZE(EL%BE).AND.(.NOT.CHECK_KNOB))
+       IF(EL%BE(I)%KIND>=2) CHECK_KNOB=.TRUE.
+       IF(EL%AE(I)%KIND>=2) CHECK_KNOB=.TRUE.
+       I=I+1
+    ENDDO
+    ENDIF
     IF(EL%L%KIND==3) CHECK_KNOB=.TRUE.
 
   END SUBROUTINE CHECKPOTKNOB
@@ -9895,7 +11681,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(TEAPOTP),INTENT(INOUT):: EL
     integer(2), pointer,dimension(:)::AN,BN
     LOGICAL(LP) CHECK_KNOB,doit
-    type(internal_state), optional :: k 
+    type(internal_state), optional :: k
     integer I
     doit=.false.
     if(present(k)) then
@@ -9917,10 +11703,50 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
            knob=.false.
           else
            call GETANBN(EL)
-          endif 
+          endif
        ENDIF
     ENDIF
   END SUBROUTINE MAKEPOTKNOB
+
+  SUBROUTINE MAKEPOTKNOB_elec(EL,CHECK_KNOB,AN,BN,AE,BE,K)
+    IMPLICIT NONE
+    TYPE(TEAPOTP),INTENT(INOUT):: EL
+    integer(2), pointer,dimension(:)::AN,BN,AE,BE
+    LOGICAL(LP) CHECK_KNOB,doit
+    type(internal_state), optional :: k
+    integer I,NE
+    NE=SIZE(EL%AE)
+    doit=.false.
+    if(present(k)) then
+        IF(K%PARA_IN ) doit=.TRUE.
+    endif
+    IF(KNOB.or.doit) THEN
+       CALL CHECKPOTKNOB(EL,CHECK_KNOB) ! RECOMPUTES ONLY IF KNOB (SPEED)
+       IF(CHECK_KNOB) THEN
+          ALLOCATE(AN(EL%P%NMUL),BN(EL%P%NMUL),AE(NE),BE(NE))
+          DO I=1,EL%P%NMUL
+             BN(I)=0
+             AN(I)=0
+             IF(EL%BN(I)%KIND>=2) BN(I)=EL%BN(I)%KIND
+             IF(EL%AN(I)%KIND>=2) AN(I)=EL%AN(I)%KIND  ! g-2 modification
+          ENDDO
+          DO I=1,NE
+             BE(I)=0
+             AE(I)=0
+             IF(EL%BE(I)%KIND>=2) BE(I)=EL%BE(I)%KIND
+             IF(EL%AE(I)%KIND>=2) AE(I)=EL%AE(I)%KIND  ! g-2 modification
+          ENDDO
+          if(doit.and.(.not.knob)) then
+           knob=.true.
+           call GETAEBE(EL)
+           knob=.false.
+          else
+           call GETAEBE(EL)
+          endif
+       ENDIF
+    ENDIF
+  END SUBROUTINE MAKEPOTKNOB_elec
+
 
   SUBROUTINE UNMAKEPOTKNOB(EL,CHECK_KNOB,AN,BN,k)
     IMPLICIT NONE
@@ -9928,13 +11754,13 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     integer(2), pointer,dimension(:)::AN,BN
     LOGICAL(LP) CHECK_KNOB,doit
     integer I,ERROR
-        type(internal_state), optional :: k 
+        type(internal_state), optional :: k
 
     doit=.false.
     if(present(k)) then
         IF(K%PARA_IN ) doit=.TRUE.
     endif
-    
+
      IF(KNOB.or.doit) THEN
        IF(CHECK_KNOB) THEN
           DO I=1,EL%P%NMUL
@@ -9950,23 +11776,65 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           ENDDO
           DEALLOCATE (AN, STAT = error)
           IF(ERROR/=0) THEN
-             w_p=0
-             w_p%nc=1
-             w_p%fc='(1(1X,A72))'
-             w_p%c(1)= " AN ARRAY not DEALLOCATED : PROBLEMS"
+             !w_p=0
+             !w_p%nc=1
+             !w_p%fc='(1(1X,A72))'
+             !w_p%c(1)= " AN ARRAY not DEALLOCATED : PROBLEMS"
              ! call !write_e(357)
           ENDIF
           DEALLOCATE (BN, STAT = error)
           IF(ERROR/=0) THEN
-             w_p=0
-             w_p%nc=1
-             w_p%fc='(1(1X,A72))'
-             w_p%c(1)= " BN ARRAY not DEALLOCATED : PROBLEMS"
+             !w_p=0
+             !w_p%nc=1
+             !w_p%fc='(1(1X,A72))'
+             !w_p%c(1)= " BN ARRAY not DEALLOCATED : PROBLEMS"
              ! call !write_e(357)
           ENDIF
        ENDIF
     ENDIF
   END SUBROUTINE UNMAKEPOTKNOB
+
+  SUBROUTINE UNMAKEPOTKNOB_ELEC(EL,CHECK_KNOB,AN,BN,AE,BE,k)
+    IMPLICIT NONE
+    TYPE(TEAPOTP),INTENT(INOUT):: EL
+    integer(2), pointer,dimension(:)::AN,BN,AE,BE
+    LOGICAL(LP) CHECK_KNOB,doit
+    integer I,ERROR,NE
+        type(internal_state), optional :: k
+    NE=SIZE(EL%BE)
+    doit=.false.
+    if(present(k)) then
+        IF(K%PARA_IN ) doit=.TRUE.
+    endif
+
+     IF(KNOB.or.doit) THEN
+       IF(CHECK_KNOB) THEN
+          DO I=1,EL%P%NMUL
+             EL%BN(I)%KIND=1
+             EL%AN(I)%KIND=1
+          ENDDO
+          DO I=1,NE
+             EL%BE(I)%KIND=1
+             EL%AE(I)%KIND=1
+          ENDDO
+          CALL KILL(EL)                               ! RECOMPUTES ONLY IF KNOB (SPEED)
+          CALL ALLOC(EL)
+          CALL GETAEBE(EL)                            ! KNOB IS REMOVED THE SLOW WAY(SPEED)
+          DO I=1,EL%P%NMUL
+             IF(AN(I)>0) EL%AN(I)%KIND=AN(I)
+             IF(BN(I)>0) EL%BN(I)%KIND=BN(I)
+          ENDDO
+          DO I=1,NE
+             IF(AE(I)>0) EL%AE(I)%KIND=AE(I)
+             IF(BE(I)>0) EL%BE(I)%KIND=BE(I)
+          ENDDO
+          DEALLOCATE (AN, STAT = error)
+          DEALLOCATE (BN, STAT = error)
+          DEALLOCATE (AE, STAT = error)
+          DEALLOCATE (BE, STAT = error)
+       ENDIF
+    ENDIF
+  END SUBROUTINE UNMAKEPOTKNOB_ELEC
 
   ! CALL FRINGE_teapot(EL%TP10,X,T%CAS)
   SUBROUTINE fringe_TEAPOTr(EL,X,k,J)
@@ -9977,16 +11845,17 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     integer,INTENT(IN):: J
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-    IF(EL%P%DIR==1) THEN
+    IF (EL%P%DIR==1) THEN
 
-       IF(J==1) THEN
+       IF (J==1) THEN
 
           IF(EL%P%EDGE(1)/=0.0_dp) THEN
              CALL ROT_XZ(EL%P%EDGE(1),X,EL%P%BETA0,DONEITT,k%TIME)
              CALL FACE(EL%P,EL%BN,EL%H1,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,1,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) then
-                CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(1),EL%HGAP(1),1,X,k)
+             IF(k%FRINGE.or.EL%P%permfringe/=0) then
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
                 x(2)=x(2)+EL%P%EDGE(1)*el%bn(2)*(wedge_coeff(1)*x(1)**2-wedge_coeff(2)*x(3)**2*0.5_dp)
                 x(4)=x(4)-EL%P%EDGE(1)*el%bn(2)*(wedge_coeff(2)*x(1)*x(3))
              ELSEIF(MAD8_WEDGE) THEN
@@ -9996,42 +11865,44 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
              CALL WEDGE(-EL%P%EDGE(1),X,k,EL2=EL)
           ELSE
              CALL FACE(EL%P,EL%BN,EL%H1,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,1,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(1),EL%HGAP(1),1,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
           ENDIF
 
        ELSE ! J=2
 
           IF(EL%P%EDGE(2)/=0.0_dp) THEN
              CALL WEDGE(-EL%P%EDGE(2),X,k,EL2=EL)
-             IF(k%FRINGE.or.el%p%permfringe) then
+             IF(k%FRINGE.or.EL%P%permfringe/=0) then
                 x(2)=x(2)+EL%P%EDGE(2)*el%bn(2)*(wedge_coeff(1)*x(1)**2-wedge_coeff(2)*x(3)**2*0.5_dp)
                 x(4)=x(4)-EL%P%EDGE(2)*el%bn(2)*(wedge_coeff(2)*x(1)*x(3))
-                CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
              ELSEIF(MAD8_WEDGE) THEN
                 x(2)=x(2)+EL%P%EDGE(2)*el%bn(2)*(x(1)**2-x(3)**2)
                 x(4)=x(4)-EL%P%EDGE(2)*el%bn(2)*(2.0_dp*x(1)*x(3))
              endif
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,2,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(2),EL%HGAP(2),2,X,k)
              CALL FACE(EL%P,EL%BN,EL%H2,X,k)
              CALL ROT_XZ(EL%P%EDGE(2),X,EL%P%BETA0,DONEITT,k%TIME)
           ELSE
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,2,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(2),EL%HGAP(2),2,X,k)
              CALL FACE(EL%P,EL%BN,EL%H2,X,k)
           ENDIF
        ENDIF ! J=2
     ELSE
 
-
        IF(J==1) THEN
-
           IF(EL%P%EDGE(2)/=0.0_dp) THEN
              CALL ROT_XZ(EL%P%EDGE(2),X,EL%P%BETA0,DONEITT,k%TIME)
              CALL FACE(EL%P,EL%BN,EL%H2,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,2,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) then
-                CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(2),EL%HGAP(2),2,X,k)
+             IF(k%FRINGE.or.EL%P%permfringe/=0) then
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
                 x(2)=x(2)-EL%P%EDGE(2)*el%bn(2)*(wedge_coeff(1)*x(1)**2-wedge_coeff(2)*x(3)**2*0.5_dp)
                 x(4)=x(4)+EL%P%EDGE(2)*el%bn(2)*(wedge_coeff(2)*x(1)*x(3))
              ELSEIF(MAD8_WEDGE) THEN
@@ -10041,31 +11912,32 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
              CALL WEDGE(-EL%P%EDGE(2),X,k,EL2=EL)
           ELSE
              CALL FACE(EL%P,EL%BN,EL%H2,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,2,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(2),EL%HGAP(2),2,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
           ENDIF
 
        ELSE ! J=2
-
           IF(EL%P%EDGE(1)/=0.0_dp) THEN
              CALL WEDGE(-EL%P%EDGE(1),X,k,EL2=EL)
-             IF(k%FRINGE.or.el%p%permfringe) then
+             IF(k%FRINGE.or.EL%P%permfringe/=0) then
                 x(2)=x(2)-EL%P%EDGE(1)*el%bn(2)*(wedge_coeff(1)*x(1)**2-wedge_coeff(2)*x(3)**2*0.5_dp)
                 x(4)=x(4)+EL%P%EDGE(1)*el%bn(2)*(wedge_coeff(2)*x(1)*x(3))
-                CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
              ELSEIF(MAD8_WEDGE) THEN
                 x(2)=x(2)-EL%P%EDGE(1)*el%bn(2)*(x(1)**2-x(3)**2)
                 x(4)=x(4)+EL%P%EDGE(1)*el%bn(2)*(2.0_dp*x(1)*x(3))
              endif
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,1,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(1),EL%HGAP(1),1,X,k)
              CALL FACE(EL%P,EL%BN,EL%H1,X,k)
              CALL ROT_XZ(EL%P%EDGE(1),X,EL%P%BETA0,DONEITT,k%TIME)
           ELSE
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,1,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(1),EL%HGAP(1),1,X,k)
              CALL FACE(EL%P,EL%BN,EL%H1,X,k)
           ENDIF
-
        ENDIF
 
     ENDIF
@@ -10081,6 +11953,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    call PRTP("FRNG_TEAPOT:0", X)
+
     IF(EL%P%DIR==1) THEN
 
        IF(J==1) THEN
@@ -10088,11 +11962,13 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           IF(EL%P%EDGE(1)/=0.0_dp) THEN
              CALL ROT_XZ(EL%P%EDGE(1),X,EL%P%BETA0,DONEITT,k%TIME)
              CALL FACE(EL%P,EL%BN,EL%H1,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,1,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) then
-                CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(1),EL%HGAP(1),1,X,k)
+             IF(k%FRINGE.or.EL%P%permfringe/=0) then
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
                 x(2)=x(2)+EL%P%EDGE(1)*el%bn(2)*(wedge_coeff(1)*x(1)**2-wedge_coeff(2)*x(3)**2*0.5_dp)
                 x(4)=x(4)-EL%P%EDGE(1)*el%bn(2)*(wedge_coeff(2)*x(1)*x(3))
+
              ELSEIF(MAD8_WEDGE) THEN
                 x(2)=x(2)+EL%P%EDGE(1)*el%bn(2)*(x(1)**2-x(3)**2)
                 x(4)=x(4)-EL%P%EDGE(1)*el%bn(2)*(2.0_dp*x(1)*x(3))
@@ -10100,28 +11976,31 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
              CALL WEDGE(-EL%P%EDGE(1),X,k,EL2=EL)
           ELSE
              CALL FACE(EL%P,EL%BN,EL%H1,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,1,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(1),EL%HGAP(1),1,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
           ENDIF
 
        ELSE ! J=2
 
           IF(EL%P%EDGE(2)/=0.0_dp) THEN
              CALL WEDGE(-EL%P%EDGE(2),X,k,EL2=EL)
-             IF(k%FRINGE.or.el%p%permfringe) then
+             IF(k%FRINGE.or.EL%P%permfringe/=0) then
                 x(2)=x(2)+EL%P%EDGE(2)*el%bn(2)*(wedge_coeff(1)*x(1)**2-wedge_coeff(2)*x(3)**2*0.5_dp)
                 x(4)=x(4)-EL%P%EDGE(2)*el%bn(2)*(wedge_coeff(2)*x(1)*x(3))
-                CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
              ELSEIF(MAD8_WEDGE) THEN
                 x(2)=x(2)+EL%P%EDGE(2)*el%bn(2)*(x(1)**2-x(3)**2)
                 x(4)=x(4)-EL%P%EDGE(2)*el%bn(2)*(2.0_dp*x(1)*x(3))
              endif
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,2,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(2),EL%HGAP(2),2,X,k)
              CALL FACE(EL%P,EL%BN,EL%H2,X,k)
              CALL ROT_XZ(EL%P%EDGE(2),X,EL%P%BETA0,DONEITT,k%TIME)
           ELSE
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,2,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
+             IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(2),EL%HGAP(2),2,X,k)
              CALL FACE(EL%P,EL%BN,EL%H2,X,k)
           ENDIF
        ENDIF ! J=2
@@ -10133,9 +12012,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           IF(EL%P%EDGE(2)/=0.0_dp) THEN
              CALL ROT_XZ(EL%P%EDGE(2),X,EL%P%BETA0,DONEITT,k%TIME)
              CALL FACE(EL%P,EL%BN,EL%H2,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,2,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) then
-                CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(2),EL%HGAP(2),2,X,k)
+             IF(k%FRINGE.or.EL%P%permfringe/=0) then
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
                 x(2)=x(2)-EL%P%EDGE(2)*el%bn(2)*(wedge_coeff(1)*x(1)**2-wedge_coeff(2)*x(3)**2*0.5_dp)
                 x(4)=x(4)+EL%P%EDGE(2)*el%bn(2)*(wedge_coeff(2)*x(1)*x(3))
              ELSEIF(MAD8_WEDGE) THEN
@@ -10145,34 +12025,39 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
              CALL WEDGE(-EL%P%EDGE(2),X,k,EL2=EL)
           ELSE
              CALL FACE(EL%P,EL%BN,EL%H2,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,2,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(2),EL%HGAP(2),2,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
           ENDIF
 
        ELSE ! J=2
 
           IF(EL%P%EDGE(1)/=0.0_dp) THEN
              CALL WEDGE(-EL%P%EDGE(1),X,k,EL2=EL)
-             IF(k%FRINGE.or.el%p%permfringe) then
+             IF(k%FRINGE.or.EL%P%permfringe/=0) then
                 x(2)=x(2)-EL%P%EDGE(1)*el%bn(2)*(wedge_coeff(1)*x(1)**2-wedge_coeff(2)*x(3)**2*0.5_dp)
                 x(4)=x(4)+EL%P%EDGE(1)*el%bn(2)*(wedge_coeff(2)*x(1)*x(3))
-                CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
              ELSEIF(MAD8_WEDGE) THEN
                 x(2)=x(2)-EL%P%EDGE(1)*el%bn(2)*(x(1)**2-x(3)**2)
                 x(4)=x(4)+EL%P%EDGE(1)*el%bn(2)*(2.0_dp*x(1)*x(3))
              endif
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,1,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(1),EL%HGAP(1),1,X,k)
              CALL FACE(EL%P,EL%BN,EL%H1,X,k)
              CALL ROT_XZ(EL%P%EDGE(1),X,EL%P%BETA0,DONEITT,k%TIME)
           ELSE
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,1,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(1),EL%HGAP(1),1,X,k)
              CALL FACE(EL%P,EL%BN,EL%H1,X,k)
           ENDIF
 
        ENDIF
 
     ENDIF
+
+    call PRTP("FRNG_TEAPOT:1", X)
 
   END SUBROUTINE fringe_TEAPOTP
 
@@ -10287,7 +12172,6 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(REAL_8) DH
     INTEGER, INTENT(IN) :: I
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
-
 
     CALL ALLOC(DH)
 
@@ -10573,21 +12457,75 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
   END SUBROUTINE ECOLLIMATORiP
 
+
+  SUBROUTINE electric_field_septumR(EL,E,phi,X)
+    IMPLICIT NONE
+    real(dp),INTENT(INOUT):: E(3),X(6),phi
+    TYPE(ESEPTUM),INTENT(INOUT):: EL
+    real(dp) EM,C1,S1
+
+       EM=EL%VOLT*volt_c/EL%P%P0C
+
+       C1=COS(EL%PHAS); S1=SIN(-EL%PHAS)
+       E(2)=C1*EM
+       E(1)=-S1*EM
+       e(3)=0.0_dp
+       phi=-E(1)*X(1)-E(2)*X(3)
+
+  END SUBROUTINE electric_field_septumR
+
+
+  SUBROUTINE electric_field_septumP(EL,E,phi,X)
+    IMPLICIT NONE
+    TYPE(REAL_8),INTENT(INOUT):: E(3),X(6),phi
+    TYPE(ESEPTUMP),INTENT(INOUT):: EL
+    TYPE(REAL_8) EM,C1,S1
+
+    call PRTP("ELEC_SEPTUM:0", X)
+
+     CALL alloc(EM,C1,S1)
+       EM=EL%VOLT*volt_c/EL%P%P0C
+
+       C1=COS(EL%PHAS); S1=SIN(-EL%PHAS)
+       E(2)=C1*EM
+       E(1)=-S1*EM
+       e(3)=0.0_dp
+       phi=-E(1)*X(1)-E(2)*X(3)
+      CALL kill(EM,C1,S1)
+
+    call PRTP("ELEC_SEPTUM:1", X)
+
+  END SUBROUTINE electric_field_septumP
+
   !  Electric septum
 
-  SUBROUTINE SEPR(EL,X,k,i,MID)
+  SUBROUTINE SEPR(EL,XO,k,i,MID)
     IMPLICIT NONE
-    real(dp),INTENT(INOUT):: X(6)
+    real(dp),INTENT(INOUT):: XO(6)
     TYPE(ESEPTUM),INTENT(INOUT):: EL
     TYPE(WORM), OPTIONAL,INTENT(INOUT):: MID
-    real(dp) K1,SH_X,SH,CH,CHM,PZ,E1,XT(2),ARG
+    real(dp) K1,SH_X,SH,CH,CHM,PZ,E1,XT(2),ARG, X(6),C1,S1
+    REAL(DP) DH,DD
     integer, intent(IN) ::i
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-    !    if(EL%P%EXACT) THEN
-    if(.true.) then
+        if(.NOT.EL%P%EXACT) THEN
+          DH=EL%L/4.0_dp/el%p%nst
+          DD=EL%P%LD/4.0_dp/el%p%nst
+          CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,MY_FALSE,k%TIME,X)
+          DD=-DD; DH=-DH;
+          CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,MY_TRUE, k%TIME,X)
+       ENDIF
 
-       K1=EL%P%CHARGE*EL%VOLT*1e-3_dp/EL%P%P0C
+       C1=COS(EL%PHAS); S1=SIN(-EL%PHAS)
+       X(3)=C1*XO(3)-S1*XO(1)
+       X(4)=C1*XO(4)-S1*XO(2)
+       X(1)=C1*XO(1)+S1*XO(3)
+       X(2)=C1*XO(2)+S1*XO(4)
+       X(5)=XO(5)
+       X(6)=XO(6)
+
+       K1=EL%P%CHARGE*EL%VOLT*volt_c/EL%P%P0C
 
 
        if(k%TIME) then
@@ -10625,7 +12563,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           endif
        ENDIF
 
-       K1=EL%P%CHARGE*EL%VOLT*1e-3_dp/EL%P%P0C    ! added 2004.06.09
+       K1=EL%P%CHARGE*EL%VOLT*volt_c/EL%P%P0C    ! added 2004.06.09
 
        if(k%TIME) then
           PZ=ROOT((1.0_dp/EL%P%BETA0+X(5)+K1*X(3))**2-(EL%P%GAMMA0I/EL%P%BETA0)**2-X(2)**2-X(4)**2)
@@ -10662,108 +12600,65 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
              if(i==el%p%nst/2)  CALL XMID(MID,X,1)
           endif
        ENDIF
-    else
 
-       K1=EL%P%CHARGE*EL%VOLT*1e-3_dp/EL%P%P0C
+       XO(3)=C1*X(3)+S1*X(1)
+       XO(4)=C1*X(4)+S1*X(2)
+       XO(1)=C1*X(1)-S1*X(3)
+       XO(2)=C1*X(2)-S1*X(4)
+       XO(5)=X(5)
+       XO(6)=X(6)
 
+        if(.NOT.EL%P%EXACT) THEN
+          DD=-DD; DH=-DH;
+          CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,MY_FALSE,k%TIME,X)
+          DD=-DD; DH=-DH;
+          CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,MY_TRUE, k%TIME,X)
+        ENDIF
 
-
-       if(k%TIME) then
-          PZ=root((1.0_dp/EL%P%BETA0+X(5)+K1*X(3))**2-(EL%P%GAMMA0I/EL%P%BETA0)**2)
-          E1=1.0_dp/EL%P%BETA0+X(5)
-       else
-          PZ=(1.0_dp+X(5)+K1*X(3))
-          E1=1.0_dp+X(5)
-       endif
-
-       ARG=(EL%L/2.0_dp/el%p%nst)*K1/PZ
-       SH_X=(EL%L/2.0_dp/el%p%nst)*SINeHX_X(ARG)/PZ
-       SH=SINeH(ARG)
-       CH=COSeH(ARG)
-       ARG=ARG*0.5_dp
-       CHM=(EL%L/2.0_dp/el%p%nst)*SINeHX_X(ARG)/PZ*SINeH(ARG)
-       ARG=ARG*2.0_dp
-
-       X(1)=X(1)+X(2)*(EL%L/2.0_dp/el%p%nst)/PZ
-       XT(1)=CH*X(3)+SH_X*X(4)+CHM*E1
-       XT(2)=CH*X(4)+K1*SH*X(3)+SH*E1
-       X(6)=X(6)+CHM*X(4)+SH*X(3)+E1*SH_X
-
-       X(3)=XT(1)
-       X(4)=XT(2)
-
-       if(k%TIME) then
-          X(6)=X(6)-(1-k%TOTALPATH)*EL%P%LD/EL%P%BETA0/2.0_dp/el%p%nst
-       else
-          X(6)=X(6)-(1-k%TOTALPATH)*EL%P%LD/2.0_dp/el%p%nst
-       endif
-
-       IF(PRESENT(MID)) THEN
-          if(mod(el%p%nst,2)==1) then
-             if(i==(el%p%nst+1)/2)  CALL XMID(MID,X,1)
-          endif
-       ENDIF
-
-
-       K1=EL%P%CHARGE*EL%VOLT*1e-3_dp/EL%P%P0C    ! added 2004.06.09
-
-       if(k%TIME) then
-          PZ=root((1.0_dp/EL%P%BETA0+X(5)+K1*X(3))**2-(EL%P%GAMMA0I/EL%P%BETA0)**2)
-          E1=1.0_dp/EL%P%BETA0+X(5)
-       else
-          PZ=(1.0_dp+X(5)+K1*X(3))
-          E1=1.0_dp+X(5)
-       endif
-
-       ARG=(EL%L/2.0_dp/el%p%nst)*K1/PZ
-       SH_X=(EL%L/2.0_dp/el%p%nst)*SINeHX_X(ARG)/PZ
-       SH=SINeH(ARG)
-       CH=COSeH(ARG)
-       ARG=ARG*0.5_dp
-       CHM=(EL%L/2.0_dp/el%p%nst)*SINeHX_X(ARG)/PZ*SINeH(ARG)
-       ARG=ARG*2.0_dp
-
-       X(1)=X(1)+X(2)*(EL%L/2.0_dp/el%p%nst)/PZ
-       XT(1)=CH*X(3)+SH_X*X(4)+CHM*E1
-       XT(2)=CH*X(4)+K1*SH*X(3)+SH*E1
-       X(6)=X(6)+CHM*X(4)+SH*X(3)+E1*SH_X
-
-       X(3)=XT(1)
-       X(4)=XT(2)
-
-       if(k%TIME) then
-          X(6)=X(6)-(1-k%TOTALPATH)*EL%P%LD/EL%P%BETA0/2.0_dp/el%p%nst
-       else
-          X(6)=X(6)-(1-k%TOTALPATH)*EL%P%LD/2.0_dp/el%p%nst
-       endif
-
-       IF(PRESENT(MID)) THEN
-          if(mod(el%p%nst,2)==0) then
-             if(i==el%p%nst/2)  CALL XMID(MID,X,1)
-          endif
-       ENDIF
-
-    endif
-
+          global_e=EL%P%p0c*(XO(5)+K1*XO(3))
 
   END SUBROUTINE SEPR
 
-  SUBROUTINE SEPP(EL,X,k,I)
+  SUBROUTINE SEPP(EL,XO,k,I)
     IMPLICIT NONE
-    TYPE(REAL_8),INTENT(INOUT):: X(6)
+    TYPE(REAL_8),INTENT(INOUT):: XO(6)
     TYPE(ESEPTUMP),INTENT(INOUT):: EL
     ! TYPE(WORM_8), OPTIONAL,INTENT(INOUT):: MID
-    TYPE(REAL_8) K1,SH_X,SH,CH,CHM,PZ,E1,XT(2),ARG
+    TYPE(REAL_8) K1,SH_X,SH,CH,CHM,PZ,E1,ARG,DH,C1,S1
+    TYPE(REAL_8) X(6),XT(2)
+    REAL(DP) DD
     integer, intent(IN) ::i
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-    !    if(EL%P%EXACT) THEN
-    if(.true.) then
+    call PRTP("SEP:0", XO)
 
-       CALL ALLOC( K1,SH_X,SH,CH,CHM,PZ,E1)
+       CALL ALLOC(K1,SH_X,SH,CH,CHM)
+       CALL ALLOC(PZ,E1,ARG,DH,C1,S1)
        CALL ALLOC( XT,2)
+       CALL ALLOC( X,6)
 
-       K1=EL%P%CHARGE*EL%VOLT*1e-3_dp/EL%P%P0C
+        if(.NOT.EL%P%EXACT) THEN
+          CALL ALLOC(DH)
+          DH=EL%L/4.0_dp/el%p%nst
+          DD=EL%P%LD/4.0_dp/el%p%nst
+          CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,MY_FALSE,k%TIME,X)
+          DD=-DD; DH=-DH;
+          CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,MY_TRUE, k%TIME,X)
+       ENDIF
+
+
+
+
+       C1=COS(EL%PHAS); S1=SIN(-EL%PHAS)
+       X(3)=C1*XO(3)-S1*XO(1)
+       X(4)=C1*XO(4)-S1*XO(2)
+       X(1)=C1*XO(1)+S1*XO(3)
+       X(2)=C1*XO(2)+S1*XO(4)
+       X(5)=XO(5)
+       X(6)=XO(6)
+
+
+       K1=EL%P%CHARGE*EL%VOLT*volt_c/EL%P%P0C
 
 
        if(k%TIME) then
@@ -10796,14 +12691,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           X(6)=X(6)-(1-k%TOTALPATH)*EL%P%LD/2.0_dp/el%p%nst
        endif
 
-       !       IF(PRESENT(MID)) THEN
-       !          if(mod(el%p%nst,2)==1) then
-       !             if(i==(el%p%nst+1)/2)  CALL XMID(MID,X,1)
-       !          endif
-       !       ENDIF
-
-
-       K1=EL%P%CHARGE*EL%VOLT*1e-3_dp/EL%P%P0C    ! added 2004.06.09
+      K1=EL%P%CHARGE*EL%VOLT*volt_c/EL%P%P0C    ! added 2004.06.09
        if(k%TIME) then
           PZ=SQRT((1.0_dp/EL%P%BETA0+X(5)+K1*X(3))**2-(EL%P%GAMMA0I/EL%P%BETA0)**2-X(2)**2-X(4)**2)
           E1=1.0_dp/EL%P%BETA0+X(5)
@@ -10834,102 +12722,29 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        else
           X(6)=X(6)-(1-k%TOTALPATH)*EL%P%LD/2.0_dp/el%p%nst
        endif
-       !       IF(PRESENT(MID)) THEN
-       !          if(mod(el%p%nst,2)==0) then
-       !             if(i==el%p%nst/2)  CALL XMID(MID,X,1)
-       !          endif
-       !       ENDIF
 
+        if(.NOT.EL%P%EXACT) THEN
+          DD=-DD; DH=-DH;
+          CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,MY_FALSE,k%TIME,X)
+          DD=-DD; DH=-DH;
+          CALL DRIFT(DH,DD,EL%P%beta0,k%TOTALPATH,MY_TRUE, k%TIME,X)
+          CALL KILL(DH)
+       ENDIF
 
-       CALL KILL( K1,SH_X,SH,CH,CHM,PZ,E1,ARG)
-       CALL KILL( XT,2)
-    else
-
-       CALL ALLOC( K1,SH_X,SH,CH,CHM,PZ,E1)
-       CALL ALLOC( XT,2)
-
-       K1=EL%P%CHARGE*EL%VOLT*1e-3_dp/EL%P%P0C
-
-       if(k%TIME) then
-          PZ=SQRT((1.0_dp/EL%P%BETA0+X(5)+K1*X(3))**2-(EL%P%GAMMA0I/EL%P%BETA0)**2)
-          E1=1.0_dp/EL%P%BETA0+X(5)
-       else
-          PZ=(1.0_dp+X(5)+K1*X(3))
-          E1=1.0_dp+X(5)
-       endif
-
-       ARG=(EL%L/2.0_dp/el%p%nst)*K1/PZ
-       SH_X=(EL%L/2.0_dp/el%p%nst)*SINHX_X(ARG)/PZ
-       SH=SINH(ARG)
-       CH=COSH(ARG)
-       ARG=ARG*0.5_dp
-       CHM=(EL%L/2.0_dp/el%p%nst)*SINHX_X(ARG)/PZ*SINH(ARG)
-       ARG=2.0_dp*ARG
-
-       X(1)=X(1)+X(2)*(EL%L/2.0_dp/el%p%nst)/PZ
-       XT(1)=CH*X(3)+SH_X*X(4)+CHM*E1
-       XT(2)=CH*X(4)+K1*SH*X(3)+SH*E1
-       X(6)=X(6)+CHM*X(4)+SH*X(3)+E1*SH_X
-
-       X(3)=XT(1)
-       X(4)=XT(2)
-
-       if(k%TIME) then
-          X(6)=X(6)-(1-k%TOTALPATH)*EL%P%LD/EL%P%BETA0/2.0_dp/el%p%nst
-       else
-          X(6)=X(6)-(1-k%TOTALPATH)*EL%P%LD/2.0_dp/el%p%nst
-       endif
-
-       !       IF(PRESENT(MID)) THEN
-       !          if(mod(el%p%nst,2)==1) then
-       !             if(i==(el%p%nst+1)/2)  CALL XMID(MID,X,1)
-       !          endif
-       !       ENDIF
-
-
-       K1=EL%P%CHARGE*EL%VOLT*1e-3_dp/EL%P%P0C    ! added 2004.06.09
-       if(k%TIME) then
-          PZ=SQRT((1.0_dp/EL%P%BETA0+X(5)+K1*X(3))**2-(EL%P%GAMMA0I/EL%P%BETA0)**2)
-          E1=1.0_dp/EL%P%BETA0+X(5)
-       else
-          PZ=(1.0_dp+X(5)+K1*X(3))
-          E1=1.0_dp+X(5)
-       endif
-
-
-       ARG=(EL%L/2.0_dp/el%p%nst)*K1/PZ
-       SH_X=(EL%L/2.0_dp/el%p%nst)*SINHX_X(ARG)/PZ
-       SH=SINH(ARG)
-       CH=COSH(ARG)
-       ARG=ARG*0.5_dp
-       CHM=(EL%L/2.0_dp/el%p%nst)*SINHX_X(ARG)/PZ*SINH(ARG)
-       ARG=2.0_dp*ARG
-
-       X(1)=X(1)+X(2)*(EL%L/2.0_dp/el%p%nst)/PZ
-       XT(1)=CH*X(3)+SH_X*X(4)+CHM*E1
-       XT(2)=CH*X(4)+K1*SH*X(3)+SH*E1
-       X(6)=X(6)+CHM*X(4)+SH*X(3)+E1*SH_X
-
-       X(3)=XT(1)
-       X(4)=XT(2)
-
-       if(k%TIME) then
-          X(6)=X(6)-(1-k%TOTALPATH)*EL%P%LD/EL%P%BETA0/2.0_dp/el%p%nst
-       else
-          X(6)=X(6)-(1-k%TOTALPATH)*EL%P%LD/2.0_dp/el%p%nst
-       endif
-
-       !       IF(PRESENT(MID)) THEN
-       !          if(mod(el%p%nst,2)==0) then
-       !             if(i==el%p%nst/2)  CALL XMID(MID,X,1)
-       !          endif
-       !       ENDIF
-
-
-       CALL KILL( K1,SH_X,SH,CH,CHM,PZ,E1,ARG)
+       XO(3)=C1*X(3)+S1*X(1)
+       XO(4)=C1*X(4)+S1*X(2)
+       XO(1)=C1*X(1)-S1*X(3)
+       XO(2)=C1*X(2)-S1*X(4)
+       XO(5)=X(5)
+       XO(6)=X(6)
+          global_e=EL%P%p0c*(XO(5)+K1*XO(3))
+       CALL KILL(K1,SH_X,SH,CH,CHM)
+       CALL KILL(PZ,E1,ARG,DH,C1,S1)
+       CALL KILL( X,6)
        CALL KILL( XT,2)
 
-    ENDIF
+    call PRTP("SEP:1", XO)
+
   END SUBROUTINE SEPP
 
   SUBROUTINE SYMPSEPR(EL,X,k,MID)
@@ -10942,6 +12757,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
     IF(PRESENT(MID)) CALL XMID(MID,X,0)
+
 
     do i=1,el%p%nst
        CALL SEPTTRACK(EL,X,k,i,MID)
@@ -11031,6 +12847,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     real(dp) dir
 
+    call PRTP("KICKEX:0", X)
+
     DIR=EL%P%DIR*EL%P%CHARGE
 
     CALL ALLOC(X1)
@@ -11081,6 +12899,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     CALL KILL(BBYTW)
     CALL KILL(BBXTW)
     CALL KILL(BBYTWT)
+
+    call PRTP("KICKEX:1", X)
 
   END SUBROUTINE KICKEXP
 
@@ -11157,10 +12977,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           ENDDO
 
        CASE DEFAULT
-          w_p=0
-          w_p%nc=1
-          w_p%fc='(1(1X,A72))'
-          WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+          !w_p=0
+          !w_p%nc=1
+          !w_p%fc='(1(1X,A72))'
+            write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
           ! call !write_e(357)
        END SELECT
     ELSE
@@ -11210,10 +13030,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           ENDDO
 
        CASE DEFAULT
-          w_p=0
-          w_p%nc=1
-          w_p%fc='(1(1X,A72))'
-          WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+          !w_p=0
+          !w_p%nc=1
+          !w_p%fc='(1(1X,A72))'
+            write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
           ! call !write_e(357)
        END SELECT
 
@@ -11303,10 +13123,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           CALL KILL(DF,4);CALL KILL(DK,4);
 
        CASE DEFAULT
-          w_p=0
-          w_p%nc=1
-          w_p%fc='(1(1X,A72))'
-          WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+          !w_p=0
+          !w_p%nc=1
+          !w_p%fc='(1(1X,A72))'
+            write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
           ! call !write_e(357)
        END SELECT
     ELSE
@@ -11362,10 +13182,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           CALL KILL(DF,4);CALL KILL(DK,4);
 
        CASE DEFAULT
-          w_p=0
-          w_p%nc=1
-          w_p%fc='(1(1X,A72))'
-          WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+          !w_p=0
+          !w_p%nc=1
+          !w_p%fc='(1(1X,A72))'
+            write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
           ! call !write_e(357)
        END SELECT
 
@@ -11432,13 +13252,15 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
              ANGH=EL%P%B0*EL%P%LD*0.5_dp-EL%P%EDGE(1)
              CALL ROT_XZ(EL%P%EDGE(1),X,EL%P%BETA0,DONEITT,k%TIME)
              CALL FACE(EL%P,EL%BN,EL%H1,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,1,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(1),EL%HGAP(1),1,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
              CALL  WEDGE(ANGH,X,k,EL1=EL)
 
           ELSE
-             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,1,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT(1),EL%HGAP(1),1,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
           ENDIF
 
        ELSE  ! J==2
@@ -11447,13 +13269,15 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           IF(EL%LIKEMAD) THEN
              ANGH=EL%P%B0*EL%P%LD*0.5_dp-EL%P%EDGE(2)
              CALL  WEDGE(ANGH,X,k,EL1=EL)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,2,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(2),EL%HGAP(2),2,X,k)
              CALL FACE(EL%P,EL%BN,EL%H2,X,k)
              CALL ROT_XZ(EL%P%EDGE(2),X,EL%P%BETA0,DONEITT,k%TIME)
           ELSE
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
-             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,2,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT(2),EL%HGAP(2),2,X,k)
           ENDIF
 
        ENDIF ! J
@@ -11467,12 +13291,14 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
              ANGH=EL%P%B0*EL%P%LD*0.5_dp-EL%P%EDGE(2)
              CALL ROT_XZ(EL%P%EDGE(2),X,EL%P%BETA0,DONEITT,k%TIME)
              CALL FACE(EL%P,EL%BN,EL%H2,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,2,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(2),EL%HGAP(2),2,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
              CALL  WEDGE(ANGH,X,k,EL1=EL)
           ELSE
-             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,2,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT(2),EL%HGAP(2),2,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
           ENDIF
 
 
@@ -11481,13 +13307,15 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           IF(EL%LIKEMAD) THEN
              ANGH=EL%P%B0*EL%P%LD*0.5_dp-EL%P%EDGE(1)
              CALL  WEDGE(ANGH,X,k,EL1=EL)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,1,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(1),EL%HGAP(1),1,X,k)
              CALL FACE(EL%P,EL%BN,EL%H1,X,k)
              CALL ROT_XZ(EL%P%EDGE(1),X,EL%P%BETA0,DONEITT,k%TIME)
           ELSE
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
-             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,1,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT(1),EL%HGAP(1),1,X,k)
           ENDIF
 
        ENDIF ! J
@@ -11506,7 +13334,9 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     ! J=1 front
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-    IF(EL%P%DIR==1) THEN
+    call PRTP("FRNG_STREX:0", X)
+
+     IF(EL%P%DIR==1) THEN
 
        IF(J==1) THEN
 
@@ -11515,13 +13345,15 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
              ANGH=EL%P%B0*EL%P%LD*0.5_dp-EL%P%EDGE(1)
              CALL ROT_XZ(EL%P%EDGE(1),X,EL%P%BETA0,DONEITT,k%TIME)
              CALL FACE(EL%P,EL%BN,EL%H1,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,1,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(1),EL%HGAP(1),1,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
              CALL  WEDGE(ANGH,X,k,EL1=EL)
 
           ELSE
-             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,1,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT(1),EL%HGAP(1),1,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
           ENDIF
 
        ELSE  ! J==2
@@ -11530,13 +13362,15 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           IF(EL%LIKEMAD) THEN
              ANGH=EL%P%B0*EL%P%LD*0.5_dp-EL%P%EDGE(2)
              CALL  WEDGE(ANGH,X,k,EL1=EL)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,2,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(2),EL%HGAP(2),2,X,k)
              CALL FACE(EL%P,EL%BN,EL%H2,X,k)
              CALL ROT_XZ(EL%P%EDGE(2),X,EL%P%BETA0,DONEITT,k%TIME)
           ELSE
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
-             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,2,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT(2),EL%HGAP(2),2,X,k)
           ENDIF
 
        ENDIF ! J
@@ -11550,12 +13384,14 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
              ANGH=EL%P%B0*EL%P%LD*0.5_dp-EL%P%EDGE(2)
              CALL ROT_XZ(EL%P%EDGE(2),X,EL%P%BETA0,DONEITT,k%TIME)
              CALL FACE(EL%P,EL%BN,EL%H2,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,2,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(2),EL%HGAP(2),2,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
              CALL  WEDGE(ANGH,X,k,EL1=EL)
           ELSE
-             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,2,X,k)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT(2),EL%HGAP(2),2,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,2,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,2,X,k)
           ENDIF
 
 
@@ -11564,18 +13400,22 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           IF(EL%LIKEMAD) THEN
              ANGH=EL%P%B0*EL%P%LD*0.5_dp-EL%P%EDGE(1)
              CALL  WEDGE(ANGH,X,k,EL1=EL)
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
-             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT,EL%HGAP,1,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL FRINGE_dipole(EL%P,EL%BN,EL%FINT(1),EL%HGAP(1),1,X,k)
              CALL FACE(EL%P,EL%BN,EL%H1,X,k)
              CALL ROT_XZ(EL%P%EDGE(1),X,EL%P%BETA0,DONEITT,k%TIME)
           ELSE
-             IF(k%FRINGE.or.el%p%permfringe) CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
-             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT,EL%HGAP,1,X,k)
+                IF(el%p%permfringe==2.or.el%p%permfringe==3) CALL FRINGE2QUAD(EL%P,EL%bn(2),EL%an(2),EL%VA,EL%VS,1,X,k)
+                IF(k%FRINGE.or.el%p%permfringe==1.or.el%p%permfringe==3)CALL MULTIPOLE_FRINGE(EL%P,EL%AN,EL%BN,1,X,k)
+             CALL EDGE_TRUE_PARALLEL(EL%P,EL%BN,EL%H1,EL%H2,EL%FINT(1),EL%HGAP(1),1,X,k)
           ENDIF
 
        ENDIF ! J
 
     ENDIF
+
+    call PRTP("FRNG_STREX:1", X)
 
   END SUBROUTINE fringe_STREXP
 
@@ -11673,6 +13513,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     real(dp) dir
 
+    call PRTP("SPAR:0", X)
+
     DIR=EL%P%DIR*EL%P%CHARGE
 
     CALL ALLOC(XN,6)
@@ -11715,6 +13557,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     CALL KILL(XN,6)
     CALL KILL(PZ,PZS,PT)
 
+    call PRTP("SPAR:1", X)
 
   END SUBROUTINE SPARP
 
@@ -11772,10 +13615,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        time=k%TIME
        b=EL2%P%BETA0
     ELSE
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       w_p%c(1)= " ERROR IN WEDGER "
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+       !w_p%c(1)= " ERROR IN WEDGER "
        ! call !write_e(101)
     ENDIF
 
@@ -11837,6 +13680,8 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     logical(lp) time,EXACT
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
+    call PRTP("WEDGE:0", X)
+
     EXACT=.TRUE.
 
     CALL ALLOC(PZ,PZS,PT,B1)
@@ -11856,10 +13701,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        time=k%TIME
        b=EL2%P%BETA0
     ELSE
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       w_p%c(1)= " ERROR IN WEDGEP "
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+       !w_p%c(1)= " ERROR IN WEDGEP "
        ! call !write_e(102)
     ENDIF
 
@@ -11904,11 +13749,13 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     CALL KILL(PZ,PZS,PT,B1)
     CALL KILL(XN,6)
 
+    call PRTP("WEDGE:1", X)
+
   END SUBROUTINE wedgeP
 
   !  CAV_TRAV
 
-  SUBROUTINE ADJUSTR_TIME_CAV_TRAV_OUT(EL,X,k,J)
+  SUBROUTINE ADJUST_TIME_CAV_TRAV_OUTR(EL,X,k,J)
     IMPLICIT NONE
     REAL(DP), INTENT(INOUT) :: X(6)
     TYPE(CAV_TRAV),INTENT(INOUT):: EL
@@ -11923,9 +13770,9 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        X(6)=X(6)-(1-k%TOTALPATH)*EL%P%LD
     endif
 
-  END SUBROUTINE ADJUSTR_TIME_CAV_TRAV_OUT
+  END SUBROUTINE ADJUST_TIME_CAV_TRAV_OUTR
 
-  SUBROUTINE ADJUSTP_TIME_CAV_TRAV_OUT(EL,X,k,J)
+  SUBROUTINE ADJUST_TIME_CAV_TRAV_OUTP(EL,X,k,J)
     IMPLICIT NONE
     TYPE(REAL_8), INTENT(INOUT) :: X(6)
     TYPE(CAV_TRAVP),INTENT(INOUT):: EL
@@ -11934,13 +13781,53 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
     IF(J==1) RETURN
 
+    call PRTP("ADJTIME_TWCAV:0", X)
+
     if(k%TIME) then
        X(6)=X(6)-(1-k%TOTALPATH)*EL%P%LD/EL%P%BETA0
     else
        X(6)=X(6)-(1-k%TOTALPATH)*EL%P%LD
     endif
 
-  END SUBROUTINE ADJUSTP_TIME_CAV_TRAV_OUT
+    call PRTP("ADJTIME_TWCAV:1", X)
+
+  END SUBROUTINE ADJUST_TIME_CAV_TRAV_OUTP
+
+  SUBROUTINE get_z_cavr(EL,i,z)
+    IMPLICIT NONE
+    TYPE(CAV_TRAV),INTENT(INOUT):: EL
+    integer i
+    real(dp),INTENT(INOUT):: z
+    real(dp) d
+
+    D=EL%L/EL%P%NST
+    IF(EL%P%DIR==1) THEN
+       Z=(i-1)*d
+    ELSE
+       Z=EL%L-(i-1)*d
+    ENDIF
+
+  end SUBROUTINE get_z_cavr
+
+  SUBROUTINE get_z_cavp(EL,i,z)
+    IMPLICIT NONE
+    TYPE(CAV_TRAVP),INTENT(INOUT):: EL
+    integer i
+    TYPE(REAL_8),INTENT(INOUT):: z
+    TYPE(REAL_8) d
+
+    CALL ALLOC(D)
+
+    D=EL%L/EL%P%NST
+    IF(EL%P%DIR==1) THEN
+       Z=(i-1)*d
+    ELSE
+       Z=EL%L-(i-1)*d
+    ENDIF
+
+    CALL KILL(D)
+
+  end SUBROUTINE get_z_cavp
 
   SUBROUTINE INTER_CAV_TRAV(EL,X,kt,j)
     IMPLICIT NONE
@@ -11958,7 +13845,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     IF(EL%P%DIR==1) THEN
        Z0=(j-1)*d1
     ELSE
-       Z0=EL%L+(j-1)*d1
+       Z0=EL%L-(j-1)*d1   ! bug  fixed 2018 september
     ENDIF
 
     k=kt
@@ -11977,10 +13864,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
        call rk6_cav(z0,d1,el,X,k)
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -12008,7 +13895,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     IF(EL%P%DIR==1) THEN
        Z0=(j-1)*d1
     ELSE
-       Z0=EL%L+(j-1)*d1
+       Z0=EL%L-(j-1)*d1
     ENDIF
     k=kt
     TOTALPATH=k%TOTALPATH
@@ -12028,10 +13915,10 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        call rk6_cav(z0,d1,el,X,k)
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -12103,7 +13990,9 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     real(dp) dv
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-    IF(k%NOCAVITY) RETURN
+    IF(k%NOCAVITY.and.(.not.EL%always_on)) RETURN
+
+!    IF(k%NOCAVITY) RETURN
 
         IF(I==1.AND.EL%P%KILL_ENT_FRINGE) RETURN
         IF(I==-1.AND.EL%P%KILL_EXI_FRINGE) RETURN
@@ -12120,14 +14009,23 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     CPSI=COS(EL%PSI)
     SPSI=SIN(EL%PSI)
 
-    O=EL%freq*twopi/CLIGHT
+       if(freq_redefine) then
+        O=EL%freq
+         else
+        O=twopi*EL%freq/CLIGHT
+       endif
+
+    if(.not.k%TIME.and.piotr_freq) then
+       O=O/EL%p%beta0
+    endif
+
     C1=(eps1+(EL%P%DIR-eps1)*0.5_dp)*COS(O*(x(6)-Z0)+EL%PHAS+EL%phase0)
     C2=(eps2+(EL%P%DIR-eps2)*0.5_dp)*COS(O*(x(6)+Z0)+EL%PHAS+EL%phase0+EL%DPHAS)
     ! REMOVE FRINGE IN OPPOSITE DIRECTION  ULTRA RELATIVISTIC
     S1=(eps1+(EL%P%DIR-eps1)*0.5_dp)*SIN(O*(x(6)-Z0)+EL%PHAS+EL%phase0)
     S2=(eps2+(EL%P%DIR-eps2)*0.5_dp)*SIN(O*(x(6)+ Z0)+EL%PHAS+EL%phase0+EL%DPHAS)
     ! REMOVE FRINGE IN OPPOSITE DIRECTION   ULTRA RELATIVISTIC
-    V=I*EL%P%CHARGE*(EL%volt-dv)*1e-3_dp/EL%P%P0C
+    V=I*EL%P%CHARGE*(EL%volt-dv)*volt_c/EL%P%P0C
 
     X(2)=X(2)+V*(CPSI*S1+SPSI*S2)*X(1)
     X(4)=X(4)+V*(CPSI*S1+SPSI*S2)*X(3)
@@ -12144,11 +14042,13 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     integer eps1,eps2
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-
-    IF(k%NOCAVITY) RETURN
+    IF(k%NOCAVITY.and.(.not.EL%always_on)) RETURN
+!    IF(k%NOCAVITY) RETURN
 
         IF(I==1.AND.EL%P%KILL_ENT_FRINGE) RETURN
         IF(I==-1.AND.EL%P%KILL_EXI_FRINGE) RETURN
+
+    call PRTP("FRNG_TWCAV:0", X)
 
     CALL ALLOC(C1,S1,C2,S2,V,O,Z0,F,CPSI,SPSI)
     call alloc(dv)
@@ -12166,30 +14066,38 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     CPSI=COS(EL%PSI)
     SPSI=SIN(EL%PSI)
 
-    O=EL%freq*twopi/CLIGHT
+       if(freq_redefine) then
+        O=EL%freq
+         else
+        O=twopi*EL%freq/CLIGHT
+       endif
+
+    if(.not.k%TIME.and.piotr_freq) then
+       O=O/EL%p%beta0
+    endif
+
     C1=(eps1+(EL%P%DIR-eps1)*0.5_dp)*COS(O*(x(6)-Z0)+EL%PHAS+EL%phase0)
     C2=(eps2+(EL%P%DIR-eps2)*0.5_dp)*COS(O*(x(6)+Z0)+EL%PHAS+EL%phase0+EL%DPHAS)
     ! REMOVE FRINGE IN OPPOSITE DIRECTION  ULTRA RELATIVISTIC
     S1=(eps1+(EL%P%DIR-eps1)*0.5_dp)*SIN(O*(x(6)-Z0)+EL%PHAS+EL%phase0)
     S2=(eps2+(EL%P%DIR-eps2)*0.5_dp)*SIN(O*(x(6)+Z0)+EL%PHAS+EL%phase0+EL%DPHAS)
     ! REMOVE FRINGE IN OPPOSITE DIRECTION   ULTRA RELATIVISTIC
-    V=I*EL%P%CHARGE*(EL%volt-dv)*1e-3_dp/EL%P%P0C
+    V=I*EL%P%CHARGE*(EL%volt-dv)*volt_c/EL%P%P0C
 
 
     X(2)=X(2)+V*(CPSI*S1+SPSI*S2)*X(1)
     X(4)=X(4)+V*(CPSI*S1+SPSI*S2)*X(3)
     x(5)=x(5)-0.5_dp*(X(1)**2+X(3)**2)*V*(CPSI*C1+SPSI*C2)*O
 
-
-
-
     call KILL(dv)
     CALL KILL(C1,S1,C2,S2,V,O,Z0,F,CPSI,SPSI)
+
+    call PRTP("FRNG_TWCAV:1", X)
+
   END SUBROUTINE FRINGECAVP_TRAV
 
   SUBROUTINE  FRINGE_CAV_TRAVR(EL,X,k,J)
     IMPLICIT NONE
-    !      TYPE(BEAM), INTENT(INOUT) ::B
     integer,INTENT(IN):: J
     real(dp), INTENT(INOUT) :: X(6)
     TYPE(CAV_TRAV),INTENT(INOUT):: EL
@@ -12209,7 +14117,6 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
 
   SUBROUTINE  FRINGE_CAV_TRAVP(EL,X,k,J)
     IMPLICIT NONE
-    !      TYPE(BEAM), INTENT(INOUT) ::B
     integer,INTENT(IN):: J
     TYPE(REAL_8), INTENT(INOUT) :: X(6)
     TYPE(CAV_TRAVP),INTENT(INOUT):: EL
@@ -12241,6 +14148,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           deallocate(EL%DVDS)
           deallocate(EL%cavity_totalpath)
           deallocate(EL%phase0)
+          deallocate(EL%always_on)
        endif
     elseif(i==0)       then          ! nullifies
 
@@ -12249,6 +14157,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        NULLIFY(EL%PSI)
        NULLIFY(EL%DPHAS)
        NULLIFY(EL%DVDS)
+       NULLIFY(EL%always_on)
     endif
 
   END SUBROUTINE ZEROR_CAV_TRAV
@@ -12268,6 +14177,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
           deallocate(EL%DVDS)
           deallocate(EL%cavity_totalpath)
           deallocate(EL%phase0)
+          deallocate(EL%always_on)
        endif
     elseif(i==0)       then          ! nullifies
 
@@ -12276,6 +14186,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
        NULLIFY(EL%PSI)
        NULLIFY(EL%DPHAS)
        NULLIFY(EL%DVDS)
+       NULLIFY(EL%always_on)
     endif
 
   END SUBROUTINE ZEROP_CAV_TRAV
@@ -12344,7 +14255,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(RCOLP), INTENT(INOUT)::EL
     INTEGER, INTENT(IN)::I
     !integer k,j
-    return 
+    return
    IF(I==-1) THEN
 !       if(ASSOCIATED(EL%A)) THEN
 !          CALL KILL(EL%A)
@@ -12365,7 +14276,7 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(ECOL), INTENT(INOUT)::EL
     INTEGER, INTENT(IN)::I
     !integer k
-     return 
+     return
    IF(I==-1) THEN
   !     if(ASSOCIATED(EL%A)) THEN
   !        CALL KILL(EL%A)
@@ -12421,14 +14332,44 @@ SUBROUTINE KICKCAVP(EL,YL,X,k)
     TYPE(DKD2P), INTENT(INOUT)::EL
     INTEGER, INTENT(IN)::I
     !integer k
+
     IF(I==-1) THEN
        if(ASSOCIATED(EL%F)) deallocate(EL%F)
     elseif(i==0)       then          ! nullifies
        NULLIFY(EL%F)
     endif
-
   END SUBROUTINE ZEROp_DKD2
 
+  SUBROUTINE ZEROr_sol5(EL,I)
+    IMPLICIT NONE
+    TYPE(sol5), INTENT(INOUT)::EL
+    INTEGER, INTENT(IN)::I
+    !integer k
+    IF(I==-1) THEN  !  Sadistic stuff
+       if(ASSOCIATED(EL%dx)) deallocate(EL%dx)
+       if(ASSOCIATED(EL%dy)) deallocate(EL%dy)
+       if(ASSOCIATED(EL%pitch_x)) deallocate(EL%pitch_x)
+       if(ASSOCIATED(EL%pitch_y)) deallocate(EL%pitch_y)
+    elseif(i==0)       then          ! nullifies
+       NULLIFY(EL%dx,EL%dy,EL%pitch_x,EL%pitch_y)
+    endif
+
+  END SUBROUTINE ZEROr_sol5
+
+  SUBROUTINE ZEROp_sol5(EL,I)
+    IMPLICIT NONE
+    TYPE(sol5P), INTENT(INOUT)::EL
+    INTEGER, INTENT(IN)::I
+    !integer k
+    IF(I==-1) THEN  !  Sadistic stuff
+       if(ASSOCIATED(EL%dx)) deallocate(EL%dx)
+       if(ASSOCIATED(EL%dy)) deallocate(EL%dy)
+       if(ASSOCIATED(EL%pitch_x)) deallocate(EL%pitch_x)
+       if(ASSOCIATED(EL%pitch_y)) deallocate(EL%pitch_y)
+    elseif(i==0)       then          ! nullifies
+       NULLIFY(EL%dx,EL%dy,EL%pitch_x,EL%pitch_y)
+    endif
+  END SUBROUTINE ZEROp_sol5
 
   SUBROUTINE ZEROr_KTK(EL,I)
     IMPLICIT NONE
@@ -12716,7 +14657,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
           deallocate(EL%DRIFTKICK)
        endif
        if(ASSOCIATED(EL%e_x)) then
-         deallocate(EL%e_x,EL%e_y,EL%PHI,EL%AE,EL%BE,EL%As,EL%Bs)
+         deallocate(EL%e_x,EL%e_y,EL%PHI,EL%AE,EL%BE,el%vm)
        endif
     elseif(i==0)       then          ! nullifies
 
@@ -12724,7 +14665,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
        NULLIFY(EL%bf_x)
        NULLIFY(EL%bf_y)
        NULLIFY(EL%DRIFTKICK)
-       NULLIFY(EL%e_x,EL%e_y,EL%PHI,EL%AE,EL%BE,EL%As,EL%Bs)
+       NULLIFY(EL%e_x,EL%e_y,EL%PHI,EL%AE,EL%BE,el%vm)
     endif
 
   END SUBROUTINE ZEROr_teapot
@@ -12737,12 +14678,12 @@ SUBROUTINE ZEROr_teapot(EL,I)
     IF(I==-1) THEN
        if(ASSOCIATED(EL%F)) deallocate(EL%F)
        if(ASSOCIATED(EL%bf_x)) then
-          CALL KILL(EL%bf_x,S_B(SECTOR_NMUL)%N_MONO)   ! not used, will be used locally only
+          CALL KILL(EL%bf_x,S_B_FROM_V%N_MONO)   ! not used, will be used locally only
           !          CALL KILL(EL%bf_x,S_B(EL%P%NMUL)%N_MONO)   ! not used, will be used locally only
           deallocate(EL%bf_x)
        endif
        if(ASSOCIATED(EL%bf_Y)) then
-          CALL KILL(EL%bf_Y,S_B(SECTOR_NMUL)%N_MONO)   ! not used, will be used locally only
+          CALL KILL(EL%bf_Y,S_B_FROM_V%N_MONO)   ! not used, will be used locally only
           !          CALL KILL(EL%bf_Y,S_B(EL%P%NMUL)%N_MONO)   ! not used, will be used locally only
           deallocate(EL%bf_Y)
        endif
@@ -12750,11 +14691,13 @@ SUBROUTINE ZEROr_teapot(EL,I)
           deallocate(EL%DRIFTKICK)
        endif
        if(ASSOCIATED(EL%e_x)) then
-         CALL KILL(EL%e_x)
-         CALL KILL(EL%e_y,EL%PHI)
+         CALL KILL(EL%e_x,S_E%N_MONO)
+         CALL KILL(EL%e_y,S_E%N_MONO)
+         CALL KILL(EL%PHI,S_E%N_MONO)
+         CALL KILL(EL%VM,S_E%N_MONO)
          CALL KILL(EL%AE)
          CALL KILL(EL%BE)
-         deallocate(EL%e_x,EL%e_y,EL%AE,EL%BE,EL%PHI)
+         deallocate(EL%e_x,EL%e_y,EL%AE,EL%BE,EL%PHI,el%vm)
        endif
 
     elseif(i==0)       then          ! nullifies
@@ -12763,14 +14706,14 @@ SUBROUTINE ZEROr_teapot(EL,I)
        NULLIFY(EL%bf_x)
        NULLIFY(EL%bf_Y)
        NULLIFY(EL%DRIFTKICK)
-       NULLIFY(EL%e_x,EL%e_y,EL%AE,EL%BE,EL%PHI)
+       NULLIFY(EL%e_x,EL%e_y,EL%AE,EL%BE,EL%PHI,EL%VM)
 
     endif
 
   END SUBROUTINE ZEROP_teapot
 
 
-  SUBROUTINE ZEROR_CAV4(EL,I)
+  SUBROUTINE ZERO_CAV4R(EL,I)
     IMPLICIT NONE
     TYPE(CAV4), INTENT(INOUT)::EL
     INTEGER, INTENT(IN)::I
@@ -12826,9 +14769,9 @@ SUBROUTINE ZEROr_teapot(EL,I)
        NULLIFY(EL%PH)
     endif
 
-  END SUBROUTINE ZEROR_CAV4
+  END SUBROUTINE ZERO_CAV4R
 
-  SUBROUTINE ZEROP_CAV4(EL,I)
+  SUBROUTINE ZERO_CAV4P(EL,I)
     IMPLICIT NONE
     TYPE(CAV4P), INTENT(INOUT)::EL
     INTEGER, INTENT(IN)::I
@@ -12887,7 +14830,653 @@ SUBROUTINE ZEROr_teapot(EL,I)
        NULLIFY(EL%PH)
     endif
 
-  END SUBROUTINE ZEROP_CAV4
+  END SUBROUTINE ZERO_CAV4P
+
+  SUBROUTINE ZERO_ABELLR(EL,I)
+    IMPLICIT NONE
+    TYPE(ABELL), INTENT(INOUT)::EL
+    INTEGER, INTENT(IN)::I
+    !integer k
+    IF(I==-1) THEN
+       if(ASSOCIATED(EL%N)) then
+          deallocate(EL%N)
+       endif
+       if(ASSOCIATED(EL%M)) then
+          deallocate(EL%M)
+       endif
+       if(ASSOCIATED(EL%DZ)) then
+          deallocate(EL%DZ)
+       endif
+       if(ASSOCIATED(EL%T)) then
+          deallocate(EL%T)
+       endif
+       if(ASSOCIATED(EL%B)) then
+          deallocate(EL%B)
+       endif
+       if(ASSOCIATED(EL%E)) then
+          deallocate(EL%E)
+       endif
+       if(ASSOCIATED(EL%TE)) then
+          deallocate(EL%TE)
+       endif
+          deallocate(EL%SCALE,el%angc,el%hc,el%dc,el%xc,el%vc,el%xprime)
+    elseif(i==0)       then          ! nullifies
+
+       NULLIFY(EL%N)
+       NULLIFY(EL%M)
+       NULLIFY(EL%B)
+       NULLIFY(EL%T)
+       NULLIFY(EL%E)
+       NULLIFY(EL%TE)
+       NULLIFY(EL%DZ)
+       NULLIFY(EL%SCALE,el%angc,el%hc,el%dc,el%xc,el%vc,el%xprime)
+
+    endif
+
+  END SUBROUTINE ZERO_ABELLR
+
+ subroutine feval_abellr(Z,X,k,f,EL)   !electric teapot s
+    IMPLICIT NONE
+    real(dp), INTENT(INout) :: X(6)
+    real(dp), INTENT(INOUT) :: F(6)
+    real(dp), INTENT(INOUT) :: Z
+    REAL(DP) PZ,DEL,H,B(3),E(3),VM,A(3),DA(3,2),VE,beta0   ! vm MAGNETIC POTENTIAL
+    TYPE(abell),  INTENT(INout) :: EL
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+    if(k%time) then
+       beta0=el%p%beta0;
+    else
+       beta0=1.0_dp;
+    endif
+
+
+    if(el%xprime) then   !!!!
+
+      call B_E_FIELD(EL,X,Z,PSIE_IN=VE,E_IN=E,B_in=b,kick=.true.)
+           DEL=x(5)+VE
+      call fx_new(f,x,k,EL%P%EXACT,EL%P%b0,beta0,b,e,ve)
+
+    else
+call B_E_FIELD(EL,X,Z,PSIE_IN=VE,E_IN=E,B_in=b,A_in=a,DA_in=da,kick=.true.)
+  call fx_newc(f,x,k,EL%P%EXACT,EL%P%b0,beta0,b,a,da,e,ve)
+
+
+     endif
+     global_e= DEL*el%p%p0c
+   END subroutine feval_abellr
+
+subroutine feval_abellP(Z,X,k,f,EL)   !electric teapot s
+    IMPLICIT NONE
+    TYPE(REAL_8), INTENT(INout) :: X(6)
+    TYPE(REAL_8),  INTENT(INOUT) :: F(6)
+    TYPE(REAL_8),   INTENT(INOUT) :: Z
+    TYPE(REAL_8) PZ,DEL,H,B(3),E(3),VM,A(3),DA(3,2),VE   ! vm MAGNETIC POTENTIAL
+    TYPE(abellP),  INTENT(INout) :: EL
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+    integer i,j
+    real(dp) beta0
+
+     call alloc(PZ,DEL,H,VM)
+     call alloc(E);call alloc(B);call alloc(A);
+      CALL alloc(VE)
+     do i=1,3
+      do j=1,2
+       call alloc(da(i,j))
+      enddo
+     enddo
+
+
+    if(k%time) then
+       beta0=el%p%beta0;
+    else
+       beta0=1.0_dp;
+    endif
+
+
+    if(el%xprime) then   !!!!
+
+      call B_E_FIELD(EL,X,Z,PSIE_IN=VE,E_IN=E,B_in=b,kick=.true.)
+           DEL=x(5)+VE
+      call fx_new(f,x,k,EL%P%EXACT,EL%P%b0,beta0,b,e,ve)
+
+    else
+
+call B_E_FIELD(EL,X,Z,PSIE_IN=VE,E_IN=E,B_in=b,A_in=a,DA_in=da,kick=.true.)
+  call fx_newc(f,x,k,EL%P%EXACT,EL%P%b0,beta0,b,a,da,e,ve)
+
+
+endif
+     global_e= DEL*el%p%p0c
+     call kill(PZ,DEL,H,VM)
+     call kill(E);call kill(B);call kill(A);
+     do i=1,3
+      do j=1,2
+       call kill(da(i,j))
+      enddo
+     enddo
+      CALL KILL(VE)
+   END subroutine feval_abellP
+
+  SUBROUTINE B_E_FIELDR(EL,X,Z,PSIE_in,E_in,PSIM_in,B_in,A_in,DA_in,kick)
+    IMPLICIT NONE
+    TYPE(ABELL), INTENT(INOUT)::EL
+    logical, optional :: kick
+    real(dp), intent(inout) :: x(6)
+    real(dp), intent(in) :: z
+    REAL(DP), optional, INTENT(OUT) :: E_IN(3), B_IN(3),A_IN(3),DA_IN(3,2),PSIM_IN,PSIE_IN
+    REAL(DP)  B(3),A(3),DA(3,2),PSIM,PSIE,E(3)
+    COMPLEX(dp) X_IP(0:NMAX+1),AM,EX,AMB,AMI,CX,CY,C,D,DX,DY,dd
+    COMPLEX(dp) DE,DXE,DYE,ddE,AME,EXE,AMBE,AMIE
+    REAL(dp) K_N,XN,YN,nbm,nbm1,nbm2
+    INTEGER I,N,M,J,DIR(3),DIRE(3)
+
+
+    X_IP(0)=1.0_DP
+    X_IP(1)=X(1)+I_*X(3)
+    DO I=2,EL%M+1
+     X_IP(I)=X_IP(I-1)*X_IP(1)
+    ENDDO
+    do i=1,3
+     B(i)=0.0_dp
+    enddo
+    do i=1,3
+     E(i)=0.0_dp
+    enddo
+    do i=1,3
+     A(i)=0.0_dp
+    enddo
+    DO I=1,3
+    DO J=1,2
+     DA(I,J)=0.0_DP
+    ENDDO
+    ENDDO
+    PSIM=0.0_DP
+    PSIE=0.0_DP
+    AMI=0.0_DP
+   !  CONJG
+    DO  M=1,EL%M
+      EX=EXP(-I_*EL%T(M))
+      EXE=EXP(-I_*EL%TE(M))
+     DO  N=-EL%N/2,EL%N/2-1
+
+      K_N=TWOPI*N/EL%N/EL%DZ(M)
+      XN=K_N*X(1);YN=K_N*X(3)
+        AM=K_N**(M-1)*X_IP(m-1)*EX
+        AMB=CONJG(AM)
+        D=(AM*X_IP(1)-AMB*CONJG(X_IP(1)))
+        Dd=(AM*X_IP(1)+AMB*CONJG(X_IP(1)))
+        DX=(AM-AMB)  !  M FOR DERIVATIVE
+        DY=(AM+AMB) !  I_ * M FOR DERIVATIVE
+        AME=K_N**(M-1)*X_IP(m-1)*EXE
+        AMBE=CONJG(AME)
+        DE=(AME*X_IP(1)-AMBE*CONJG(X_IP(1)))
+        DdE=(AME*X_IP(1)+AMBE*CONJG(X_IP(1)))
+        DXE=(AME-AMBE)  !  M FOR DERIVATIVE
+        DYE=(AME+AMBE) !  I_ * M FOR DERIVATIVE
+
+        nbm=NBI(M,XN,YN)
+        nbm1=NBI(M+1,XN,YN)
+        nbm2=NBI(M+2,XN,YN)
+        PSIM=PSIM+EXP(I_*K_N*Z)*0.5_DP*EL%B(M,N)*dd*nbm
+        B(1)=DY*M*EXP(I_*K_N*Z)*0.5_DP*EL%B(M,N)*nbm+B(1)
+        B(1)=dd*0.5_DP*EXP(I_*K_N*Z)*EL%B(M,N)*nbm1*XN*K_N +B(1)
+        B(2)=I_*DX*M*EXP(I_*K_N*Z)*0.5_DP*EL%B(M,N)*nbm+B(2)
+        B(2)=dd*0.5_DP*EXP(I_*K_N*Z)*EL%B(M,N)*nbm1*YN*K_N +B(2)
+        B(3)=I_*K_N*dd*0.5_DP*EXP(I_*K_N*Z)*EL%B(M,N)*nbm+B(3)
+        PSIE=PSIE+EXP(I_*K_N*Z)*0.5_DP*EL%E(M,N)*ddE*nbm
+        E(1)=-DYE*M*EXP(I_*K_N*Z)*0.5_DP*EL%E(M,N)*nbm+E(1)
+        E(1)=-ddE*0.5_DP*EXP(I_*K_N*Z)*EL%E(M,N)*nbm1*XN*K_N +E(1)
+        E(2)=-I_*DXE*M*EXP(I_*K_N*Z)*0.5_DP*EL%E(M,N)*nbm+E(2)
+        E(2)=-ddE*0.5_DP*EXP(I_*K_N*Z)*EL%E(M,N)*nbm1*YN*K_N +E(2)
+        E(3)=-I_*K_N*ddE*0.5_DP*EXP(I_*K_N*Z)*EL%E(M,N)*nbm+E(3)
+
+        if(n==0) then
+       AMI=-0.5_dp*EXP(I_*K_N*Z)/M*EL%B(M,N)*nbm*d
+        C= -EL%B(M,N)*0.5_DP*EXP(I_*K_N*Z)
+        CX=C*(DX*nbm+d/M*XN*K_N*nbm1)  !  dami/dx
+        CY=C*(I_*DY*nbm+d/M*YN*K_N*nbm1)  !  dami/dy
+     !   DA(1,1)=DA(1,1)+AMI+X(1)*CX
+     !   DA(1,2)=DA(1,2)+X(1)*CYf
+      !  DA(2,1)=DA(2,1)+X(3)*CX
+    !    DA(2,2)=DA(2,2)+AMI+X(3)*CY
+    !    A(1)=AMI*X(1)+A(1)
+     !   A(2)=AMI*X(3)+A(2)
+          A(3)=A(3)-M/I_*AMI-0.5_DP*I_*EL%B(M,N)*EXP(I_*K_N*Z)*(XN**2+YN**2)*d/M*nbm1
+          DA(3,1)=+DA(3,1)-M*CX/I_  !+K_N*C*I_*( DX*(X(1)**2+X(3)**2) +d/M*2*X(1))*nbm1
+      !    DA(3,1)=C*I_*d/M*(XN**2+YN**2)*XN*nbm2+DA(3,1)
+          DA(3,2)=+DA(3,2)-M*CY/I_  !+ K_N*C*I_*( I_*DY*(X(1)**2+X(3)**2) +d/M*2*X(3))*nbm1
+      !    DA(3,2)=C*I_*d/M*(XN**2+YN**2)*YN*nbm2+DA(3,2)
+        else
+        AMI=-K_N*0.5_dp*EXP(I_*K_N*Z)/M*EL%B(M,N)*nbm*d
+        C= -K_N*EL%B(M,N)*0.5_DP*EXP(I_*K_N*Z)
+        CX=C*(DX*nbm+d/M*XN*K_N*nbm1)  !  dami/dx
+        CY=C*(I_*DY*nbm+d/M*YN*K_N*nbm1)  !  dami/dy
+        DA(1,1)=DA(1,1)+AMI+X(1)*CX
+        DA(1,2)=DA(1,2)+X(1)*CY
+        DA(2,1)=DA(2,1)+X(3)*CX
+        DA(2,2)=DA(2,2)+AMI+X(3)*CY
+        A(1)=AMI*X(1)+A(1)
+        A(2)=AMI*X(3)+A(2)
+          A(3)=A(3)-M/I_/K_N*AMI-0.5_DP*I_*EL%B(M,N)*EXP(I_*K_N*Z)*(XN**2+YN**2)*d/M*nbm1
+          DA(3,1)=+DA(3,1)-M*CX/I_/K_N +K_N*C*I_*( DX*(X(1)**2+X(3)**2) +d/M*2*X(1))*nbm1
+          DA(3,1)=C*I_*d/M*(XN**2+YN**2)*XN*nbm2+DA(3,1)
+          DA(3,2)=+DA(3,2)-M*CY/I_/K_N+K_N*C*I_*( I_*DY*(X(1)**2+X(3)**2) +d/M*2*X(3))*nbm1
+          DA(3,2)=C*I_*d/M*(XN**2+YN**2)*YN*nbm2+DA(3,2)
+        endif
+
+
+     ENDDO
+    ENDDO
+     DO  N=-EL%N/2,EL%N/2-1
+      K_N=TWOPI*N/EL%N/EL%DZ(0)
+      XN=K_N*X(1);YN=K_N*X(3)
+        nbm=NBI(0,XN,YN)
+        nbm1=NBI(1,XN,YN)
+        if(N/=0) THEN
+         PSIM=PSIM+EXP(I_*K_N*Z)*EL%B(0,N)*nbm/K_N
+         PSIE=PSIE+EXP(I_*K_N*Z)*EL%E(0,N)*nbm/K_N
+         else
+          PSIM=PSIM+I_*z*EL%B(0,N)*nbm
+          PSIE=PSIE+I_*z*EL%E(0,N)*nbm
+        ENDIF
+        B(1)=EXP(I_*K_N*Z)*XN*EL%B(0,N)*nbm1+B(1)
+        B(2)=EXP(I_*K_N*Z)*YN*EL%B(0,N)*nbm1+B(2)
+        B(3)=I_*EXP(I_*K_N*Z)*EL%B(0,N)*nbm+B(3)
+        E(1)=-EXP(I_*K_N*Z)*XN*EL%E(0,N)*nbm1+E(1)
+        E(2)=-EXP(I_*K_N*Z)*YN*EL%E(0,N)*nbm1+E(2)
+        E(3)=-I_*EXP(I_*K_N*Z)*EL%E(0,N)*nbm+E(3)
+        AMI=I_*EL%B(0,N)*nbm1*EXP(I_*K_N*Z)
+        C=I_*EL%B(0,N)*EXP(I_*K_N*Z)*K_N
+        CX=C*XN*NBI(2,XN,YN)
+        CY=C*YN*NBI(2,XN,YN)
+        DA(1,1)=DA(1,1)-CX*X(3)
+        DA(1,2)=DA(1,2)-CY*X(3)-AMI
+        DA(2,1)=DA(2,1)+CX*X(1)+AMI
+        DA(2,2)=DA(2,2)+CY*X(1)
+        A(1)=-AMI*X(3)+A(1)
+        A(2)=AMI*X(1)+A(2)
+     ENDDO
+!psie=sin(z+x(1)+x(3)**2+0.5d0)
+!e(1)=-cos(z+x(1)+x(3)**2+0.5d0)
+!e(2)=-cos(z+x(1)+x(3)**2+0.5d0)*2*x(3)
+!e(3)=-cos(z+x(1)+x(3)**2+0.5d0)
+ PSIE=el%scale*PSIE*volt_c/EL%P%P0C
+ PSIm=el%scale*PSIM
+ do i=1,3
+   e(i)=el%scale*e(i)*volt_c/EL%P%P0C
+   b(i)=el%scale*b(i)
+ enddo
+     if(present(kick)) then
+     if(kick) then
+      DIR=EL%P%DIR; DIR(3)=1;
+      DIRE=EL%P%DIR; DIRE(1:2)=1;
+        PSIE=el%p%charge*PSIE
+        PSIM=el%p%charge*PSIM
+      do i=1,3
+        a(i)=DIR(I)*el%p%charge*a(i)
+        b(i)=DIR(I)*el%p%charge*b(i)
+        e(i)=DIRE(I)*el%p%charge*e(i)
+       do j=1,2
+        da(i,j)=DIR(I)*el%p%charge*da(i,j)
+      enddo
+      enddo
+     endif
+     endif
+IF(PRESENT(PSIM_in) ) psim_in=psim
+IF(PRESENT(PSIE_in) ) psiE_in=psiE
+if(present(b_in)) then
+ do i=1,3
+  b_in(i)=b(i)
+ enddo
+endif
+if(present(E_in)) then
+ do i=1,3
+  E_in(i)=E(i)
+ enddo
+endif
+if(present(a_in)) then
+ do i=1,3
+  a_in(i)=a(i)
+ enddo
+endif
+if(present(da_in)) then
+ do i=1,3
+ do j=1,2
+  da_in(i,j)=da(i,j)
+ enddo
+ enddo
+endif
+
+
+  END SUBROUTINE B_E_FIELDR
+
+  SUBROUTINE B_E_FIELDP(EL,X,Z,PSIE_in,E_in,PSIM_in,B_in,A_in,DA_in,kick)
+    IMPLICIT NONE
+    TYPE(ABELLP), INTENT(INOUT)::EL
+    TYPE(REAL_8), INTENT(IN) :: X(6)
+    logical, optional :: kick
+    TYPE(REAL_8),  INTENT(In) :: Z
+    TYPE(REAL_8), optional, INTENT(OUT) :: E_IN(3), B_IN(3),A_IN(3),DA_IN(3,2),PSIM_IN,PSIE_IN
+    TYPE(REAL_8)  B(3),A(3),DA(3,2),PSIM,PSIE,E(3)
+    TYPE(complex_8) X_IP(0:NMAX+1),AM,EX,AMB,AMI,CX,CY,C,D,DX,DY,dd
+    TYPE(complex_8) DE,DXE,DYE,ddE,AME,EXE,AMBE,AMIE
+    REAL(dp) K_N
+    TYPE(REAL_8) XN,YN,nbm,nbm1,nbm2
+    INTEGER I,N,M,J,DIR(3),DIRE(3)
+
+    CALL alloc(X_IP)
+    CALL alloc(AM,EX,AMB,AMI,CX,CY,C,D,DX,DY)
+    CALL ALLOC(DE,DXE,DYE,ddE,AME,EXE,AMBE,AMIE)
+    CALL alloc(XN,YN,nbm,nbm1,nbm2)
+    call alloc(dd)
+    call alloc(B);
+    call alloc(A);
+    CALL alloc(PSIM)
+    call alloc(E);
+    CALL alloc(PSIE)
+    DO I=1,3
+    DO J=1,2
+     CALL alloC(DA(I,J))
+    ENDDO
+    ENDDO
+
+
+    X_IP(0)=1.0_DP
+    X_IP(1)=X(1)+I_*X(3)
+    DO I=2,EL%M+1
+     X_IP(I)=X_IP(I-1)*X_IP(1)
+    ENDDO
+    do i=1,3
+     B(i)=0.0_dp
+    enddo
+    do i=1,3
+     E(i)=0.0_dp
+    enddo
+    do i=1,3
+     A(i)=0.0_dp
+    enddo
+    DO I=1,3
+    DO J=1,2
+     DA(I,J)=0.0_DP
+    ENDDO
+    ENDDO
+    PSIM=0.0_DP
+    PSIE=0.0_DP
+    AMI=0.0_DP
+   !  CONJG
+    DO  M=1,EL%M
+      EX=EXP(-I_*EL%T(M))
+      EXE=EXP(-I_*EL%TE(M))
+     DO  N=-EL%N/2,EL%N/2-1
+
+      K_N=TWOPI*N/EL%N/EL%DZ(M)
+      XN=K_N*X(1);YN=K_N*X(3)
+        AM=K_N**(M-1)*X_IP(m-1)*EX
+        AMB=CONJG(AM)
+        D=(AM*X_IP(1)-AMB*CONJG(X_IP(1)))
+        Dd=(AM*X_IP(1)+AMB*CONJG(X_IP(1)))
+        DX=(AM-AMB)  !  M FOR DERIVATIVE
+        DY=(AM+AMB) !  I_ * M FOR DERIVATIVE
+        AME=K_N**(M-1)*X_IP(m-1)*EXE
+        AMBE=CONJG(AME)
+        DE=(AME*X_IP(1)-AMBE*CONJG(X_IP(1)))
+        DdE=(AME*X_IP(1)+AMBE*CONJG(X_IP(1)))
+        DXE=(AME-AMBE)  !  M FOR DERIVATIVE
+        DYE=(AME+AMBE) !  I_ * M FOR DERIVATIVE
+
+        nbm=NBI(M,XN,YN)
+        nbm1=NBI(M+1,XN,YN)
+        nbm2=NBI(M+2,XN,YN)
+        PSIM=PSIM+EXP(I_*K_N*Z)*0.5_DP*EL%B(M,N)*dd*nbm
+        B(1)=DY*M*EXP(I_*K_N*Z)*0.5_DP*EL%B(M,N)*nbm+B(1)
+        B(1)=dd*0.5_DP*EXP(I_*K_N*Z)*EL%B(M,N)*nbm1*XN*K_N +B(1)
+        B(2)=I_*DX*M*EXP(I_*K_N*Z)*0.5_DP*EL%B(M,N)*nbm+B(2)
+        B(2)=dd*0.5_DP*EXP(I_*K_N*Z)*EL%B(M,N)*nbm1*YN*K_N +B(2)
+        B(3)=I_*K_N*dd*0.5_DP*EXP(I_*K_N*Z)*EL%B(M,N)*nbm+B(3)
+        PSIE=PSIE+EXP(I_*K_N*Z)*0.5_DP*EL%E(M,N)*ddE*nbm
+        E(1)=-DYE*M*EXP(I_*K_N*Z)*0.5_DP*EL%E(M,N)*nbm+E(1)
+        E(1)=-ddE*0.5_DP*EXP(I_*K_N*Z)*EL%E(M,N)*nbm1*XN*K_N +E(1)
+        E(2)=-I_*DXE*M*EXP(I_*K_N*Z)*0.5_DP*EL%E(M,N)*nbm+E(2)
+        E(2)=-ddE*0.5_DP*EXP(I_*K_N*Z)*EL%E(M,N)*nbm1*YN*K_N +E(2)
+        E(3)=-I_*K_N*ddE*0.5_DP*EXP(I_*K_N*Z)*EL%E(M,N)*nbm+E(3)
+
+        if(n==0) then
+
+        AMI=-0.5_dp*EXP(I_*K_N*Z)/M*EL%B(M,N)*nbm*d
+        C= -EL%B(M,N)*0.5_DP*EXP(I_*K_N*Z)
+        CX=C*(DX*nbm+d/M*XN*K_N*nbm1)  !  dami/dx
+        CY=C*(I_*DY*nbm+d/M*YN*K_N*nbm1)  !  dami/dy
+     !   DA(1,1)=DA(1,1)+AMI+X(1)*CX
+     !   DA(1,2)=DA(1,2)+X(1)*CY
+      !  DA(2,1)=DA(2,1)+X(3)*CX
+    !    DA(2,2)=DA(2,2)+AMI+X(3)*CY
+    !    A(1)=AMI*X(1)+A(1)
+     !   A(2)=AMI*X(3)+A(2)
+          A(3)=A(3)-M/I_*AMI-0.5_DP*I_*EL%B(M,N)*EXP(I_*K_N*Z)*(XN**2+YN**2)*d/M*nbm1
+          DA(3,1)=+DA(3,1)-M*CX/I_  !+K_N*C*I_*( DX*(X(1)**2+X(3)**2) +d/M*2*X(1))*nbm1
+      !    DA(3,1)=C*I_*d/M*(XN**2+YN**2)*XN*nbm2+DA(3,1)
+          DA(3,2)=+DA(3,2)-M*CY/I_  !+ K_N*C*I_*( I_*DY*(X(1)**2+X(3)**2) +d/M*2*X(3))*nbm1
+      !    DA(3,2)=C*I_*d/M*(XN**2+YN**2)*YN*nbm2+DA(3,2)
+
+        else
+        AMI=-K_N*0.5_dp*EXP(I_*K_N*Z)/M*EL%B(M,N)*nbm*d
+        C= -K_N*EL%B(M,N)*0.5_DP*EXP(I_*K_N*Z)
+        CX=C*(DX*nbm+d/M*XN*K_N*nbm1)  !  dami/dx
+        CY=C*(I_*DY*nbm+d/M*YN*K_N*nbm1)  !  dami/dy
+        DA(1,1)=DA(1,1)+AMI+X(1)*CX
+        DA(1,2)=DA(1,2)+X(1)*CY
+        DA(2,1)=DA(2,1)+X(3)*CX
+        DA(2,2)=DA(2,2)+AMI+X(3)*CY
+        A(1)=AMI*X(1)+A(1)
+        A(2)=AMI*X(3)+A(2)
+          A(3)=A(3)-M/I_/K_N*AMI-0.5_DP*I_*EL%B(M,N)*EXP(I_*K_N*Z)*(XN**2+YN**2)*d/M*nbm1
+          DA(3,1)=+DA(3,1)-M*CX/I_/K_N +K_N*C*I_*( DX*(X(1)**2+X(3)**2) +d/M*2*X(1))*nbm1
+          DA(3,1)=C*I_*d/M*(XN**2+YN**2)*XN*nbm2+DA(3,1)
+          DA(3,2)=+DA(3,2)-M*CY/I_/K_N+K_N*C*I_*( I_*DY*(X(1)**2+X(3)**2) +d/M*2*X(3))*nbm1
+          DA(3,2)=C*I_*d/M*(XN**2+YN**2)*YN*nbm2+DA(3,2)
+        endif
+
+
+     ENDDO
+    ENDDO
+     DO  N=-EL%N/2,EL%N/2-1
+      K_N=TWOPI*N/EL%N/EL%DZ(0)
+      XN=K_N*X(1);YN=K_N*X(3)
+        nbm=NBI(0,XN,YN)
+        nbm1=NBI(1,XN,YN)
+        if(N/=0) THEN
+         PSIM=PSIM+EXP(I_*K_N*Z)*EL%B(0,N)*nbm/K_N
+         PSIE=PSIE+EXP(I_*K_N*Z)*EL%E(0,N)*nbm/K_N
+         else
+          PSIM=PSIM+I_*z*EL%B(0,N)*nbm
+          PSIE=PSIE+I_*z*EL%E(0,N)*nbm
+        ENDIF
+        B(1)=EXP(I_*K_N*Z)*XN*EL%B(0,N)*nbm1+B(1)
+        B(2)=EXP(I_*K_N*Z)*YN*EL%B(0,N)*nbm1+B(2)
+        B(3)=I_*EXP(I_*K_N*Z)*EL%B(0,N)*nbm+B(3)
+        E(1)=-EXP(I_*K_N*Z)*XN*EL%E(0,N)*nbm1+E(1)
+        E(2)=-EXP(I_*K_N*Z)*YN*EL%E(0,N)*nbm1+E(2)
+        E(3)=-I_*EXP(I_*K_N*Z)*EL%E(0,N)*nbm+E(3)
+        AMI=I_*EL%B(0,N)*nbm1*EXP(I_*K_N*Z)
+        C=I_*EL%B(0,N)*EXP(I_*K_N*Z)*K_N
+        CX=C*XN*NBI(2,XN,YN)
+        CY=C*YN*NBI(2,XN,YN)
+        DA(1,1)=DA(1,1)-CX*X(3)
+        DA(1,2)=DA(1,2)-CY*X(3)-AMI
+        DA(2,1)=DA(2,1)+CX*X(1)+AMI
+        DA(2,2)=DA(2,2)+CY*X(1)
+        A(1)=-AMI*X(3)+A(1)
+        A(2)=AMI*X(1)+A(2)
+     ENDDO
+
+!psie=sin(z+x(1)+x(3)**2+0.5d0)
+!e(1)=-cos(z+x(1)+x(3)**2+0.5d0)
+!e(2)=-cos(z+x(1)+x(3)**2+0.5d0)*2*x(3)
+!e(3)=-cos(z+x(1)+x(3)**2+0.5d0)
+
+ PSIE=el%scale*PSIE*volt_c/EL%P%P0C
+ PSIm=el%scale*PSIM
+ do i=1,3
+   e(i)=el%scale*e(i)*volt_c/EL%P%P0C
+   b(i)=el%scale*b(i)
+ enddo
+     if(present(kick)) then
+     if(kick) then
+      DIR=EL%P%DIR; DIR(3)=1;
+      DIRE=EL%P%DIR; DIRE(1:2)=1;
+        PSIE=el%p%charge*PSIE
+        PSIM=el%p%charge*PSIM
+      do i=1,3
+        a(i)=DIR(I)*el%p%charge*a(i)
+        b(i)=DIR(I)*el%p%charge*b(i)
+        e(i)=DIRE(I)*el%p%charge*e(i)
+       do j=1,2
+        da(i,j)=DIR(I)*el%p%charge*da(i,j)
+      enddo
+      enddo
+     endif
+     endif
+IF(PRESENT(PSIM_in) ) psim_in=psim
+IF(PRESENT(PSIE_in) ) psiE_in=psiE
+if(present(b_in)) then
+ do i=1,3
+  b_in(i)=b(i)
+ enddo
+endif
+if(present(E_in)) then
+ do i=1,3
+  E_in(i)=E(i)
+ enddo
+endif
+if(present(a_in)) then
+ do i=1,3
+  a_in(i)=a(i)
+ enddo
+endif
+if(present(da_in)) then
+ do i=1,3
+ do j=1,2
+  da_in(i,j)=da(i,j)
+ enddo
+ enddo
+endif
+
+
+    CALL KILL(X_IP)
+    CALL KILL(AM,EX,AMB,AMI,CX,CY,C,D,DX,DY)
+    CALL KILL(DE,DXE,DYE,ddE,AME,EXE,AMBE,AMIE)
+    CALL KILL(XN,YN,nbm,nbm1,nbm2)
+    call KILL(dd)
+    call KILL(B);
+    call KILL(A);
+    CALL KILL(PSIM)
+    call KILL(E);
+    CALL KILL(PSIE)
+    DO I=1,3
+    DO J=1,2
+     CALL KILL(DA(I,J))
+    ENDDO
+    ENDDO
+  END SUBROUTINE B_E_FIELDP
+
+
+  SUBROUTINE ZERO_ABELLP(EL,I)
+    IMPLICIT NONE
+    TYPE(ABELLP), INTENT(INOUT)::EL
+    INTEGER, INTENT(IN)::I
+    !integer k
+    IF(I==-1) THEN
+       if(ASSOCIATED(EL%N)) then
+          deallocate(EL%N)
+       endif
+       if(ASSOCIATED(EL%M)) then
+          deallocate(EL%M)
+       endif
+       if(ASSOCIATED(EL%DZ)) then
+          deallocate(EL%DZ)
+       endif
+       if(ASSOCIATED(EL%T)) then
+          deallocate(EL%T)
+       endif
+       if(ASSOCIATED(EL%B)) then
+          deallocate(EL%B)
+       endif
+       if(ASSOCIATED(EL%TE)) then
+          deallocate(EL%TE)
+       endif
+       if(ASSOCIATED(EL%E)) then
+          deallocate(EL%E)
+       endif
+          call kill(EL%SCALE)
+          deallocate(EL%SCALE,el%angc,el%hc,el%dc,el%xc,el%vc,el%xprime)
+    elseif(i==0)       then          ! nullifies
+
+       NULLIFY(EL%N)
+       NULLIFY(EL%M)
+       NULLIFY(EL%B)
+       NULLIFY(EL%T)
+       NULLIFY(EL%E)
+       NULLIFY(EL%TE)
+       NULLIFY(EL%DZ)
+       NULLIFY(EL%SCALE,el%angc,el%hc,el%dc,el%xc,el%vc,el%xprime)
+    endif
+
+  END SUBROUTINE ZERO_ABELLP
+
+ SUBROUTINE ZEROR_superdrift(EL,I)
+    IMPLICIT NONE
+    TYPE(superdrift), INTENT(INOUT)::EL
+    INTEGER, INTENT(IN)::I
+    !integer k
+    IF(I==-1) THEN
+
+       if(ASSOCIATED(EL%D)) then
+
+       deallocate(EL%D)
+       deallocate(EL%ANG)
+       deallocate(EL%A_X1)
+       deallocate(EL%A_X2)
+
+       endif
+    elseif(i==0)       then          ! nullifies
+
+
+       NULLIFY(EL%D)
+       NULLIFY(EL%ANG)
+       NULLIFY(EL%A_X1)
+       NULLIFY(EL%A_X2)
+    endif
+
+  END SUBROUTINE ZEROR_superdrift
+
+ SUBROUTINE ZEROp_superdrift(EL,I)
+    IMPLICIT NONE
+    TYPE(superdriftp), INTENT(INOUT)::EL
+    INTEGER, INTENT(IN)::I
+    !integer k
+    IF(I==-1) THEN
+
+       if(ASSOCIATED(EL%D)) then
+
+       deallocate(EL%D)
+       deallocate(EL%ANG)
+       deallocate(EL%A_X1)
+       deallocate(EL%A_X2)
+
+       endif
+    elseif(i==0)       then          ! nullifies
+
+
+       NULLIFY(EL%D)
+       NULLIFY(EL%ANG)
+       NULLIFY(EL%A_X1)
+       NULLIFY(EL%A_X2)
+
+    endif
+
+  END SUBROUTINE ZEROp_superdrift
+
 
   SUBROUTINE ZEROR_RAMP(EL,I)
     IMPLICIT NONE
@@ -12906,7 +15495,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
 
 
-!!!!!!!!!!!!!!!!! cav4 acceleration !!!!!!!!!!!!!!!!!!! 
+!!!!!!!!!!!!!!!!! cav4 acceleration !!!!!!!!!!!!!!!!!!!
    SUBROUTINE alloc_acceleration(acc,nst,n,n_max,filename)
    implicit none
    type(acceleration), target :: acc
@@ -12933,19 +15522,19 @@ SUBROUTINE ZEROr_teapot(EL,I)
 !   acc%w2=0
    acc%r=1.0_dp
    acc%fichier=' '
-   
+
    if(len(filename)>255) then
     write(6,*)  " Name of file too long (>255) "
     stop 1945
-   endif 
+   endif
    acc%fichier=filename
-   
+
    do i=1,n
     call alloc_tableau(acc%tableau(i),n_max)
    enddo
-   
+
    end SUBROUTINE alloc_acceleration
-   
+
    SUBROUTINE alloc_tableau(tableau,n)
    implicit none
    type(temps_energie), target, intent(inout) :: tableau
@@ -12957,23 +15546,23 @@ SUBROUTINE ZEROr_teapot(EL,I)
     tableau%energie=0.0_dp
     tableau%tc=0.0_dp
    end SUBROUTINE alloc_tableau
- 
+
    SUBROUTINE kill_tableau(tableau)
    implicit none
    type(temps_energie), target, intent(inout)  :: tableau
    deallocate(tableau%volt,tableau%phase,tableau%temps,tableau%energie,tableau%tc)
 
    end SUBROUTINE kill_tableau
- 
+
    SUBROUTINE kill_acceleration(acc)
    implicit none
    type(acceleration), target , intent(inout) :: acc
    integer i
-   
+
    do i=1,acc%n
     call kill_tableau(acc%tableau(i))
    enddo
-   
+
    deallocate(acc%tableau)
    nullify(acc%next)
    nullify(acc%previous)
@@ -12987,13 +15576,13 @@ SUBROUTINE ZEROr_teapot(EL,I)
    deallocate(acc%e_in)
    deallocate(acc%nst)
    deallocate(acc%fichier)
-   
+
    end SUBROUTINE kill_acceleration
 
    SUBROUTINE nullify_acceleration(acc)
    implicit none
    type(acceleration), target , intent(inout) :: acc
-   
+
    nullify(acc%w1)
    nullify(acc%w2)
    nullify(acc%r)
@@ -13007,7 +15596,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
    nullify(acc%e_in)
    nullify(acc%tableau)
    nullify(acc%fichier)
-   
+
    end SUBROUTINE nullify_acceleration
 
    SUBROUTINE copy_tableau(tableau1,tableau2)
@@ -13017,20 +15606,20 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
     if(associated(tableau2%volt)) call kill_tableau(tableau2)
     call alloc_tableau(tableau2,size(tableau1%phase))
-    
+
     tableau2%volt=tableau1%volt
     tableau2%phase=tableau1%phase
     tableau2%temps=tableau1%temps
     tableau2%energie=tableau1%energie
     tableau2%tc=tableau1%tc
    end SUBROUTINE copy_tableau
- 
+
    SUBROUTINE copy_acceleration(acc1,acc2)
    implicit none
    type(acceleration), target, intent(in) :: acc1
    type(acceleration), target,  intent(inout)  :: acc2
    integer i
-   
+
    if(associated(acc2%n)) call kill_acceleration(acc2)
    call alloc_acceleration(acc2,acc1%nst,size(acc1%tableau),size(acc1%tableau(1)%volt),acc1%fichier)
    acc2%previous=>acc1%previous
@@ -13045,20 +15634,21 @@ SUBROUTINE ZEROr_teapot(EL,I)
 !    acc2%tableau(i)=acc1%tableau(i)
     call copy_tableau(acc1%tableau(i),acc2%tableau(i))
    enddo
-   
+
 
    end SUBROUTINE copy_acceleration
- 
+
 
    SUBROUTINE lecture_fichier(EL,fichier)
+   ! code for cavity
    implicit none
    type(element), target, intent(inout) :: EL
    type(elementp), pointer :: elp
    character(*) fichier
    integer mf,i,n_mode,n_max,j,n,cavpath,pos
    integer, allocatable :: js(:)
-   real(dp) r,ut,tc
-   
+   real(dp) r,ut,tc,dtimen,dtimeb
+
    if(ASSOCIATED(ACC)) THEN
     ACC%NEXT=>el%parent_fibre
     pos=acc%pos+1
@@ -13066,12 +15656,12 @@ SUBROUTINE ZEROr_teapot(EL,I)
    pos=1
    paccfirst=>el%parent_fibre
    ENDIF
-   
+
    if(el%kind/=kind4) then
     write(6,*) " error not a standard cavity "
     stop 1946
    endif
-   
+
    call kanalnummer(mf,fichier)
    read(mf,*) n,ut,r,cavpath,n_mode   ! r percentage of acceleration from that cavity
   ! n is number of lines in files
@@ -13080,17 +15670,17 @@ SUBROUTINE ZEROr_teapot(EL,I)
   ! n_mode number of mode
 
    allocate(js(n_mode))
-   
+
    allocate(el%c4%acc)
-   
+
    acc=> el%c4%acc
-   
+
       if(.not.ASSOCIATED(paccfirst,el%parent_fibre)) THEN
       acc%previous=>paccthen
       else
       accfirst=>acc
       endif
-   
+
    read(mf,*) js
 
    n_max=0
@@ -13099,13 +15689,13 @@ SUBROUTINE ZEROr_teapot(EL,I)
    enddo
 
 
-   
+
    call alloc_acceleration(acc,el%p%nst,n,n_max,fichier)
-   
+
 
 !    acc%unit_time=ut
 
-   
+
    acc%pos=pos
    acc%r=r
    do i=1,acc%n
@@ -13116,14 +15706,34 @@ SUBROUTINE ZEROr_teapot(EL,I)
      read(mf,*) acc%tableau(i)%temps,acc%tableau(i)%energie,   &
      (acc%tableau(i)%volt(js(j)),acc%tableau(i)%phase(js(j)),j=1,n_mode )
      acc%tableau(i)%tc=0.0_dp
-    endif 
+    endif
+     acc%tableau(i)%temps=acc%tableau(i)%temps*ut
+    if(i==1) then
+      dtimen=0
+      dtimeb=0
+    else
+     dtimen=acc%tableau(i)%temps-acc%tableau(i-1)%temps
+     if(i>2) then
+       if(abs((dtimeb-dtimen)/(acc%tableau(1)%temps+acc%tableau(2)%temps))>1.d-10) then
+        Write(6,*) " Time table for cavity is not made equidistant times "
+        write(6,*) " please fix file : ",fichier(1:len_trim(fichier))
+        stop
+       endif
+        dtimeb=acc%tableau(i)%temps-acc%tableau(i-1)%temps
+      else
+       if(i==2) then
+        dtimeb=acc%tableau(2)%temps-acc%tableau(1)%temps
+       endif
+     endif
+    endif
+
   !  acc%tableau(i)%phase(2)=-acc%tableau(i)%phase(2)
   !  write(6,*) acc%tableau(i)%phase(2)
-     acc%tableau(i)%temps=acc%tableau(i)%temps*ut
+
    enddo
-   
+
    close(mf)
-   
+
    deallocate(js)
    elp=>el%parent_fibre%magp
    if(.not.associated(elp%c4%acc)) then
@@ -13144,46 +15754,46 @@ SUBROUTINE ZEROr_teapot(EL,I)
        allocate(el%c4%f(el%c4%nf));el%c4%f=0.0_dp;el%c4%f(1)=1.0_dp;
        allocate(elp%c4%f(el%c4%nf))
        call alloc(elp%c4%f,el%c4%nf)
-       elp%c4%f(1)=1.0_dp    
+       elp%c4%f(1)=1.0_dp
 
        call kill(elp%c4%ph)
        deallocate(elp%c4%ph)
        deallocate(el%c4%ph)
-       allocate(el%c4%ph(el%c4%nf));el%c4%ph=0.0_dp; 
+       allocate(el%c4%ph(el%c4%nf));el%c4%ph=0.0_dp;
        allocate(elp%c4%ph(el%c4%nf))
        call alloc(elp%c4%ph,el%c4%nf)
       endif
-      
+
       el%c4%volt =1.0_dp
       elp%c4%volt =1.0_dp
       el%c4%phas  =0.0_dp
       elp%c4%phas =0.0_dp
       el%c4%phase0  =0.0_dp
-      elp%c4%phase0 =0.0_dp      
+      elp%c4%phase0 =0.0_dp
       el%c4%t  =tc
       elp%c4%t =tc
-     
+
          do i=1,el%c4%nf
           el%c4%f(i)   = acc%tableau(1)%volt(i)
           el%c4%ph(i)  = acc%tableau(1)%phase(i)
           elp%c4%f(i)  = acc%tableau(1)%volt(i)
           elp%c4%ph(i) = acc%tableau(1)%phase(i)
          enddo
-     if(cavpath==0.or. cavpath==1) then   
-     el%c4%cavity_totalpath=cavpath    
-     elp%c4%cavity_totalpath=cavpath 
+     if(cavpath==0.or. cavpath==1) then
+     el%c4%cavity_totalpath=cavpath
+     elp%c4%cavity_totalpath=cavpath
      else
-     write(6,*) "cavpath is wrong ",cavpath  
-     endif  
-    
-     NULLIFY(ACC%NEXT) 
-     
+     write(6,*) "cavpath is wrong ",cavpath
+     endif
+
+     NULLIFY(ACC%NEXT)
+
      paccthen=>el%parent_fibre
-     
-   END SUBROUTINE lecture_fichier 
- 
- !!!!!!!!!!!!! ramping !!!!!!!!!!!!! 
- 
+
+   END SUBROUTINE lecture_fichier
+
+ !!!!!!!!!!!!! ramping !!!!!!!!!!!!!
+
  !  SUBROUTINE alloc_ramping(acc,unit_time,t_max,n,n_max,filename)
   SUBROUTINE alloc_ramping(acc,t_max,n,n_max,filename)
    implicit none
@@ -13191,7 +15801,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
    integer i,n,n_max
    character(*) filename
    real(dp) t_max   !unit_time,
-   
+
    allocate(acc%n)
    acc%n=n
    allocate(acc%table(0:n))
@@ -13202,19 +15812,19 @@ SUBROUTINE ZEROr_teapot(EL,I)
    acc%t_max=t_max
 !   acc%unit_time=unit_time
    acc%file=' '
-   
+
    if(len(filename)>255) then
     write(6,*)  " Name of file too long (>255) "
     stop 1945
-   endif 
+   endif
    acc%file=filename
-   
+
    do i=0,n
     call alloc_table(acc%table(i),n_max)
    enddo
-   
+
    end SUBROUTINE alloc_ramping
-   
+
    SUBROUTINE alloc_table(tableau,n)
    implicit none
    type(time_energy), target, intent(inout) :: tableau
@@ -13225,59 +15835,59 @@ SUBROUTINE ZEROr_teapot(EL,I)
     tableau%time=0.0_dp
     tableau%energy=0.0_dp
     tableau%b_t=0.0_dp
-   end SUBROUTINE alloc_table 
- 
+   end SUBROUTINE alloc_table
+
    SUBROUTINE kill_table(tableau)
    implicit none
    type(time_energy), target, intent(inout)  :: tableau
    deallocate(tableau%an,tableau%bn,tableau%time,tableau%energy,tableau%b_t)
 
    end SUBROUTINE kill_table
- 
+
    SUBROUTINE kill_ramping(acc)
    implicit none
    type(ramping), target , intent(inout) :: acc
    integer i
-   
+
    do i=0,acc%n
     call kill_table(acc%table(i))
    enddo
-   
+
    deallocate(acc%table)
    deallocate(acc%n)
    deallocate(acc%r)
    deallocate(acc%t_max)
 !   deallocate(acc%unit_time)
    deallocate(acc%file)
-   
+
    end SUBROUTINE kill_ramping
-!!!!!!!!!!!!!!!!! cav4 acceleration !!!!!!!!!!!!!!!!!!! 
+!!!!!!!!!!!!!!!!! cav4 acceleration !!!!!!!!!!!!!!!!!!!
 !  TYPE time_energy
 !     real(dp),pointer :: time
 !     real(dp),pointer :: energy
 !     real(dp),pointer :: an(:),bn(:)
 !  END TYPE time_energy
-  
+
 !  TYPE ramping
-!     integer,pointer :: n 
-!     real(dp), pointer :: r, unit_time 
+!     integer,pointer :: n
+!     real(dp), pointer :: r, unit_time
 !     type(time_energy),pointer :: table(:)
 !     character(255), pointer :: file
 !  END TYPE ramping
 
-!!!!!!!!!!!!!!!!! cav4 acceleration !!!!!!!!!!!!!!!!!!! 
+!!!!!!!!!!!!!!!!! cav4 acceleration !!!!!!!!!!!!!!!!!!!
 
    SUBROUTINE nullify_ramping(acc)
    implicit none
    type(ramping), target , intent(inout) :: acc
-   
+
    nullify(acc%r)
    nullify(acc%n)
    nullify(acc%file)
    nullify(acc%table)
 !   nullify(acc%unit_time)
-   
-   
+
+
    end SUBROUTINE nullify_ramping
 
    SUBROUTINE copy_table(tableau1,tableau2)
@@ -13287,34 +15897,35 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
     if(associated(tableau2%an)) call kill_table(tableau2)
     call alloc_table(tableau2,size(tableau1%an))
-    
+
     tableau2%an=tableau1%an
     tableau2%bn=tableau1%bn
     tableau2%time=tableau1%time
     tableau2%energy=tableau1%energy
     tableau2%b_t=tableau1%b_t
    end SUBROUTINE copy_table
- 
+
    SUBROUTINE copy_ramping(acc1,acc2)
    implicit none
    type(ramping), target, intent(in) :: acc1
    type(ramping), target,  intent(inout)  :: acc2
    integer i
-   
+
    if(associated(acc2%n)) call kill_ramping(acc2)
    call alloc_ramping(acc2,acc1%t_max,acc1%n,size(acc1%table(1)%an),acc1%file)
 !   call alloc_ramping(acc2,acc1%unit_time,acc1%t_max,acc1%n,size(acc1%table(1)%an),acc1%file)
-   
+
    do i=0,acc2%n
 !    acc2%tableau(i)=acc1%tableau(i)
     call copy_table(acc1%table(i),acc2%table(i))
    enddo
-   
+
 
    end SUBROUTINE copy_ramping
- 
+
 
    SUBROUTINE reading_file(EL,fichier)
+   ! code for ramping
    implicit none
    type(element), target, intent(inout) :: EL
    type(elementp), pointer :: elp
@@ -13322,7 +15933,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
    character(*) fichier
    integer mf,i,n_mode,n_max,j,n,cavpath,pos,np
    integer, allocatable :: js(:)
-   real(dp) ut
+   real(dp) ut,dtimen,dtimeb
    character(255) line
    character(7) car
    logical timepatch
@@ -13330,7 +15941,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
 
    np=1
-   
+
    call kanalnummer(mf,fichier)
    read(mf,'(a255)') line
     if(index(line,"#")/=0) then
@@ -13342,9 +15953,9 @@ SUBROUTINE ZEROr_teapot(EL,I)
 !   read(mf,*) n,unit_time,n_mode
   ! write(6,*) n,r,cavpath,n_mode
    allocate(js(n_mode))
-   
+
    allocate(el%ramp)
-   
+
    acc=> el%ramp
    read(mf,*) js
 
@@ -13352,9 +15963,9 @@ SUBROUTINE ZEROr_teapot(EL,I)
    do i=1,n_mode
     if(js(i)>n_max) n_max=js(i)
    enddo
-   
+
    if(n_max<el%p%nmul) n_max = el%p%nmul
-   
+   if(el%kind==kind15) n_max=2
 !   call alloc_ramping(acc,unit_time,0.0_dp,n,n_max,fichier)
    call alloc_ramping(acc,0.0_dp,n,n_max,fichier)
    acc%r=1.0_dp
@@ -13367,10 +15978,31 @@ SUBROUTINE ZEROr_teapot(EL,I)
      (acc%table(i)%bn(js(j)),acc%table(i)%an(js(j)),j=1,n_mode )
         acc%table(i)%b_t=0.0_dp
     endif
-    acc%table(i)%energy=0.d0
     acc%table(i)%time=acc%table(i)%time*ut
+    if(i==1) then
+      dtimen=0
+      dtimeb=0
+    else
+     dtimen=acc%table(i)%time-acc%table(i-1)%time
+     if(i>2) then
+       if(abs((dtimeb-dtimen)/(acc%table(1)%time+acc%table(2)%time))>1.d-10) then
+        Write(6,*) " Time table for ramping is not made equidistant times "
+        write(6,*) " please fix file : ",fichier(1:len_trim(fichier))
+        stop
+       endif
+        dtimeb=acc%table(i)%time-acc%table(i-1)%time
+      else
+       if(i==2) then
+        dtimeb=acc%table(2)%time-acc%table(1)%time
+       endif
+     endif
+    endif
+
+
+    acc%table(i)%energy=0.d0
+
    enddo
-   
+
    close(mf)
     acc%t_max= acc%table(1)%time+np*(acc%table(acc%n)%time-acc%table(1)%time)
 
@@ -13383,7 +16015,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
       call copy_ramping(acc,elp%ramp)
 
 
-   END SUBROUTINE reading_file 
+   END SUBROUTINE reading_file
 
 !!!!!! !!!!!! end ramping !!!!!! !!!!!!
 
@@ -13402,6 +16034,10 @@ SUBROUTINE ZEROr_teapot(EL,I)
           deallocate(EL%thin_v_angle)
           deallocate(EL%ls)
           deallocate(EL%patch)
+       if(ASSOCIATED(EL%dx)) deallocate(EL%dx)    ! sadistic stuff
+       if(ASSOCIATED(EL%dy)) deallocate(EL%dy)
+       if(ASSOCIATED(EL%pitch_x)) deallocate(EL%pitch_x)
+       if(ASSOCIATED(EL%pitch_y)) deallocate(EL%pitch_y)
        endif
     elseif(i==0)       then          ! nullifies
 
@@ -13413,6 +16049,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
        NULLIFY(EL%ls)
        NULLIFY(EL%thin_v_angle)
        NULLIFY(EL%patch)
+       NULLIFY(EL%dx,EL%dy,EL%pitch_x,EL%pitch_y)
     endif
 
   END SUBROUTINE ZEROR_KICKT3
@@ -13439,6 +16076,10 @@ SUBROUTINE ZEROr_teapot(EL,I)
           deallocate(EL%thin_v_angle)
           deallocate(EL%patch)
           deallocate(EL%ls)
+       if(ASSOCIATED(EL%dx)) deallocate(EL%dx)
+       if(ASSOCIATED(EL%dy)) deallocate(EL%dy)
+       if(ASSOCIATED(EL%pitch_x)) deallocate(EL%pitch_x)
+       if(ASSOCIATED(EL%pitch_y)) deallocate(EL%pitch_y)
        endif
     elseif(i==0)       then          ! nullifies
 
@@ -13450,6 +16091,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
        NULLIFY(EL%thin_v_angle)
        NULLIFY(EL%patch)
        NULLIFY(EL%ls)
+       NULLIFY(EL%dx,EL%dy,EL%pitch_x,EL%pitch_y)
     endif
 
   END SUBROUTINE ZEROP_KICKT3
@@ -13503,10 +16145,18 @@ SUBROUTINE ZEROr_teapot(EL,I)
   SUBROUTINE ALLOCTEAPOT(EL)
     IMPLICIT NONE
     TYPE(TEAPOTP), INTENT(INOUT)::EL
-   ! CALL ALLOC(EL%bf_x,S_B0%N_MONO)
-   ! CALL ALLOC(EL%bf_Y,S_B0%N_MONO)
-        CALL ALLOC(EL%bf_x,S_B(EL%P%NMUL)%N_MONO)
-        CALL ALLOC(EL%bf_Y,S_B(EL%P%NMUL)%N_MONO)
+
+   !  IF(EL%ELECTRIC) THEN
+        call alloc(EL%E_X,S_E%N_MONO)
+        call alloc(EL%E_Y,S_E%N_MONO)
+        call alloc(EL%PHI,S_E%N_MONO)
+        call alloc(EL%AE,SECTOR_NMUL_max);call alloc(EL%BE,SECTOR_NMUL_max);
+   !  endif
+        CALL ALLOC(EL%bf_x,S_B_FROM_V%N_MONO)
+        CALL ALLOC(EL%bf_Y,S_B_FROM_V%N_MONO)
+        CALL ALLOC(EL%vm,S_B_FROM_V%N_MONO)
+
+
     ! 2010 January 6
   END SUBROUTINE ALLOCTEAPOT
 
@@ -13514,17 +16164,314 @@ SUBROUTINE ZEROr_teapot(EL,I)
     IMPLICIT NONE
     TYPE(TEAPOTP), INTENT(INOUT)::EL
 
-    CALL KILL(EL%bf_x,S_B(SECTOR_NMUL)%N_MONO)
-    CALL KILL(EL%bf_Y,S_B(SECTOR_NMUL)%N_MONO)
-!    CALL KILL(EL%bf_x,S_B0%N_MONO)
-!    CALL KILL(EL%bf_Y,S_B0%N_MONO)
-    ! 2010 January 6
+   !  IF(EL%ELECTRIC) THEN
+        call kill(EL%E_X,S_E%N_MONO)
+        call kill(EL%E_Y,S_E%N_MONO)
+        call kill(EL%PHI,S_E%N_MONO)
+        call kill(EL%AE,SECTOR_NMUL_max);call alloc(EL%BE,SECTOR_NMUL_max);
+   !  endif
+        CALL kill(EL%bf_x,S_B_FROM_V%N_MONO)
+        CALL kill(EL%bf_Y,S_B_FROM_V%N_MONO)
+        CALL kill(EL%vm,S_B_FROM_V%N_MONO)
 
   END SUBROUTINE KILLTEAPOT
 
-!!!!!!!!!!!!!! Pancake starts here !!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!         new canonical force routine      !!!!!!!!!!!!!!!!!!!!!!!
+  subroutine fx_newcr(f,x,state,exact,hcurv,beta0,b,a,da,e,ve)   ! CAN BE USED BY ANY ELEMENT INCLUDING ABELL
+    implicit none
 
-  subroutine fxr(f,x,k,b,p)
+
+    real(dp) ,intent(inOUT) :: b(3),e(3),ve,hcurv,a(3),da(3,2),beta0
+    real(dp) ,intent(inout) :: x(6)
+    real(dp), intent(inout):: f(6)
+    TYPE(INTERNAL_STATE) state !,OPTIONAL :: K
+    real(dp)  del,pz,h
+    logical exact
+
+     DEL=x(5)-VE
+     H=1.0_dp+hcurv*x(1)
+IF(EXACT) THEN
+           PZ=root(1.0_dp+2*del/beta0+del**2-(X(2)-A(1))**2-(X(4)-A(2))**2)
+           F(1)=(X(2)-A(1))*H/PZ
+           F(3)=(X(4)-A(2))*H/PZ
+           F(2)=hcurv*PZ+(H/PZ)*((1.0_dp/beta0+del)*(e(1))+ (X(2)-A(1))*DA(1,1)+(X(4)-A(2))*DA(2,1) ) + DA(3,1)
+           F(4)= (H/PZ)*((1.0_dp/beta0+del)*(e(2))+ (X(2)-A(1))*DA(1,2)+(X(4)-A(2))*DA(2,2) ) + DA(3,2)
+           F(5)=0.0_dp
+           F(6)=H*(1.0_dp/beta0+del)/PZ+(state%TOTALPATH-1)/beta0  !! ld=L in sector bend
+
+ELSE
+           PZ=root(1.0_dp+2*del/beta0+del**2)
+           F(1)=(X(2)-A(1))/PZ
+           F(3)=(X(4)-A(2))/PZ
+           F(2)=hcurv*PZ+(1.0_dp/PZ)*(1.0_dp/beta0+del)*e(1)*( H + 0.5_dp* ((X(2)-A(1))**2 + (X(4)-A(2))**2)/pz**2 )
+           F(2)=F(2)+((X(2)-A(1))*DA(1,1)+(X(4)-A(2))*DA(2,1) )/pz + DA(3,1)
+           F(4)=(1.0_dp/PZ)*(1.0_dp/beta0+del)*e(2)*( H + 0.5_dp* ((X(2)-A(1))**2 + (X(4)-A(2))**2)/pz**2 )
+           F(4)=F(4)+ ((X(2)-A(1))*DA(1,2)+(X(4)-A(2))*DA(2,2) )/pz  + DA(3,2)
+
+           F(5)=0.0_dp
+           F(6)=(1.0_dp/beta0+del)/PZ*(H+0.5_dp*((X(2)-A(1))**2+(X(4)-A(2))**2)/pz**2)+(state%TOTALPATH-1)/beta0  !! ld=L in sector bend
+
+     ENDIF
+
+
+  end subroutine fx_newcr
+
+  subroutine fx_newcp(f,x,state,exact,hcurv,beta0,b,a,da,e,ve)   ! CAN BE USED BY ANY ELEMENT INCLUDING ABELL
+    implicit none
+    type(real_8) ,intent(inOUT) :: b(3),e(3),ve,a(3),da(3,2)
+    real(dp) ,intent(inOUT) :: hcurv,beta0
+    type(real_8) ,intent(inout) :: x(6)
+    type(real_8), intent(inout):: f(6)
+    TYPE(INTERNAL_STATE) state !,OPTIONAL :: K
+    type(real_8)  del,pz,h
+    logical exact
+    call  alloc(del,pz,h)
+     DEL=x(5)-VE
+     H=1.0_dp+hcurv*x(1)
+IF(EXACT) THEN
+           PZ=sqrt(1.0_dp+2*del/beta0+del**2-(X(2)-A(1))**2-(X(4)-A(2))**2)
+           F(1)=(X(2)-A(1))*H/PZ
+           F(3)=(X(4)-A(2))*H/PZ
+           F(2)=hcurv*PZ+(H/PZ)*((1.0_dp/beta0+del)*(e(1))+ (X(2)-A(1))*DA(1,1)+(X(4)-A(2))*DA(2,1) ) + DA(3,1)
+           F(4)= (H/PZ)*((1.0_dp/beta0+del)*(e(2))+ (X(2)-A(1))*DA(1,2)+(X(4)-A(2))*DA(2,2) ) + DA(3,2)
+           F(5)=0.0_dp
+           F(6)=H*(1.0_dp/beta0+del)/PZ+(state%TOTALPATH-1)/beta0  !! ld=L in sector bend
+
+ELSE
+           PZ=sqrt(1.0_dp+2*del/beta0+del**2)
+           F(1)=(X(2)-A(1))/PZ
+           F(3)=(X(4)-A(2))/PZ
+           F(2)=hcurv*PZ+(1.0_dp/PZ)*(1.0_dp/beta0+del)*e(1)*( H + 0.5_dp* ((X(2)-A(1))**2 + (X(4)-A(2))**2)/pz**2 )
+           F(2)=F(2)+((X(2)-A(1))*DA(1,1)+(X(4)-A(2))*DA(2,1) )/pz + DA(3,1)
+           F(4)=(1.0_dp/PZ)*(1.0_dp/beta0+del)*e(2)*( H + 0.5_dp* ((X(2)-A(1))**2 + (X(4)-A(2))**2)/pz**2 )
+           F(4)=F(4)+ ((X(2)-A(1))*DA(1,2)+(X(4)-A(2))*DA(2,2) )/pz  + DA(3,2)
+
+
+           F(5)=0.0_dp
+           F(6)=(1.0_dp/beta0+del)/PZ*(H+0.5_dp*((X(2)-A(1))**2+(X(4)-A(2))**2)/pz**2)+(state%TOTALPATH-1)/beta0  !! ld=L in sector bend
+
+ENDIF
+call  kill(del,pz,h)
+
+  end subroutine fx_newcp
+
+!!!!!!!!!!!!!!!!!!!!!!!!         new xprime force routine      !!!!!!!!!!!!!!!!!!!!!!!
+  subroutine fx_newr(f,x,state,exact,hcurv,beta0,b,e,ve)   ! CAN BE USED BY ANY ELEMENT INCLUDING ABELL
+    implicit none
+
+    real(dp) ,intent(inOUT) :: b(3),e(3),ve,hcurv,BETA0
+    real(dp) ,intent(inout) :: x(6)
+    real(dp), intent(inout):: f(6)
+    TYPE(INTERNAL_STATE) state !,OPTIONAL :: K
+    real(dp)  d(2),c(3),de,delt,del,g(2),xp,yp,rho,k,ed,det
+    logical exact
+
+    xp=x(2);yp=x(4);
+    de=x(5)-VE
+    delt=root(1.0_dp + 2*de/beta0 + de**2)
+    del=(1.0_dp/beta0 + de)/delt
+    k=(1.0_dp+hcurv*x(1))
+    ed=-(e(1)*xp + e(2)*yp + e(3)*k)
+    f(1)=xp
+    f(3)=yp
+
+   if(exact) then
+
+    rho=root(xp**2+yp**2+k**2)
+
+    g(1)=k*hcurv*xp**2/rho**3*delt
+    g(2)=k*hcurv*xp*yp/rho**3*delt
+
+    d(1)=xp/rho*del*ed + g(1) + rho*del*e(1) + delt*k*hcurv/rho + yp*b(3) - k*b(2)
+    d(2)=yp/rho*del*ed + g(2) + rho*del*e(2)                    - xp*b(3) + k*b(1)
+
+    c(1)=delt*(1/rho-xp**2/rho**3)
+    c(2)=delt*(1/rho-yp**2/rho**3)
+    c(3)=xp*yp*delt/rho**3
+    det=c(1)*c(2)-c(3)**2
+
+    f(2)=(c(2)*d(1)+c(3)*d(2))/det
+    f(4)=(c(3)*d(1)+c(1)*d(2))/det
+    f(5)=0.0_dp
+
+    f(6)=del*rho
+
+          F(6)=f(6)+(state%TOTALPATH-1)/BETA0
+    else
+
+      f(2)=e(1)*del/delt*(k+0.5_dp*xp**2+0.5_dp*yp**2)+xp*ed*del/delt+hcurv+(yp*b(3)-k*b(2))/delt
+      f(4)=e(2)*del/delt*(k+0.5_dp*xp**2+0.5_dp*yp**2)+yp*ed*del/delt      +(-xp*b(3)+k*b(1))/delt
+      f(5)=0.0_dp
+
+
+      F(6)=del*(k+0.5_dp*(xp**2+yp**2) )
+      F(6)=f(6)+(state%TOTALPATH-1)/BETA0
+    endif
+
+  end subroutine fx_newr
+
+  subroutine fx_newp(f,x,state,exact,hcurv,beta0,b,e,ve)  ! CAN BE USED BY ANY ELEMENT INCLUDING ABELL
+    implicit none
+
+
+     type(real_8) ,intent(inOUT) :: b(3),e(3),ve
+     type(real_8) ,intent(inout) :: x(6)
+     type(real_8), intent(inout):: f(6)
+    TYPE(INTERNAL_STATE) state !,OPTIONAL :: K
+    type(real_8)  d(2),c(3),g(2),xp,yp,rho,k,ed,det,de,delt,del
+    real(dp)  BETA0,hcurv
+    logical exact
+
+     call alloc(xp,yp,rho,k,ed,det,de,delt,del)
+     call alloc(d)
+     call alloc(c)
+     call alloc(g)
+
+
+
+    xp=x(2);yp=x(4);
+    de=x(5)-VE
+    delt=sqrt(1.0_dp + 2*de/beta0 + de**2)
+    del=(1.0_dp/beta0 + de)/delt
+    k=(1.0_dp+hcurv*x(1))
+    ed=-(e(1)*xp + e(2)*yp + e(3)*k)
+    f(1)=xp
+    f(3)=yp
+
+   if(exact) then
+
+    rho=sqrt(xp**2+yp**2+k**2)
+
+    g(1)=k*hcurv*xp**2/rho**3*delt
+    g(2)=k*hcurv*xp*yp/rho**3*delt
+
+    d(1)=xp/rho*del*ed + g(1) + rho*del*e(1) + delt*k*hcurv/rho + yp*b(3) - k*b(2)
+    d(2)=yp/rho*del*ed + g(2) + rho*del*e(2)                    - xp*b(3) + k*b(1)
+
+    c(1)=delt*(1/rho-xp**2/rho**3)
+    c(2)=delt*(1/rho-yp**2/rho**3)
+    c(3)=xp*yp*delt/rho**3
+    det=c(1)*c(2)-c(3)**2
+
+    f(2)=(c(2)*d(1)+c(3)*d(2))/det
+    f(4)=(c(3)*d(1)+c(1)*d(2))/det
+    f(5)=0.0_dp
+
+    f(6)=del*rho
+
+          F(6)=f(6)+(state%TOTALPATH-1)/BETA0
+    else
+
+      f(2)=e(1)*del/delt*(k+0.5_dp*xp**2+0.5_dp*yp**2)+xp*ed*del/delt+hcurv+(yp*b(3)-k*b(2))/delt
+      f(4)=e(2)*del/delt*(k+0.5_dp*xp**2+0.5_dp*yp**2)+yp*ed*del/delt      +(-xp*b(3)+k*b(1))/delt
+      f(5)=0.0_dp
+
+      F(6)=del*(k+0.5_dp*(xp**2+yp**2) )
+      F(6)=f(6)+(state%TOTALPATH-1)/BETA0
+    endif
+
+
+     call kill(xp,yp,rho,k,ed,det,de,delt,del)
+     call kill(d)
+     call kill(c)
+     call kill(g)
+
+  end subroutine fx_newp
+
+!!!!!!!!!!!!!! Pancake starts here !!!!!!!!!!!!!!!
+ subroutine fxr_canonical(f,x,k,b,p,hc,g,h)
+    implicit none
+
+    real(dp)  d(3),BETA0,hc
+    real(dp) ,intent(in) :: b(nbe)
+    type(MAGNET_CHART), pointer:: p
+    real(dp) ,intent(inout) :: x(6)
+    real(dp), intent(out):: f(6)
+    real(dp),optional, intent(out):: g(2,2),h(2,2)
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+    if(k%time) then
+       beta0=p%beta0;
+    else
+       beta0=1.0_dp;
+    endif
+
+    d(1)=1.0_dp+hc*x(1)
+    d(2)=x(2)-b(4)
+    d(3)=root(1.0_dp+2*x(5)/beta0+x(5)**2-d(2)**2-x(4)**2)
+
+
+    f(1)=d(1)*d(2)/d(3)
+    f(3)=d(1)*x(4)/d(3)
+
+    f(2)=hc*d(3)+d(1)*d(2)*b(7)/d(3)+b(5)
+    f(4)=        d(1)*d(2)*b(8)/d(3)+b(6)
+    f(5)=0.0_dp
+    f(6)=d(1)*(x(5)+1.0_dp/beta0)/d(3)
+    if(present(g)) then
+     g(1,1)= (-hc*d(2)/d(3)+d(1)*b(7)*(1.0_dp/d(3)+d(2)**2/d(3)**3))
+     g(1,2)= (-hc*x(4)/d(3)+d(1)*b(7)*(x(4)*d(2)/d(3)**3))
+     g(2,1)= (d(1)*b(8)*(1.0_dp/d(3)+d(2)**2/d(3)**3))
+     g(2,2)=  d(1)*b(8)*(x(4)*d(2)/d(3)**3)
+    endif
+    if(present(h)) then
+     h(1,1)=  (hc*d(2)/d(3)-d(1)*b(7)*(1.0_dp/d(3)+d(2)**2/d(3)**3))
+     h(2,1)=  -(-hc*x(4)/d(3)+d(1)*b(7)*(x(4)*d(2)/d(3)**3))
+     h(1,2)=  -(d(1)*b(8)*(1.0_dp/d(3)+d(2)**2/d(3)**3))
+     h(2,2)=  -d(1)*b(8)*(x(4)*d(2)/d(3)**3)
+    endif
+  end subroutine fxr_canonical
+
+ subroutine fxp_canonical(f,x,k,b,p,hc,g,h)
+    implicit none
+
+    type(real_8)  d(3)
+    type(real_8) ,intent(inout) :: x(6)
+    type(real_8) ,intent(in) :: b(nbe)
+    real(dp)   BETA0,hc
+    type(real_8), intent(out):: f(6)
+    type(real_8),optional, intent(out):: g(2,2) ,h(2,2)
+    type(MAGNET_CHART), pointer:: p
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+    call alloc(d)
+
+    if(k%time) then
+       beta0=p%beta0;
+    else
+       beta0=1.0_dp;
+    endif
+
+    d(1)=1.0_dp+hc*x(1)
+    d(2)=x(2)-b(4)
+    d(3)=sqrt(1.0_dp+2*x(5)/beta0+x(5)**2-d(2)**2-x(4)**2)
+
+
+    f(1)=d(1)*d(2)/d(3)
+    f(3)=d(1)*x(4)/d(3)
+
+    f(2)=hc*d(3)+d(1)*d(2)*b(7)/d(3)+b(5)
+    f(4)=        d(1)*d(2)*b(8)/d(3)+b(6)
+    f(5)=0.0_dp
+    f(6)=d(1)*(x(5)+1.0_dp/beta0)/d(3)
+
+    if(present(g)) then
+     g(1,1)= (-hc*d(2)/d(3)+d(1)*b(7)*(1.0_dp/d(3)+d(2)**2/d(3)**3))
+     g(1,2)= (-hc*x(4)/d(3)+d(1)*b(7)*(x(4)*d(2)/d(3)**3))
+     g(2,1)= (d(1)*b(8)*(1.0_dp/d(3)+d(2)**2/d(3)**3))
+     g(2,2)= d(1)*b(8)*(x(4)*d(2)/d(3)**3)
+    endif
+    if(present(h)) then
+     h(1,1)=  -(-hc*d(2)/d(3)+d(1)*b(7)*(1.0_dp/d(3)+d(2)**2/d(3)**3))
+     h(2,1)=  -(-hc*x(4)/d(3)+d(1)*b(7)*(x(4)*d(2)/d(3)**3))
+     h(1,2)=  -(d(1)*b(8)*(1.0_dp/d(3)+d(2)**2/d(3)**3))
+     h(2,2)=  -d(1)*b(8)*(x(4)*d(2)/d(3)**3)
+    endif
+    call kill(d)
+
+  end subroutine fxp_canonical
+
+  subroutine fxr(f,x,k,b,p,hcurv)   ! CAN BE USED BY ANY ELEMENT INCLUDING ABELL
     implicit none
 
     real(dp)  d(3),c(6),BETA0,GAMMA0I,hcurv
@@ -13539,8 +16486,6 @@ SUBROUTINE ZEROr_teapot(EL,I)
     else
        beta0=1.0_dp;GAMMA0I=0.0_dp;
     endif
-
-    hcurv=p%b0
 
     d(1)=root(x(2)**2+x(4)**2+(1.0_dp+hcurv*x(1))**2)
     d(2)=(d(1)**3)/root(1.0_dp+2*x(5)/beta0+x(5)**2)
@@ -13562,23 +16507,11 @@ SUBROUTINE ZEROr_teapot(EL,I)
     d(2)=gamma0I/beta0/d(2)
     f(6)=root((1+d(2)**2))*d(1)  ! (time)-prime = dt/dz
 
-    !    if(p%radiation) then
-    !       c(1)=x(2)/d(1)
-    !       c(2)=x(4)/d(1)
-    !       c(3)=one/d(1)
-    !       B2=zero
-    !       B2=(B(2)*c(3)-B(3)*c(2))**2+B2
-    !       B2=(B(1)*c(2)-B(2)*c(1))**2+B2
-    !       B2=(B(3)*c(1)-B(1)*c(3))**2+B2
-    !       f(5)=-CRADF(P)*(one+X(5))**2*B2*f(6)
-    !    else
     f(5)=0.0_dp
-    !    endif
-
 
   end subroutine fxr
 
-  subroutine fxp(f,x,k,b,p)
+  subroutine fxp(f,x,k,b,p,hcurv)
     implicit none
 
     type(real_8)  d(3),c(6)
@@ -13591,7 +16524,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
     call alloc(d,3)
     call alloc(c,6)
-    hcurv=p%b0
+
     if(k%time) then
        beta0=p%beta0;GAMMA0I=p%GAMMA0I;
     else
@@ -13643,7 +16576,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
           !          deallocate(EL%Ax)
           !          deallocate(EL%Ay)
 
-          deallocate(EL%SCALE)
+          deallocate(EL%SCALE,el%angc,el%hc,el%dc,el%xc,el%vc,el%xprime)
           !          deallocate(EL%D_IN)
           !          deallocate(EL%D_OUT)
           !          deallocate(EL%ANG_IN)
@@ -13653,7 +16586,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
     elseif(i==0)       then          ! nullifies
 
        NULLIFY(EL%B)
-       NULLIFY(EL%SCALE)
+       NULLIFY(EL%SCALE,el%angc,el%hc,el%dc,el%xc,el%vc,el%xprime)
        !       NULLIFY(EL%Ax)
        !       NULLIFY(EL%Ay)
        !       NULLIFY(EL%D_IN)
@@ -13679,7 +16612,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
           !          deallocate(EL%Ax)
           !          deallocate(EL%Ay)
           deallocate(EL%B)
-          deallocate(EL%SCALE)
+          deallocate(EL%SCALE,el%angc,el%hc,el%dc,el%xc,el%vc,el%xprime)
           !          deallocate(EL%D_IN)
           !          deallocate(EL%D_OUT)
           !          deallocate(EL%ANG_IN)
@@ -13691,7 +16624,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
        NULLIFY(EL%B)
        !       NULLIFY(EL%Ax)
        !       NULLIFY(EL%Ay)
-       NULLIFY(EL%SCALE)
+       NULLIFY(EL%SCALE,el%angc,el%hc,el%dc,el%xc,el%vc,el%xprime)
        !       NULLIFY(EL%D_IN)
        !       NULLIFY(EL%D_OUT)
        !       NULLIFY(EL%ANG_IN)
@@ -13709,7 +16642,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
     ALLOCATE(EL%B(2*el%p%NST+1))
     !    ALLOCATE(EL%Ax(el%p%NST))
     !    ALLOCATE(EL%Ay(el%p%NST))
-    ALLOCATE(  EL%SCALE )
+    ALLOCATE(  EL%SCALE,el%angc,el%dc,el%hc ,el%xc,el%vc,el%xprime)
     !    ALLOCATE(  EL%D_IN(3) )
     !    ALLOCATE(  EL%D_OUT(3) )
     !    ALLOCATE(  EL%ANG_IN(3) )
@@ -13723,24 +16656,16 @@ SUBROUTINE ZEROr_teapot(EL,I)
        EL%B(I)%JL=T(I)%JL
        EL%B(I)%JV=T(I)%JV
        EL%B(I)%N=T(I)%N
-       EL%B(I)%ND2=T(I)%ND2
+       EL%B(I)%NP=T(I)%NP
        EL%B(I)%no=T(I)%no
-       !       EL%ax(I)%CC=t_ax(I)%CC
-       !       EL%ax(I)%JL=t_ax(I)%JL
-       !       EL%ax(I)%JV=t_ax(I)%JV
-       !       EL%ax(I)%N=t_ax(I)%N
-       !       EL%ax(I)%ND2=t_ax(I)%ND2
-       !
-       !       EL%ay(I)%CC=t_ay(I)%CC
-       !       EL%ay(I)%JL=t_ay(I)%JL
-       !       EL%ay(I)%JV=t_ay(I)%JV
-       !       EL%ay(I)%N=t_ay(I)%N
-       !       EL%ay(I)%ND2=t_ay(I)%ND2
+
     ENDDO
 
 
 
     EL%SCALE=1.0_dp
+    el%angc=0.0_dp; el%dc=0.0_dp; el%hc=0.0_dp; el%xc=0.0_dp;el%vc=0.0_dp;
+    el%xprime=.true.
     !    EL%D_IN=ZERO
     !    EL%D_OUT=ZERO
     !    EL%ANG_IN=ZERO
@@ -13757,45 +16682,132 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
 
     ALLOCATE(EL%B(2*el%p%NST+1))
-    !    ALLOCATE(EL%Ax(el%p%NST))
-    !    ALLOCATE(EL%Ay(el%p%NST))
-    ALLOCATE(  EL%SCALE )
-    !    ALLOCATE(  EL%D_IN(3) )
-    !    ALLOCATE(  EL%D_OUT(3) )
-    !    ALLOCATE(  EL%ANG_IN(3) )
-    !    ALLOCATE(  EL%ANG_OUT(3) )
 
+    ALLOCATE(  EL%SCALE,el%angc,el%dc,el%hc,el%xc,el%vc,el%xprime )
+    call alloc(EL%SCALE)
     DO I=1,2*el%p%NST+1
        CALL ALLOC_TREE(EL%B(I),T(I)%N,3)
-       !       CALL ALLOC_TREE(EL%Ax(I),T_ax(I)%N,2)
-       !       CALL ALLOC_TREE(EL%Ay(I),T_ay(I)%N,2)
        EL%B(I)%CC=T(I)%CC
        EL%B(I)%JL=T(I)%JL
        EL%B(I)%JV=T(I)%JV
        EL%B(I)%N=T(I)%N
-       EL%B(I)%ND2=T(I)%ND2
+       EL%B(I)%NP=T(I)%NP
        EL%B(I)%no=T(I)%no
-       !       EL%ax(I)%CC=t_ax(I)%CC
-       !       EL%ax(I)%JL=t_ax(I)%JL
-       !       EL%ax(I)%JV=t_ax(I)%JV
-       !       EL%ax(I)%N=t_ax(I)%N
-       !       EL%ax(I)%ND2=t_ax(I)%ND2
-       !
-       !       EL%ay(I)%CC=t_ay(I)%CC
-       !       EL%ay(I)%JL=t_ay(I)%JL
-       !       EL%ay(I)%JV=t_ay(I)%JV
-       !       EL%ay(I)%N=t_ay(I)%N
-       !       EL%ay(I)%ND2=t_ay(I)%ND2
+
     ENDDO
 
-
-
-    !    EL%D_IN=ZERO
-    !    EL%D_OUT=ZERO
-    !    EL%ANG_IN=ZERO
-    !    EL%ANG_OUT=ZERO
-    ! EL%SCALE MUST BE CREATED IN SETFAMILYP
+    EL%SCALE=1.0_dp
+    el%angc=0.0_dp;
+    el%dc=0.0_dp;
+     el%hc=0.0_dp;
+    el%xc=0.0_dp;
+    el%vc=0.0_dp
+    el%xprime=.true.
   END SUBROUTINE POINTERS_PANCAKEP
+
+  SUBROUTINE POINTERS_ABELLR(EL) !,t_ax,t_ay)
+    IMPLICIT NONE
+    TYPE(ABELL), INTENT(INOUT)::EL
+    INTEGER I
+
+
+    ALLOCATE(  EL%SCALE,el%angc,el%dc,el%hc ,el%xc,el%vc,el%xprime)
+
+
+
+
+
+    EL%SCALE=1.0_dp
+    el%angc=0.0_dp; el%dc=0.0_dp; el%hc=0.0_dp; el%xc=0.0_dp;el%vc=0.0_dp;
+    el%xprime=.false.
+
+  END SUBROUTINE POINTERS_ABELLR
+
+  SUBROUTINE POINTERS_ABELLP(EL) !,t_ax,t_ay)
+    IMPLICIT NONE
+    TYPE(ABELLP), INTENT(INOUT)::EL
+    INTEGER I
+
+
+    ALLOCATE(  EL%SCALE,el%angc,el%dc,el%hc ,el%xc,el%vc,el%xprime)
+    call alloc(EL%SCALE)
+
+
+
+
+    EL%SCALE=1.0_dp
+    el%angc=0.0_dp; el%dc=0.0_dp; el%hc=0.0_dp; el%xc=0.0_dp;el%vc=0.0_dp;
+    el%xprime=.false.
+
+  END SUBROUTINE POINTERS_ABELLP
+
+
+  SUBROUTINE copyABELL_el_elp(EL,ELP)
+    IMPLICIT NONE
+    TYPE(ABELL), INTENT(in)::EL
+    TYPE(ABELLP), INTENT(inout)::ELP
+!    ELP%n=EL%n  ! done in set_family
+!    ELP%m=EL%m
+    ELP%B=EL%B
+    ELP%T=EL%T
+    ELP%E=EL%E
+    ELP%TE=EL%TE
+    ELP%DZ=EL%DZ
+    ELP%SCALE  = EL%SCALE
+    ELP%angc  = EL%angc
+    ELP%dc  = EL%dc
+    ELP%xc  = EL%xc
+    ELP%hc  = EL%hc
+    elp%vc=el%vc
+    elp%xprime=el%xprime
+  END SUBROUTINE copyABELL_el_elp
+
+
+  SUBROUTINE copyABELL_el_el(EL,ELP)
+    IMPLICIT NONE
+    TYPE(ABELL), INTENT(in)::EL
+    TYPE(ABELL), INTENT(inout)::ELP
+
+!    ELP%n=EL%n  ! done in set_family
+!    ELP%m=EL%m
+    ELP%B=EL%B
+    ELP%T=EL%T
+    ELP%E=EL%E
+    ELP%TE=EL%TE
+    ELP%DZ=EL%DZ
+    ELP%SCALE  = EL%SCALE
+    ELP%angc  = EL%angc
+    ELP%dc  = EL%dc
+    ELP%xc  = EL%xc
+    ELP%hc  = EL%hc
+    elp%vc=el%vc
+    elp%xprime=el%xprime
+
+  END SUBROUTINE copyABELL_el_el
+
+  SUBROUTINE copyABELL_elP_el(EL,ELP)
+    IMPLICIT NONE
+    TYPE(ABELLP), INTENT(in)::EL
+    TYPE(ABELL), INTENT(inout)::ELP
+
+
+!    ELP%n=EL%n  ! done in set_family
+!    ELP%m=EL%m
+    ELP%B=EL%B
+    ELP%T=EL%T
+    ELP%E=EL%E
+    ELP%TE=EL%TE
+    ELP%DZ=EL%DZ
+    ELP%SCALE  = EL%SCALE
+    ELP%angc  = EL%angc
+    ELP%dc  = EL%dc
+    ELP%xc  = EL%xc
+    ELP%hc  = EL%hc
+    elp%vc=el%vc
+    elp%xprime=el%xprime
+
+  END SUBROUTINE copyABELL_elP_el
+
 
   SUBROUTINE copyPANCAKE_el_elp(EL,ELP)
     IMPLICIT NONE
@@ -13803,14 +16815,14 @@ SUBROUTINE ZEROr_teapot(EL,I)
     TYPE(PANCAKEP), INTENT(inout)::ELP
 
     CALL COPY_TREE_N(EL%B,ELP%B)
-    !    CALL COPY_TREE_N(EL%ax,ELP%ax)
-    !    CALL COPY_TREE_N(EL%ay,ELP%ay)
-    !
-    !!    ELP%D_IN    =  EL%D_IN
-    !    ELP%D_OUT    =  EL%D_OUT
-    !    ELP%ANG_IN    =  EL%ANG_IN
-    !    ELP%ANG_OUT    =  EL%ANG_OUT
+
     ELP%SCALE  = EL%SCALE
+    ELP%angc  = EL%angc
+    ELP%dc  = EL%dc
+    ELP%xc  = EL%xc
+    ELP%hc  = EL%hc
+    elp%vc=el%vc
+    elp%xprime=el%xprime
   END SUBROUTINE copyPANCAKE_el_elp
 
   SUBROUTINE copyPANCAKE_el_el(EL,ELP)
@@ -13819,14 +16831,14 @@ SUBROUTINE ZEROr_teapot(EL,I)
     TYPE(PANCAKE), INTENT(inout)::ELP
 
     CALL COPY_TREE_N(EL%B,ELP%B)
-    !    CALL COPY_TREE_N(EL%ax,ELP%ax)
-    !    CALL COPY_TREE_N(EL%ay,ELP%ay)
-    !
-    !!    ELP%D_IN    =  EL%D_IN
-    !    ELP%D_OUT    =  EL%D_OUT
-    !    ELP%ANG_IN    =  EL%ANG_IN
-    !    ELP%ANG_OUT    =  EL%ANG_OUT
+
     ELP%SCALE  = EL%SCALE
+    ELP%angc  = EL%angc
+    ELP%dc  = EL%dc
+     ELP%xc  = EL%xc
+    ELP%hc  = EL%hc
+    elp%vc=el%vc
+    elp%xprime=el%xprime
   END SUBROUTINE copyPANCAKE_el_el
 
   SUBROUTINE copyPANCAKE_elP_el(EL,ELP)
@@ -13835,14 +16847,14 @@ SUBROUTINE ZEROr_teapot(EL,I)
     TYPE(PANCAKE), INTENT(inout)::ELP
 
     CALL COPY_TREE_N(EL%B,ELP%B)
-    !    CALL COPY_TREE_N(EL%ax,ELP%ax)
-    !    CALL COPY_TREE_N(EL%ay,ELP%ay)
-    !
-    !!    ELP%D_IN    =  EL%D_IN
-    !    ELP%D_OUT    =  EL%D_OUT
-    !    ELP%ANG_IN    =  EL%ANG_IN
-    !    ELP%ANG_OUT    =  EL%ANG_OUT
+
     ELP%SCALE  = EL%SCALE
+    ELP%angc  = EL%angc
+    ELP%dc  = EL%dc
+     ELP%xc  = EL%xc
+    ELP%hc  = EL%hc
+    elp%vc=el%vc
+    elp%xprime=el%xprime
   END SUBROUTINE copyPANCAKE_elP_el
 
   SUBROUTINE reset_pa(EL)
@@ -13854,29 +16866,210 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
   END SUBROUTINE reset_pa
 
+  SUBROUTINE reset_abell(EL)
+    IMPLICIT NONE
+    TYPE(abellp), INTENT(INOUT)::EL
+    ! CALL resetpoly_R31 ON ALL THE INTERNAL POLYMORPHS
+
+    call resetpoly_R31(EL%SCALE)
+
+  END SUBROUTINE reset_abell
+
+
+
+
+  subroutine step_symp_p_PANCAkEr(ds,POS,X,k,EL)
+    IMPLICIT NONE
+    real(dp), INTENT(INout) :: X(6)
+    INTEGER, INTENT(INOUT) :: POS
+    real(dp)  F(6)
+    TYPE(PANCAKE),  INTENT(INOUT) :: EL
+    real(dp) be(nbe),g(2,2),ds,xt(6),e(2),det,v(2),normb,norma
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+    integer i,n,ns
+     n=1000
+     ns=5
+    Be(1)=X(1);
+    Be(2)=X(3);
+    Be(3)=0.0_dp;
+    CALL trackg(EL%B(POS),Be)
+       be(1)=EL%SCALE*el%p%charge*el%p%dir*be(1)
+       be(2)=EL%SCALE*el%p%charge*el%p%dir*be(2)
+       be(3)=EL%SCALE*el%p%charge*be(3)
+       be(4)=EL%SCALE*el%p%charge*el%p%dir*be(4)
+       be(5)=EL%SCALE*el%p%charge*be(5)
+       be(6)=EL%SCALE*el%p%charge*be(6)
+       be(7)=EL%SCALE*el%p%charge*el%p%dir*be(7)
+       be(8)=EL%SCALE*el%p%charge*el%p%dir*be(8)
+
+
+
+       xt=x
+
+       normb=1.d38
+
+       do i=1,n
+
+       CALL fxc(f,xt,k,be,EL%p,el%hc,g=G)
+       g(1,1)=ds*g(1,1)-1.0_dp
+       g(2,2)=ds*g(2,2)-1.0_dp
+
+       det=g(1,1)*g(2,2)-g(1,2)*g(2,1)
+
+       v(1)=(xt(2)-x(2)-ds*f(2))
+       v(2)=(xt(4)-x(4)-ds*f(4))
+
+       e(1)= (g(2,2)*v(1)-g(1,2)*v(2))/det
+       e(2)=(-g(2,1)*v(1)+g(1,1)*v(2))/det
+
+       xt(2)=xt(2)+e(1)
+       xt(4)=xt(4)+e(2)
+       norma=abs(e(1)+e(2))
+
+       if(i>ns) then
+        if(norma>=normb) exit
+        normb=norma
+       endif
+
+!        write(6,*) i,norma
+
+        enddo
+        if(i>n-10) then
+        check_stable = .false.
+        ! write(6,*) " convergence not reached in step_symp_p_PANCAkEr "
+        endif
+        x(1)=xt(1)+ds*f(1)
+        x(2)=xt(2)
+        x(3)=xt(3)+ds*f(3)
+        x(4)=xt(4)
+        x(5)=xt(5)+ds*f(5)
+        x(6)=xt(6)+ds*f(6)   ! because no dependence on 6
+
+  END subroutine step_symp_p_PANCAkEr
+
+ subroutine step_symp_p_PANCAkEp(ds,POS,X,k,ELP)
+    IMPLICIT NONE
+    type(real_8), INTENT(INout) :: X(6),ds
+    INTEGER, INTENT(INOUT) :: POS
+    TYPE(PANCAKEP),  INTENT(INOUT) :: ELP
+    type(real_8) be(nbe),g(2,2),xt(6),e(2),det,v(2),F(6)
+    real(dp) normb,norma,x0(6)
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+    integer i,n,ns,j
+     n=1000
+     ns=5
+    call alloc(be);call alloc(xt); call alloc(e); call alloc(v);call alloc(det);call alloc(f);
+    do i=1,2
+    do j=1,2
+     call alloc(g(i,j))
+    enddo
+    enddo
+    Be(1)=X(1);
+    Be(2)=X(3);
+    Be(3)=0.0_dp;
+    CALL trackg(ELP%B(POS),Be)
+       be(1)=ELP%SCALE*ELP%p%charge*ELP%p%dir*be(1)
+       be(2)=ELP%SCALE*ELP%p%charge*ELP%p%dir*be(2)
+       be(3)=ELP%SCALE*ELP%p%charge*be(3)
+       be(4)=ELP%SCALE*ELP%p%charge*ELP%p%dir*be(4)
+       be(5)=ELP%SCALE*ELP%p%charge*be(5)
+       be(6)=ELP%SCALE*ELP%p%charge*be(6)
+       be(7)=ELP%SCALE*ELP%p%charge*ELP%p%dir*be(7)
+       be(8)=ELP%SCALE*ELP%p%charge*ELP%p%dir*be(8)
+
+
+        xt=x
+
+
+       normb=1.d38
+
+       do i=1,n
+
+       CALL fxc(f,xt,k,be,ELP%p,ELP%hc,g=G)
+       g(1,1)=ds*g(1,1)-1.0_dp
+       g(2,2)=ds*g(2,2)-1.0_dp
+
+       det=g(1,1)*g(2,2)-g(1,2)*g(2,1)
+
+       v(1)=(xt(2)-x(2)-ds*f(2))
+       v(2)=(xt(4)-x(4)-ds*f(4))
+
+       e(1)= (g(2,2)*v(1)-g(1,2)*v(2))/det
+       e(2)=(-g(2,1)*v(1)+g(1,1)*v(2))/det
+
+       xt(2)=xt(2)+e(1)
+       xt(4)=xt(4)+e(2)
+        e(1)=e(1)+e(2)
+       norma=full_abs(e(1))
+
+       if(i>ns) then
+        if(norma>=normb) exit
+        normb=norma
+       endif
+
+ !       write(6,*) i,norma
+
+        enddo
+
+        if(i>n-10) then
+        check_stable = .false.
+         write(6,*) " convergence not reached in step_symp_p_PANCAkEp "
+        endif
+
+        x(1)=xt(1)+ds*f(1)
+        x(2)=xt(2)
+        x(3)=xt(3)+ds*f(3)
+        x(4)=xt(4)
+        x(5)=xt(5)+ds*f(5)
+        x(6)=xt(6)+ds*f(6)   ! because no dependence on 6
+
+    call kill(be);call kill(xt); call kill(e); call kill(v);call kill(det);call kill(f);
+    do i=1,2
+    do j=1,2
+     call kill(g(i,j))
+    enddo
+    enddo
+
+
+  END subroutine step_symp_p_PANCAkEp
+
+
   subroutine feval_PANCAkEr(POS,X,k,f,EL)
     IMPLICIT NONE
     real(dp), INTENT(INout) :: X(6)
     INTEGER, INTENT(INOUT) :: POS
     real(dp), INTENT(OUT) :: F(6)
     TYPE(PANCAKE),  INTENT(INOUT) :: EL
-    real(dp) B(3)
+    real(dp) B(3),be(nbe)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-    B(1)=X(1);
-    B(2)=X(3);
-    B(3)=0.0_dp;
+    Be(1)=X(1);
+    Be(2)=X(3);
+    Be(3)=0.0_dp;
 
-    !       CALL track3(EL%B(POS),B)
-    CALL trackg(EL%B(POS),B)
+    CALL trackg(EL%B(POS),Be)
+    if(el%xprime) then
+       b(1)=EL%SCALE*el%p%charge*el%p%dir*be(1)
+       b(2)=EL%SCALE*el%p%charge*el%p%dir*be(2)
+       b(3)=EL%SCALE*el%p%charge*be(3)
 
-    b(1)=EL%SCALE*el%p%charge*el%p%dir*b(1)
-    b(2)=EL%SCALE*el%p%charge*el%p%dir*b(2)
-    !    b(3)=EL%SCALE*el%p%charge*el%p%dir*b(3)
-    b(3)=EL%SCALE*el%p%charge*b(3)
-
-    CALL f_M(f,x,k,b,EL%p)
-
+       CALL fx(f,x,k,b,EL%p,el%hc)
+    else
+       be(1)=EL%SCALE*el%p%charge*el%p%dir*be(1)
+       be(2)=EL%SCALE*el%p%charge*el%p%dir*be(2)
+       be(3)=EL%SCALE*el%p%charge*be(3)
+       be(4)=EL%SCALE*el%p%charge*el%p%dir*be(4)
+       be(5)=EL%SCALE*el%p%charge*be(5)
+       be(6)=EL%SCALE*el%p%charge*be(6)
+       be(7)=EL%SCALE*el%p%charge*el%p%dir*be(7)
+       be(8)=EL%SCALE*el%p%charge*el%p%dir*be(8)
+       CALL fxc(f,x,k,be,EL%p,el%hc)
+    endif
+        if(k%TIME) then
+          F(6)=f(6)+(k%TOTALPATH-1)/EL%P%BETA0
+            else
+          F(6)=f(6)+(k%TOTALPATH-1)
+        endif
   END subroutine feval_PANCAkEr
 
   subroutine feval_PANCAkEP(POS,X,k,f,EL)
@@ -13885,27 +17078,106 @@ SUBROUTINE ZEROr_teapot(EL,I)
     INTEGER, INTENT(INOUT) :: POS
     TYPE(REAL_8), INTENT(OUT) :: F(6)
     TYPE(PANCAKEP),  INTENT(INOUT) :: EL
-    TYPE(REAL_8) B(3)
+    TYPE(REAL_8) B(3),be(nbe)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
-    CALL ALLOC(B)
-    B(1)=X(1);
-    B(2)=X(3);
-    B(3)=0.0_dp;
+    CALL ALLOC(B); call alloc(be)
+    Be(1)=X(1);
+    Be(2)=X(3);
+    Be(3)=0.0_dp;
 
     !       CALL track3(EL%B(POS),B)
-    CALL trackg(EL%B(POS),B)
+    CALL trackg(EL%B(POS),Be)
 
-    b(1)=EL%SCALE*el%p%charge*el%p%dir*b(1)
-    b(2)=EL%SCALE*el%p%charge*el%p%dir*b(2)
-    !    b(3)=EL%SCALE*el%p%charge*el%p%dir*b(3)
-    b(3)=EL%SCALE*el%p%charge*b(3)
+    if(el%xprime) then
+       b(1)=EL%SCALE*el%p%charge*el%p%dir*be(1)
+       b(2)=EL%SCALE*el%p%charge*el%p%dir*be(2)
+       b(3)=EL%SCALE*el%p%charge*be(3)
 
-    CALL f_M(f,x,k,b,EL%p)
-
-    CALL KILL(B)
+       CALL fx(f,x,k,b,EL%p,el%hc)
+    else
+       be(1)=EL%SCALE*el%p%charge*el%p%dir*be(1)
+       be(2)=EL%SCALE*el%p%charge*el%p%dir*be(2)
+       be(3)=EL%SCALE*el%p%charge*be(3)
+       be(4)=EL%SCALE*el%p%charge*el%p%dir*be(4)
+       be(5)=EL%SCALE*el%p%charge*be(5)
+       be(6)=EL%SCALE*el%p%charge*be(6)
+       be(7)=EL%SCALE*el%p%charge*el%p%dir*be(7)
+       be(8)=EL%SCALE*el%p%charge*el%p%dir*be(8)
+       CALL fxc(f,x,k,be,EL%p,el%hc)
+    endif
+        if(k%TIME) then
+          F(6)=f(6)+(k%TOTALPATH-1)/EL%P%BETA0
+            else
+          F(6)=f(6)+(k%TOTALPATH-1)
+        endif
+    CALL KILL(B); call kill(be)
 
   END subroutine feval_PANCAkEP
 
+subroutine rks_pancaker(ti,h,GR,y,k)
+    IMPLICIT none
+
+    integer ne
+    parameter (ne=6)
+    real(dp), INTENT(INOUT)::  y(ne)
+    type (pancake) ,INTENT(INOUT)::  GR
+    real(dp), intent(inout) :: h
+    integer, intent(inout) :: ti
+    real(dp) HH
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+    hh=h/2
+
+call  step_symp_p_PANCAkE(hh,tI,y,k,GR)
+
+    tI=ti+GR%p%dir
+call  step_symp_p_PANCAkE(hh,tI,y,k,GR)
+
+    tI=ti+GR%p%dir
+
+    if(k%TIME) then
+       Y(6)=Y(6)-(1-k%TOTALPATH)*GR%P%LD/GR%P%beta0/GR%P%nst
+    else
+       Y(6)=Y(6)-(1-k%TOTALPATH)*GR%P%LD/GR%P%nst
+    endif
+
+  end  subroutine rks_pancaker
+
+
+subroutine rks_pancakep(ti,h,GR,y,k)
+    IMPLICIT none
+
+    integer ne
+    parameter (ne=6)
+    TYPE(REAL_8), INTENT(INOUT)::  y(ne)
+    TYPE(REAL_8)  hh
+    type (pancakeP) ,INTENT(INOUT)::  GR
+    TYPE(REAL_8), intent(inout) :: h
+    integer, intent(inout) :: ti
+    INTEGER TT
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+
+    call alloc(hh)
+
+
+    hh=h/2
+
+call  step_symp_p_PANCAkE(hh,tI,y,k,GR)
+
+    tI=ti+GR%p%dir
+call  step_symp_p_PANCAkE(hh,tI,y,k,GR)
+
+    tI=ti+GR%p%dir
+
+    if(k%TIME) then
+       Y(6)=Y(6)-(1-k%TOTALPATH)*GR%P%LD/GR%P%beta0/GR%P%nst
+    else
+       Y(6)=Y(6)-(1-k%TOTALPATH)*GR%P%LD/GR%P%nst
+    endif
+
+    call kill(hh)
+
+  end  subroutine rks_pancakep
   ! 4 order Runge
   subroutine rk4_pancaker(ti,h,GR,y,k)
     IMPLICIT none
@@ -14045,6 +17317,217 @@ SUBROUTINE ZEROr_teapot(EL,I)
     return
   end  subroutine rk4_pancakeP
 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!   abell conversion  !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  SUBROUTINE gen_conv_to_xpr(X,a,ve,exact,beta0,hcurv)
+    IMPLICIT NONE
+    real(dp),INTENT(INOUT):: X(6)
+    real(dp) ti,ve,a(3),beta0,hcurv
+    logical exact
+
+    if(exact) then
+       ti=ROOT(1.0_dp+2.0_dp*(X(5)-ve)/beta0+(X(5)-ve)**2-(X(2)-put_a_abell*a(1))**2-(X(4)-put_a_abell*a(2))**2)
+       x(2)=(1.0_dp+hcurv*X(1))*(X(2)-put_a_abell*a(1))/ti
+       x(4)=(1.0_dp+hcurv*X(1))*(X(4)-put_a_abell*a(2))/ti
+    else
+       ti=ROOT(1.0_dp+2.0_dp*(X(5)-ve)/beta0+(X(5)-ve)**2)
+       x(2)=(X(2)-put_a_abell*a(1))/ti
+       x(4)=(X(4)-put_a_abell*a(2))/ti
+    endif
+
+  end SUBROUTINE gen_conv_to_xpr
+
+  SUBROUTINE gen_conv_to_xpp(X,a,ve,exact,beta0,hcurv)
+    IMPLICIT NONE
+    type(real_8),INTENT(INOUT):: X(6)
+    type(real_8)  ti,ve,a(3)
+    real(dp) beta0,hcurv
+    logical exact
+
+    call alloc(ti)
+
+    if(exact) then
+       ti=sqrt(1.0_dp+2.0_dp*(X(5)-ve)/beta0+(X(5)-ve)**2-(X(2)-put_a_abell*a(1))**2-(X(4)-put_a_abell*a(2))**2)
+       x(2)=(1.0_dp+hcurv*X(1))*(X(2)-put_a_abell*a(1))/ti
+       x(4)=(1.0_dp+hcurv*X(1))*(X(4)-put_a_abell*a(2))/ti
+    else
+       ti=sqrt(1.0_dp+2.0_dp*(X(5)-ve)/beta0+(X(5)-ve)**2)
+       x(2)=(X(2)-put_a_abell*a(1))/ti
+       x(4)=(X(4)-put_a_abell*a(2))/ti
+    endif
+
+    call kill(ti)
+
+  end SUBROUTINE gen_conv_to_xpp
+
+  SUBROUTINE gen_conv_to_pxr(X,a,ve,exact,beta0,hcurv)
+    IMPLICIT NONE
+    real(dp),INTENT(INOUT):: X(6)
+    real(dp) ti,ve,z,a(3),beta0,hcurv
+    logical exact
+
+    if(exact) then
+       ti=ROOT((1.0_dp+hcurv*X(1))**2+X(2)**2+X(4)**2)
+       x(2)=x(2)*ROOT(1.0_dp+2.0_dp*(X(5)-ve)/beta0+(X(5)-ve)**2)/ti + put_a_abell*a(1)
+       x(4)=x(4)*ROOT(1.0_dp+2.0_dp*(X(5)-ve)/beta0+(X(5)-ve)**2)/ti + put_a_abell*a(2)
+    else
+       x(2)=x(2)*ROOT(1.0_dp+2.0_dp*(X(5)-ve)/beta0+(X(5)-ve)**2) + put_a_abell*a(1)
+       x(4)=x(4)*ROOT(1.0_dp+2.0_dp*(X(5)-ve)/beta0+(X(5)-ve)**2) + put_a_abell*a(2)
+    endif
+
+  end SUBROUTINE gen_conv_to_pxr
+
+  SUBROUTINE gen_conv_to_pxp(X,a,ve,exact,beta0,hcurv)
+    IMPLICIT NONE
+    type(real_8) ,INTENT(INOUT):: X(6)
+    type(real_8) ti,ve,z,a(3)
+    real(dp)  beta0,hcurv
+    logical exact
+
+    if(exact) then
+      call alloc(ti)
+       ti=sqrt((1.0_dp+hcurv*X(1))**2+X(2)**2+X(4)**2)
+       x(2)=x(2)*sqrt(1.0_dp+2.0_dp*(X(5)-ve)/beta0+(X(5)-ve)**2)/ti + put_a_abell*a(1)
+       x(4)=x(4)*sqrt(1.0_dp+2.0_dp*(X(5)-ve)/beta0+(X(5)-ve)**2)/ti + put_a_abell*a(2)
+      call kill(ti)
+    else
+       x(2)=x(2)*sqrt(1.0_dp+2.0_dp*(X(5)-ve)/beta0+(X(5)-ve)**2) + put_a_abell*a(1)
+       x(4)=x(4)*sqrt(1.0_dp+2.0_dp*(X(5)-ve)/beta0+(X(5)-ve)**2) + put_a_abell*a(2)
+    endif
+
+  end SUBROUTINE gen_conv_to_pxp
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!   abell conversion  !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  SUBROUTINE conv_to_xprABELL(EL,X,k,ent)
+    IMPLICIT NONE
+    real(dp),INTENT(INOUT):: X(6)
+    TYPE(ABELL),INTENT(INOUT):: EL
+    real(dp) ti,ve,z,a(3),beta0
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+    integer ent
+    z=ent*el%l
+    call B_E_FIELD(EL,X,Z,PSIE_IN=VE,A_in=a,kick=.true.)
+
+      if(k%TIME) then
+       beta0=el%p%beta0
+      else
+       beta0=1.0_dp
+      endif
+      call gen_conv_to_xp(X,a,ve,el%p%exact,beta0,el%hc)
+
+ !   if(k%TIME) then
+ !      ti=ROOT(1.0_dp+2.0_dp*(X(5)-ve)/el%p%beta0+(X(5)-ve)**2-(X(2)-put_a_abell*a(1))**2-(X(4)-put_a_abell*a(2))**2)
+ !      x(2)=(1.0_dp+el%hc*X(1))*(X(2)-put_a_abell*a(1))/ti
+ !      x(4)=(1.0_dp+el%hc*X(1))*(X(4)-put_a_abell*a(2))/ti
+ !   else
+ !      ti=ROOT((1.0_dp+x(5)-ve)**2-(X(2)-put_a_abell*a(1))**2-(X(4)-put_a_abell*a(2))**2)
+ !      x(2)=(1.0_dp+el%hc*X(1))*(X(2)-put_a_abell*a(1))/ti
+ !      x(4)=(1.0_dp+el%hc*X(1))*(X(4)-put_a_abell*a(2))/ti
+ !   endif
+
+  end SUBROUTINE conv_to_xprabell
+
+  SUBROUTINE conv_to_xppABELL(EL,X,k,ent)
+    IMPLICIT NONE
+    type(real_8),INTENT(INOUT):: X(6)
+    TYPE(ABELLp),INTENT(INOUT):: EL
+    type(real_8) ti,ve,z,a(3)
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+    integer ent
+    real(dp) beta0
+
+    call alloc(ti,ve,z)
+    call alloc(a)
+    z=ent*el%l
+
+    call B_E_FIELD(EL,X,Z,PSIE_IN=VE,A_in=a,kick=.true.)
+
+      if(k%TIME) then
+       beta0=el%p%beta0
+      else
+       beta0=1.0_dp
+      endif
+      call gen_conv_to_xp(X,a,ve,el%p%exact,beta0,el%hc)
+
+ !   if(k%TIME) then
+ !      ti=sqrt(1.0_dp+2.0_dp*(X(5)-ve)/el%p%beta0+(X(5)-ve)**2-(X(2)-put_a_abell*a(1))**2-(X(4)-put_a_abell*a(2))**2)
+ !      x(2)=(1.0_dp+el%hc*X(1))*(X(2)-put_a_abell*a(1))/ti
+ !      x(4)=(1.0_dp+el%hc*X(1))*(X(4)-put_a_abell*a(2))/ti
+ !   else
+ !      ti=sqrt((1.0_dp+x(5)-ve)**2-(X(2)-put_a_abell*a(1))**2-(X(4)-put_a_abell*a(2))**2)
+ !      x(2)=(1.0_dp+el%hc*X(1))*(X(2)-put_a_abell*a(1))/ti
+ !      x(4)=(1.0_dp+el%hc*X(1))*(X(4)-put_a_abell*a(2))/ti
+ !   endif
+
+   call kill(ti,ve,z)
+    call kill(a)
+
+  end SUBROUTINE conv_to_xppabell
+
+  SUBROUTINE conv_to_pxrABELL(EL,X,k,ent)
+    IMPLICIT NONE
+    real(dp),INTENT(INOUT):: X(6)
+    TYPE(ABELL),INTENT(INOUT):: EL
+    real(dp) ti,ve,z,a(3),beta0
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+    integer ent
+    z=ent*el%l
+    call B_E_FIELD(EL,X,Z,PSIE_IN=VE,A_in=a,kick=.true.)
+
+  if(k%TIME) then
+   beta0=el%p%beta0
+  else
+   beta0=1.0_dp
+  endif
+    call gen_conv_to_px(X,a,ve,el%p%exact,beta0,el%hc)
+
+ !   ti=ROOT((1.0_dp+el%hc*X(1))**2+X(2)**2+X(4)**2)
+ !   if(k%TIME) then
+ !      x(2)=x(2)*ROOT(1.0_dp+2.0_dp*(X(5)-ve)/el%p%beta0+(X(5)-ve)**2)/ti + put_a_abell*a(1)
+ !      x(4)=x(4)*ROOT(1.0_dp+2.0_dp*(X(5)-ve)/el%p%beta0+(X(5)-ve)**2)/ti + put_a_abell*a(2)
+ !   else
+ !      x(2)=x(2)*(1.0_dp+(X(5)-ve))/ti + put_a_abell*a(1)
+ !      x(4)=x(4)*(1.0_dp+(X(5)-ve))/ti + put_a_abell*a(2)
+ !   endif
+
+  end SUBROUTINE conv_to_pxrabell
+
+  SUBROUTINE conv_to_pxpABELL(EL,X,k,ent)
+    IMPLICIT NONE
+    type(real_8),INTENT(INOUT):: X(6)
+    TYPE(ABELLp),INTENT(INOUT):: EL
+    type(real_8) ti,ve,z,a(3)
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+    integer ent
+    real(dp) beta0
+    call alloc(ti,ve,z)
+    call alloc(a)
+    z=ent*el%l
+    call B_E_FIELD(EL,X,Z,PSIE_IN=VE,A_in=a,kick=.true.)
+
+  if(k%TIME) then
+   beta0=el%p%beta0
+  else
+   beta0=1.0_dp
+  endif
+    call gen_conv_to_px(X,a,ve,el%p%exact,beta0,el%hc)
+
+ !   ti=sqrt((1.0_dp+el%hc*X(1))**2+X(2)**2+X(4)**2)
+ !   if(k%TIME) then
+ !      x(2)=x(2)*sqrt(1.0_dp+2.0_dp*(X(5)-ve)/el%p%beta0+(X(5)-ve)**2)/ti + put_a_abell*a(1)
+ !      x(4)=x(4)*sqrt(1.0_dp+2.0_dp*(X(5)-ve)/el%p%beta0+(X(5)-ve)**2)/ti + put_a_abell*a(2)
+ !   else
+ !      x(2)=x(2)*(1.0_dp+(X(5)-ve))/ti + put_a_abell*a(1)
+ !      x(4)=x(4)*(1.0_dp+(X(5)-ve))/ti + put_a_abell*a(2)
+ !   endif
+
+    call kill(ti,ve,z)
+    call kill(a)
+  end SUBROUTINE conv_to_pxpabell
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
   SUBROUTINE conv_to_xpr(EL,X,k)
     IMPLICIT NONE
     real(dp),INTENT(INOUT):: X(6)
@@ -14053,12 +17536,12 @@ SUBROUTINE ZEROr_teapot(EL,I)
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     if(k%TIME) then
        ti=ROOT(1.0_dp+2.0_dp*X(5)/el%p%beta0+x(5)**2-X(2)**2-X(4)**2)
-       x(2)=(1.0_dp+el%p%B0*X(1))*x(2)/ti
-       x(4)=(1.0_dp+el%p%B0*X(1))*x(4)/ti
+       x(2)=(1.0_dp+el%hc*X(1))*x(2)/ti
+       x(4)=(1.0_dp+el%hc*X(1))*x(4)/ti
     else
        ti=ROOT((1.0_dp+x(5))**2-X(2)**2-X(4)**2)
-       x(2)=(1.0_dp+el%p%B0*X(1))*x(2)/ti
-       x(4)=(1.0_dp+el%p%B0*X(1))*x(4)/ti
+       x(2)=(1.0_dp+el%hc*X(1))*x(2)/ti
+       x(4)=(1.0_dp+el%hc*X(1))*x(4)/ti
     endif
 
   end SUBROUTINE conv_to_xpr
@@ -14072,12 +17555,12 @@ SUBROUTINE ZEROr_teapot(EL,I)
     call alloc(ti)
     if(k%TIME) then
        ti=sqrt(1.0_dp+2.0_dp*X(5)/el%p%beta0+x(5)**2-X(2)**2-X(4)**2)
-       x(2)=(1.0_dp+el%p%B0*X(1))*x(2)/ti
-       x(4)=(1.0_dp+el%p%B0*X(1))*x(4)/ti
+       x(2)=(1.0_dp+el%hc*X(1))*x(2)/ti
+       x(4)=(1.0_dp+el%hc*X(1))*x(4)/ti
     else
        ti=sqrt((1.0_dp+x(5))**2-X(2)**2-X(4)**2)
-       x(2)=(1.0_dp+el%p%B0*X(1))*x(2)/ti
-       x(4)=(1.0_dp+el%p%B0*X(1))*x(4)/ti
+       x(2)=(1.0_dp+el%hc*X(1))*x(2)/ti
+       x(4)=(1.0_dp+el%hc*X(1))*x(4)/ti
     endif
     call kill(ti)
 
@@ -14089,7 +17572,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
     TYPE(PANCAKE),INTENT(INOUT):: EL
     real(dp) ti
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
-    ti=ROOT((1.0_dp+el%p%B0*X(1))**2+X(2)**2+X(4)**2)
+    ti=ROOT((1.0_dp+el%hc*X(1))**2+X(2)**2+X(4)**2)
     if(k%TIME) then
        x(2)=x(2)*ROOT(1.0_dp+2.0_dp*X(5)/el%p%beta0+x(5)**2)/ti
        x(4)=x(4)*ROOT(1.0_dp+2.0_dp*X(5)/el%p%beta0+x(5)**2)/ti
@@ -14106,7 +17589,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
     type(real_8) ti
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
     call alloc(ti)
-    ti=SQRT((1.0_dp+el%p%B0*X(1))**2+X(2)**2+X(4)**2)
+    ti=SQRT((1.0_dp+el%hc*X(1))**2+X(2)**2+X(4)**2)
     if(k%TIME) then
        x(2)=x(2)*sqrt(1.0_dp+2.0_dp*X(5)/el%p%beta0+x(5)**2)/ti
        x(4)=x(4)*sqrt(1.0_dp+2.0_dp*X(5)/el%p%beta0+x(5)**2)/ti
@@ -14118,40 +17601,260 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
   end SUBROUTINE conv_to_pxp
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
   ! ETIENNE_PANCAKE
 
-  SUBROUTINE ADJUSTR_PANCAKE(EL,X,k,J)
+  SUBROUTINE ADJUST_ABELLR(EL,X,k,J)
+    IMPLICIT NONE
+    real(dp), INTENT(INOUT) :: X(6)
+    TYPE(ABELL),INTENT(INOUT):: EL
+    real(dp) d(3)
+    INTEGER, INTENT(IN) :: J
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+    d=0
+    if(el%hc==0.0_dp) then  !<------ Rectangular geometry
+
+     IF(J==1) then
+    d(1)=EL%P%DIR*el%xc; d(3)=el%dc; d(2)=EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+         if(el%XPrime.and.conversion_xprime_in_abell) call conv_to_xp(el,x,k,0)
+      ELSE
+         if(el%XPrime.and.conversion_xprime_in_abell) call conv_to_px(el,x,k,0)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+      ENDIF
+    else
+    d(1)=-EL%P%DIR*el%xc ;d(3)=el%dc;d(2)=-EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+        if(el%XPrime.and.conversion_xprime_in_abell)  call conv_to_px(el,x,k,1)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+      ELSE
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+         if(el%XPrime.and.conversion_xprime_in_abell)  call conv_to_xp(el,x,k,1)
+      ENDIF
+    endif
+    else  !<------ Sector geometry
+    IF(J==1) then
+    d(1)=EL%P%DIR*el%xc; d(3)=el%dc; d(2)=EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+       if(el%XPrime.and.conversion_xprime_in_abell) call conv_to_xp(el,x,k,0)
+      ELSE
+         if(el%XPrime.and.conversion_xprime_in_abell) call conv_to_px(el,x,k,0)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+      ENDIF
+    ELSE
+
+
+    d(1)=-EL%P%DIR*el%xc ;d(3)=el%dc;d(2)=-EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+         if(el%XPrime.and.conversion_xprime_in_abell)  call conv_to_px(el,x,k,1)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+      ELSE
+         CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+         if(el%XPrime.and.conversion_xprime_in_abell) call conv_to_xp(el,x,k,1)
+      ENDIF
+    endif
+    endif
+  END SUBROUTINE ADJUST_ABELLR
+
+  SUBROUTINE ADJUST_ABELLP(EL,X,k,J)
+    IMPLICIT NONE
+    TYPE(REAL_8), INTENT(INOUT) :: X(6)
+    TYPE(ABELLP),INTENT(INOUT):: EL
+    real(dp) d(3)
+    INTEGER, INTENT(IN) :: J
+    TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+    d=0
+    if(el%hc==0.0_dp) then  !<------ Rectangular geometry
+
+     IF(J==1) then
+    d(1)=EL%P%DIR*el%xc; d(3)=el%dc; d(2)=EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+         if(el%XPrime.and.conversion_xprime_in_abell)call conv_to_xp(el,x,k,0)
+      ELSE
+         if(el%XPrime.and.conversion_xprime_in_abell)call conv_to_px(el,x,k,0)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+      ENDIF
+    else
+    d(1)=-EL%P%DIR*el%xc ;d(3)=el%dc;d(2)=-EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+         if(el%XPrime.and.conversion_xprime_in_abell) call conv_to_px(el,x,k,1)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+      ELSE
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+         if(el%XPrime.and.conversion_xprime_in_abell) call conv_to_xp(el,x,k,1)
+      ENDIF
+    endif
+    else  !<------ Sector geometry
+    IF(J==1) then
+    d(1)=EL%P%DIR*el%xc; d(3)=el%dc; d(2)=EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+         if(el%XPrime.and.conversion_xprime_in_abell)call conv_to_xp(el,x,k,0)
+      ELSE
+         if(el%XPrime.and.conversion_xprime_in_abell)call conv_to_px(el,x,k,0)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+      ENDIF
+    ELSE
+
+
+    d(1)=-EL%P%DIR*el%xc ;d(3)=el%dc;d(2)=-EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+         if(el%XPrime.and.conversion_xprime_in_abell)call conv_to_px(el,x,k,1)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+      ELSE
+         CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+         if(el%XPrime.and.conversion_xprime_in_abell) call conv_to_xp(el,x,k,1)
+      ENDIF
+    endif
+    endif
+  END SUBROUTINE ADJUST_ABELLP
+
+
+  SUBROUTINE ADJUST_PANCAKER(EL,X,k,J)
     IMPLICIT NONE
     real(dp), INTENT(INOUT) :: X(6)
     TYPE(PANCAKE),INTENT(INOUT):: EL
-
+    real(dp) d(3)
     INTEGER, INTENT(IN) :: J
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+    d=0
+    if(el%hc==0.0_dp) then  !<------ Rectangular geometry
 
     IF(J==1) then
-       call conv_to_xp(el,x,k)
+    d(1)=EL%P%DIR*el%xc; d(3)=el%dc; d(2)=EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+         if(el%xprime.and.EL%p%method/=1) call conv_to_xp(el,x,k)
+      ELSE
+         if(el%xprime.and.EL%p%method/=1) call conv_to_xp(el,x,k)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+      ENDIF
     else
-       call conv_to_px(el,x,k)
+    d(1)=-EL%P%DIR*el%xc ;d(3)=el%dc;d(2)=-EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+        if(el%xprime.and.EL%p%method/=1)  call conv_to_px(el,x,k)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+      ELSE
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        if(el%xprime.and.EL%p%method/=1)  call conv_to_px(el,x,k)
+      ENDIF
     endif
+    else  !<------ Sector geometry
+    IF(J==1) then
+    d(1)=EL%P%DIR*el%xc; d(3)=el%dc; d(2)=EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        if(el%xprime.and.EL%p%method/=1) call conv_to_xp(el,x,k)
+      ELSE
+        if(el%xprime.and.EL%p%method/=1) call conv_to_xp(el,x,k)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+      ENDIF
+    ELSE
 
-  END SUBROUTINE ADJUSTR_PANCAKE
 
-  SUBROUTINE ADJUSTP_PANCAKE(EL,X,k,J)
+    d(1)=-EL%P%DIR*el%xc ;d(3)=el%dc;d(2)=-EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+        if(el%xprime.and.EL%p%method/=1)  call conv_to_px(el,x,k)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+      ELSE
+         CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        if(el%xprime.and.EL%p%method/=1)  call conv_to_px(el,x,k)
+      ENDIF
+    endif
+    endif
+  END SUBROUTINE ADJUST_PANCAKER
+
+  SUBROUTINE ADJUST_PANCAKEP(EL,X,k,J)
     IMPLICIT NONE
     TYPE(REAL_8), INTENT(INOUT) :: X(6)
     TYPE(PANCAKEP),INTENT(INOUT):: EL
-
+    real(dp) d(3)
     INTEGER, INTENT(IN) :: J
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
+    d=0
+    if(el%hc==0.0_dp) then  !<------ Rectangular geometry
 
     IF(J==1) then
-       call conv_to_xp(el,x,k)
+    d(1)=EL%P%DIR*el%xc; d(3)=el%dc; d(2)=EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+         if(el%xprime.and.EL%p%method/=1) call conv_to_xp(el,x,k)
+      ELSE
+         if(el%xprime.and.EL%p%method/=1) call conv_to_xp(el,x,k)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+      ENDIF
     else
-       call conv_to_px(el,x,k)
+    d(1)=-EL%P%DIR*el%xc ;d(3)=el%dc;d(2)=-EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+        if(el%xprime.and.EL%p%method/=1)  call conv_to_px(el,x,k)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+      ELSE
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        if(el%xprime.and.EL%p%method/=1)  call conv_to_px(el,x,k)
+      ENDIF
+    endif
+    else  !<------ Sector geometry
+    IF(J==1) then
+    d(1)=EL%P%DIR*el%xc; d(3)=el%dc; d(2)=EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        if(el%xprime.and.EL%p%method/=1) call conv_to_xp(el,x,k)
+      ELSE
+        if(el%xprime.and.EL%p%method/=1) call conv_to_xp(el,x,k)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+      ENDIF
+    ELSE
+
+
+    d(1)=-EL%P%DIR*el%xc ;d(3)=el%dc;d(2)=-EL%P%DIR*el%vc;
+      IF(EL%P%DIR==1) THEN
+        if(el%xprime.and.EL%p%method/=1)  call conv_to_px(el,x,k)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+      ELSE
+         CALL TRANS(d,x,el%p%BETA0,el%p%exact,k%time)
+        CALL ROT_XZ(el%angc,x,el%p%BETA0,el%p%exact,k%time)
+        if(el%xprime.and.EL%p%method/=1)  call conv_to_px(el,x,k)
+      ENDIF
+    endif
     endif
 
-  END SUBROUTINE ADJUSTP_PANCAKE
+  END SUBROUTINE ADJUST_PANCAKEP
 
   SUBROUTINE INTER_PANCAKE(EL,X,k,POS)
     IMPLICIT NONE
@@ -14165,6 +17868,16 @@ SUBROUTINE ZEROr_teapot(EL,I)
     H=el%L/el%p%NST
 
     SELECT CASE(EL%P%METHOD)
+    CASE(1)
+       IF(EL%P%DIR==1) THEN
+          IS=-1+2*POS    ! POS=3 BEGINNING
+          call rks_pancake(IS,h,el,X,k)
+       else
+          IS=2*el%p%NST+3-2*pos
+          call rks_pancake(IS,h,el,X,k)
+       ENDIF
+
+
     CASE(4)
        IF(EL%P%DIR==1) THEN
           IS=-1+2*POS    ! POS=3 BEGINNING
@@ -14175,10 +17888,10 @@ SUBROUTINE ZEROr_teapot(EL,I)
        ENDIF
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -14199,6 +17912,16 @@ SUBROUTINE ZEROr_teapot(EL,I)
     H=el%L/el%p%NST
 
     SELECT CASE(EL%P%METHOD)
+
+    CASE(1)
+       IF(EL%P%DIR==1) THEN
+          IS=-1+2*POS    ! POS=3 BEGINNING
+          call rks_pancake(IS,h,el,X,k)
+       else
+          IS=2*el%p%NST+3-2*pos
+          call rks_pancake(IS,h,el,X,k)
+       ENDIF
+
     CASE(4)
        IF(EL%P%DIR==1) THEN
           IS=-1+2*POS    ! POS=3 BEGINNING
@@ -14210,10 +17933,10 @@ SUBROUTINE ZEROr_teapot(EL,I)
        ENDIF
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -14236,29 +17959,53 @@ SUBROUTINE ZEROr_teapot(EL,I)
     IF(PRESENT(MID)) CALL XMID(MID,X,0)
 
     SELECT CASE(EL%P%METHOD)
-    CASE(4)
-       call conv_to_xp(EL,X,k)
+    CASE(1)
+
        IF(EL%P%DIR==1) THEN
+       call ADJUST_PANCAKE(EL,X,k,1)
+          IS=1
+          DO I=1,el%p%NST
+             IF(.NOT.PRESENT(MID)) call rks_pancake(IS,h,el,X,k)
+             IF(PRESENT(MID)) CALL XMID(MID,X,I)
+          ENDDO
+       call ADJUST_PANCAKE(EL,X,k,2)
+       else
+       call ADJUST_PANCAKE(EL,X,k,2)
+          IS=2*el%p%NST+1
+          DO I=1,el%p%NST
+             IF(.NOT.PRESENT(MID)) call rks_pancake(IS,h,el,X,k)
+             IF(PRESENT(MID)) CALL XMID(MID,X,I)
+          ENDDO
+       call ADJUST_PANCAKE(EL,X,k,1)
+       ENDIF
+
+    CASE(4)
+
+!       call conv_to_xp(EL,X,k)
+       IF(EL%P%DIR==1) THEN
+       call ADJUST_PANCAKE(EL,X,k,1)
           IS=1
           DO I=1,el%p%NST
              IF(.NOT.PRESENT(MID)) call rk4_m(IS,h,el,X,k)
              IF(PRESENT(MID)) CALL XMID(MID,X,I)
           ENDDO
+       call ADJUST_PANCAKE(EL,X,k,2)
        else
+       call ADJUST_PANCAKE(EL,X,k,2)
           IS=2*el%p%NST+1
           DO I=1,el%p%NST
              IF(.NOT.PRESENT(MID)) call rk4_m(IS,h,el,X,k)
              IF(PRESENT(MID)) CALL XMID(MID,X,I)
           ENDDO
-
+       call ADJUST_PANCAKE(EL,X,k,1)
        ENDIF
-       call conv_to_px(EL,X,k)
+!       call conv_to_px(EL,X,k)
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -14282,58 +18029,54 @@ SUBROUTINE ZEROr_teapot(EL,I)
     H=el%L/el%p%NST
 
 
-
-
     !    IF(PRESENT(MID)) CALL XMID(MID,X,0)
 
     SELECT CASE(EL%P%METHOD)
-    CASE(4)
-       call conv_to_xp(EL,X,k)
+
+    CASE(1)
+
        IF(EL%P%DIR==1) THEN
+       call ADJUST_PANCAKE(EL,X,k,1)
           IS=1
           DO I=1,el%p%NST
-             call rk4_m(IS,h,el,X,k)
+             Call rks_pancake(IS,h,el,X,k)
           ENDDO
+       call ADJUST_PANCAKE(EL,X,k,2)
        else
+       call ADJUST_PANCAKE(EL,X,k,2)
           IS=2*el%p%NST+1
           DO I=1,el%p%NST
-             call rk4_m(IS,h,el,X,k)
+              call rks_pancake(IS,h,el,X,k)
           ENDDO
-
+       call ADJUST_PANCAKE(EL,X,k,1)
        ENDIF
 
+    CASE(4)
 
-       call conv_to_px(EL,X,k)
-       !       CASE(2)
-       !          IS=1
-       !          call DRIFT_pancake(EL,hh,is,1,X,k)
-       !          call DRIFT_pancake(EL,hh,is,2,X,k)
-       !          call KICKPATH(EL,hf,X,k)
-       !          DO I=1,el%p%NST-2
-       !             IS=is+1
-       !             call DRIFT_pancake(EL,hh,is,2,X,k)
-       !             call DRIFT_pancake(EL,hf,is,1,X,k)
-       !             call DRIFT_pancake(EL,hh,is,2,X,k)
-       !             call KICKPATH(EL,hf,X,k)
-       !          ENDDO
-       !          IS=is+1
-       !          call DRIFT_pancake(EL,hh,is,2,X,k)
-       !          call DRIFT_pancake(EL,hf,is,1,X,k)
-       !          a(1)=x(1)
-       !          a(2)=x(3)
-       !          CALL trackg(EL%ax(is),A)
-       !          X(2)=X(2)-EL%SCALE*el%p%charge*A(1)
-       !          a(1)=x(1)
-       !          a(2)=x(3)
-       !          CALL trackg(EL%ay(is),A)
-       !          X(4)=X(4)-EL%SCALE*el%p%charge*A(1)
-       !
+!       call conv_to_xp(EL,X,k)
+       IF(EL%P%DIR==1) THEN
+       call ADJUST_PANCAKE(EL,X,k,1)
+          IS=1
+          DO I=1,el%p%NST
+            call rk4_m(IS,h,el,X,k)
+
+          ENDDO
+       call ADJUST_PANCAKE(EL,X,k,2)
+       else
+       call ADJUST_PANCAKE(EL,X,k,2)
+          IS=2*el%p%NST+1
+          DO I=1,el%p%NST
+           call rk4_m(IS,h,el,X,k)
+
+          ENDDO
+       call ADJUST_PANCAKE(EL,X,k,1)
+       ENDIF
 
     CASE DEFAULT
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1(1X,A72))'
-       WRITE(w_p%c(1),'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",EL%P%METHOD," IS NOT SUPPORTED"
        ! call !write_e(357)
     END SELECT
 
@@ -14347,12 +18090,12 @@ SUBROUTINE ZEROr_teapot(EL,I)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! cav_trav
 
-  subroutine feval_CAVR(Z0,X,k,f,D) 
+  subroutine feval_CAVR(Z0,X,k,f,D)
     IMPLICIT NONE
     real(dp), INTENT(INout) :: X(6)
     real(dp),INTENT(INOUT):: Z0
     real(dp), INTENT(INOUT) :: F(6)
-    REAL(DP) A(3),AD(2),PZ
+    REAL(DP) A(3),AD(3),PZ
     TYPE(CAV_TRAV),  INTENT(INOUT) :: D
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
@@ -14371,6 +18114,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
           F(4)=F(3)*AD(1)
           F(5)=-(F(1)*X(1)+F(3)*X(3))*AD(2)+A(3)
           F(6)=(1.0_dp/D%P%BETA0+X(5))/PZ-(1-k%TOTALPATH)/D%P%BETA0
+
        else
           PZ=ROOT((1.0_dp+X(5))**2-X(2)**2-X(4)**2)
           F(1)=X(2)/PZ
@@ -14402,7 +18146,6 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
     X(2)=X(2)+A(1)
     X(4)=X(4)+A(2)
-
   END subroutine feval_CAVR
 
   subroutine feval_CAVP(Z0,X,k,f,D)   ! MODELLED BASED ON DRIFT
@@ -14410,7 +18153,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
     TYPE(REAL_8), INTENT(INout) :: X(6)
     TYPE(REAL_8), INTENT(INOUT):: Z0
     TYPE(REAL_8), INTENT(INOUT) :: F(6)
-    TYPE(REAL_8)  A(3),AD(2),PZ
+    TYPE(REAL_8)  A(3),AD(3),PZ
     TYPE(CAV_TRAVp),  INTENT(INOUT) :: D
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
@@ -14419,6 +18162,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
     CALL ALLOC(PZ)
 
 
+ 
     CALL A_TRANS(D,Z0,X,k,A,AD)
 
     X(2)=X(2)-A(1)
@@ -14472,58 +18216,107 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
   END subroutine feval_CAVP
 
-  SUBROUTINE A_TRANSR(EL,Z0,X,k,A,AD)    ! EXP(-I:(X^2+Y^2)/2*A_TRANS:)
+  SUBROUTINE A_TRANSR(EL,Z0,X,k,A,AD,B,E)    ! EXP(-I:(X^2+Y^2)/2*A_TRANS:)
     IMPLICIT NONE
     real(dp),INTENT(INOUT):: X(6)
-    real(dp),INTENT(INOUT):: Z0,A(3),ad(2)
+    real(dp),INTENT(INOUT):: Z0,A(3),ad(3)
+    real(dp),optional,INTENT(INOUT)::B(3),E(3)
     TYPE(CAV_TRAV),INTENT(INOUT):: EL
+
     real(dp) C1,S1,C2,S2,V,O
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-    !    IF(k%NOCAVITY.OR.(.NOT.k%FRINGE)) RETURN
-    IF(k%NOCAVITY) RETURN
 
-    O=EL%freq*twopi/CLIGHT
+ 
+    IF(k%NOCAVITY.and.(.not.EL%always_on)) RETURN
+ 
+
+       if(freq_redefine) then
+        O=EL%freq
+         else
+        O=twopi*EL%freq/CLIGHT
+       endif
+
+    if(.not.k%TIME.and.piotr_freq) then
+       O=O/EL%p%beta0
+    endif
+
     C1=COS(O*(x(6)-Z0)+EL%PHAS+EL%phase0)
     C2=COS(O*(x(6)+Z0)+EL%PHAS+EL%phase0+EL%DPHAS)
     S1=SIN(O*(x(6)-Z0)+EL%PHAS+EL%phase0)
     S2=SIN(O*(x(6)+Z0)+EL%PHAS+EL%phase0+EL%DPHAS)
-    V=EL%P%CHARGE*(EL%volt-el%dvds*z0)*1e-3_dp/EL%P%P0C
+    V=EL%P%CHARGE*(EL%volt-el%dvds*z0)*volt_c/EL%P%P0C
 
     AD(1)=0.5_dp*V*(COS(EL%PSI)*S1-SIN(EL%PSI)*S2)
     AD(2)=O*0.5_dp*V*(COS(EL%PSI)*C1-SIN(EL%PSI)*C2)
+    AD(3)=O*0.5_dp*V*(-COS(EL%PSI)*C1-SIN(EL%PSI)*C2)
     A(1)=AD(1)*X(1)
     A(2)=AD(1)*X(3)
     A(3)=-EL%P%DIR*V*(COS(EL%PSI)*S1+SIN(EL%PSI)*S2)
 
+     if(present(b)) then
+     b(1)=-ad(3)*x(3)/EL%P%CHARGE
+     b(2)= ad(3)*x(1)/EL%P%CHARGE
+     b(3)=0.0_dp
+    endif
+
+    if(present(e)) then
+     E(1)=-ad(2)*x(1)/EL%P%CHARGE
+     E(2)=-ad(2)*x(3)/EL%P%CHARGE
+     E(3)=EL%P%DIR*A(3)/EL%P%CHARGE
+    endif
 
   END SUBROUTINE A_TRANSR
 
 
-  SUBROUTINE A_TRANSP(EL,Z0,X,k,A,AD)    ! EXP(-I:(X^2+Y^2)/2*A_TRANS:)
+  SUBROUTINE A_TRANSP(EL,Z0,X,k,A,AD,B,E)    ! EXP(-I:(X^2+Y^2)/2*A_TRANS:)
     IMPLICIT NONE
     TYPE(REAL_8),INTENT(INOUT):: X(6)
-    TYPE(REAL_8),INTENT(INOUT):: Z0,A(3),ad(2)
+    TYPE(REAL_8),INTENT(INOUT):: Z0,A(3),ad(3)
+    TYPE(REAL_8),optional,INTENT(INOUT)::B(3),E(3)
     TYPE(CAV_TRAVP),INTENT(INOUT):: EL
     TYPE(REAL_8) C1,S1,C2,S2,V,O
     TYPE(INTERNAL_STATE) k !,OPTIONAL :: K
 
-    !    IF(k%NOCAVITY.OR.(.NOT.k%FRINGE)) RETURN
-    IF(k%NOCAVITY) RETURN
+    IF(k%NOCAVITY.and.(.not.EL%always_on)) RETURN
+
 
     CALL ALLOC(C1,S1,C2,S2,V,O)
-    O=EL%freq*twopi/CLIGHT
+       if(freq_redefine) then
+        O=EL%freq
+         else
+        O=twopi*EL%freq/CLIGHT
+       endif
+
+    if(.not.k%TIME.and.piotr_freq) then
+       O=O/EL%p%beta0
+    endif
+
     C1=COS(O*(x(6)-Z0)+EL%PHAS+EL%phase0)
     C2=COS(O*(x(6)+Z0)+EL%PHAS+EL%phase0+EL%DPHAS)
     S1=SIN(O*(x(6)-Z0)+EL%PHAS+EL%phase0)
     S2=SIN(O*(x(6)+Z0)+EL%PHAS+EL%phase0+EL%DPHAS)
-    V=EL%P%CHARGE*(EL%volt-el%dvds*z0)*1e-3_dp/EL%P%P0C
+    V=EL%P%CHARGE*(EL%volt-el%dvds*z0)*volt_c/EL%P%P0C
 
     AD(1)=0.5_dp*V*(COS(EL%PSI)*S1-SIN(EL%PSI)*S2)
     AD(2)=O*0.5_dp*V*(COS(EL%PSI)*C1-SIN(EL%PSI)*C2)
+    AD(3)=O*0.5_dp*V*(-COS(EL%PSI)*C1-SIN(EL%PSI)*C2)
     A(1)=AD(1)*X(1)
     A(2)=AD(1)*X(3)
     A(3)=-EL%P%DIR*V*(COS(EL%PSI)*S1+SIN(EL%PSI)*S2)
+
+     if(present(b)) then
+     b(1)=-ad(3)*x(3)/EL%P%CHARGE
+     b(2)= ad(3)*x(1)/EL%P%CHARGE
+     b(3)=0.0_dp
+    endif
+
+    if(present(e)) then
+     E(1)=-ad(2)*x(1)/EL%P%CHARGE
+     E(2)=-ad(2)*x(3)/EL%P%CHARGE
+     E(3)=EL%P%DIR*A(3)/EL%P%CHARGE
+    endif
+
 
     CALL KILL(C1,S1,C2,S2,V,O)
 
@@ -14604,6 +18397,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
        y(j) = y(j)+b(j)
     enddo
     tI=ti+h
+
 
     call kill(tt)
     call kill(yt,ne)
@@ -14962,11 +18756,13 @@ SUBROUTINE ZEROr_teapot(EL,I)
     !integer k
     IF(I==-1) THEN
        if(ASSOCIATED(EL%N_BESSEL)) then
+          deallocate(el%fake_shift)
           deallocate(EL%N_BESSEL)
        endif
     elseif(i==0)       then          ! nullifies
 
        NULLIFY(EL%N_BESSEL)
+       NULLIFY(el%fake_shift)
     endif
 
   END SUBROUTINE ZEROR_HE22
@@ -14979,15 +18775,201 @@ SUBROUTINE ZEROr_teapot(EL,I)
     IF(I==-1) THEN
        if(ASSOCIATED(EL%N_BESSEL)) then
           deallocate(EL%N_BESSEL)
+          call kill(el%fake_shift)
+          deallocate(el%fake_shift)
        endif
     elseif(i==0)       then          ! nullifies
-
+       NULLIFY(el%fake_shift)
        NULLIFY(EL%N_BESSEL)
     endif
 
   END SUBROUTINE ZEROP_HE22
 
-  SUBROUTINE computeR_f4(EL,X,Z,DA2,B,A,d,int_ax_dy,int_aY_dX)
+   SUBROUTINE compute_f4gr(EL,X,Z,DA2,B,A,d,int_ax_dy,int_aY_dX)
+    IMPLICIT NONE
+    TYPE(HELICAL_DIPOLE), INTENT(INOUT)::EL
+    real(dp),  INTENT(IN)::X(6),Z
+    real(dp), OPTIONAL, INTENT(INOUT)::DA2(2),B(3),A(2),int_ax_dy,int_aY_dX
+    real(dp), OPTIONAL, INTENT(INOUT)::d(3,3)
+    if(syphers) then
+     call compute_f4s(EL,X,Z,DA2,B,A,d,int_ax_dy,int_aY_dX)
+    else
+     call compute_f4e(EL,X,Z,DA2,B,A,d,int_ax_dy,int_aY_dX)
+    endif
+   end SUBROUTINE compute_f4gr
+
+   SUBROUTINE compute_f4gp(EL,X,Z,DA2,B,A,d,int_ax_dy,int_aY_dX)
+    IMPLICIT NONE
+    TYPE(HELICAL_DIPOLEP), INTENT(INOUT)::EL
+    type(real_8),  INTENT(IN)::X(6),Z
+    type(real_8), OPTIONAL, INTENT(INOUT):: DA2(2),B(3),A(2),int_ax_dy,int_aY_dX
+    type(real_8), OPTIONAL, INTENT(INOUT):: d(3,3)
+    if(syphers) then
+     call compute_f4s(EL,X,Z,DA2,B,A,d,int_ax_dy,int_aY_dX)
+    else
+     call compute_f4e(EL,X,Z,DA2,B,A,d,int_ax_dy,int_aY_dX)
+    endif
+   end SUBROUTINE compute_f4gp
+
+  SUBROUTINE compute_f4r(EL,X,Z,DA2,B,A,d,int_ax_dy,int_aY_dX)
+    IMPLICIT NONE
+    TYPE(HELICAL_DIPOLE), INTENT(INOUT)::EL
+    real(dp),  INTENT(IN)::X(6),Z
+    real(dp), OPTIONAL, INTENT(INOUT)::DA2(2),B(3),A(2),int_ax_dy,int_aY_dX
+    real(dp), OPTIONAL, INTENT(INOUT)::d(3,3)
+    REAL(DP) PHASE ,co,si,F,DA(3,3)
+    REAL(DP) x1,y1,k
+
+
+    x1=x(1)
+    y1=x(3)
+    k=EL%FREQ
+
+
+
+
+
+
+    PHASE=k*Z+EL%PHAS
+    CO=COS(PHASE)
+    SI=SIN(PHASE)
+
+    IF(PRESENT(A)) THEN
+       A(1)= 0.5_dp*el%bn(1)*k*x1*y1*co+0.25_dp*el%bn(1)*k*y1**2*si
+       A(2)= -0.25_dp*el%bn(1)*k*x1**2*co-0.5_dp*el%bn(1)*k*x1*y1*si
+    ENDIF
+
+    IF(PRESENT(B).or.present(d)) THEN
+
+       da=0.0_dp
+       DA(1,1)=el%bn(1)*(0.5_dp*k*y1*co)
+       DA(1,2)=el%bn(1)*((0.5_dp)*x1*co*k+(0.5_dp)*y1*si*k)
+       DA(1,3)=el%bn(1)*(-(0.5_dp)*x1*y1*si*k**2+(0.25_dp)*y1**2*co*k**2)
+       DA(2,1)=el%bn(1)*(-(0.5_dp)*x1*co*k-(0.5_dp)*y1*si*k)
+       DA(2,2)=-el%bn(1)*(0.5_dp*x1*si*k)
+       DA(2,3)=el%bn(1)*(-(0.5_dp)*x1*y1*co*k**2+(0.25_dp)*x1**2*si*k**2)
+       DA(3,1)=el%bn(1)*(-(0.25_dp)*x1*y1*si*k**2-(0.125_dp)*y1**2*co*k**2-(0.125_dp)*x1**2*co*k**2-co)
+       DA(3,2)=el%bn(1)*(-(0.125_dp)*x1**2*si*k**2-(0.125_dp)*y1**2*si*k**2-(0.25_dp)*x1*y1*co*k**2-si)
+       if(present(d)) d=da
+    ENDIF
+    IF(PRESENT(DA2)) THEN  !!
+
+       DA2(1)=el%bn(1)*(-(0.25_dp)*x1*y1*si*k**2-(0.125_dp)*y1**2*co*k**2-(0.125_dp)*x1**2*co*k**2-co)
+       DA2(2)=el%bn(1)*(-(0.125_dp)*x1**2*si*k**2-(0.125_dp)*y1**2*si*k**2-(0.25_dp)*x1*y1*co*k**2-si)
+    ENDIF
+!  On axis B_x=el%bn(1)*sin(k*Z+EL%PHAS) and B_y=el%bn(1)*cos(k*Z+EL%PHAS)
+    IF(PRESENT(B)) THEN
+       B(1)=DA(3,2)-DA(2,3)
+       B(2)=DA(1,3)-DA(3,1)
+       B(3)=DA(2,1)-DA(1,2)
+! Syphers correction now div/=0 but curl(A)=0
+!        B(3)=-el%bn(1)*k*(1+0.125_dp*k**2*(x1**2+y1**2))*(x1*co+y1*si)
+    ENDIF
+
+    if(present(int_ax_dy)) then
+       int_ax_dy=el%bn(1)*(0.5_dp*k*x1*y1*si+0.25_dp*k*x1**2*co)
+    endif
+    if(present(int_aY_dX)) then
+       int_aY_dX=el%bn(1)*(-0.5_dp*k*x1*y1*co-0.25_dp*k*y1**2*si)
+    endif
+  END SUBROUTINE compute_f4r
+
+  SUBROUTINE compute_f4p(EL,X,Z,DA2,B,A,d,int_ax_dy,int_aY_dX)
+    IMPLICIT NONE
+    TYPE(HELICAL_DIPOLEP), INTENT(INOUT)::EL
+    type(real_8),  INTENT(IN)::X(6),Z
+    type(real_8), OPTIONAL, INTENT(INOUT):: DA2(2),B(3),A(2),int_ax_dy,int_aY_dX
+    type(real_8)  PHASE ,co,si
+    type(real_8), OPTIONAL, INTENT(INOUT):: d(3,3)
+    type(real_8) x1,y1,k,DA(3,3)
+    type(real_8) int_x2_f_by_x_dy,int_y2_f_by_y_dx,int_f
+    INTEGER j,kk
+
+    call alloc(PHASE,co,si)
+    call alloc(x1,y1,k )
+    call alloc(int_x2_f_by_x_dy,int_y2_f_by_y_dx,int_f)
+
+
+    x1=x(1)
+    y1=x(3)
+    k=EL%FREQ
+
+
+
+    PHASE=k*Z+EL%PHAS
+    CO=COS(PHASE)
+    SI=SIN(PHASE)
+
+
+    IF(PRESENT(A)) THEN
+       A(1)= 0.5_dp*el%bn(1)*k*x1*y1*co+0.25_dp*el%bn(1)*k*y1**2*si
+       A(2)= -0.25_dp*el%bn(1)*k*x1**2*co-0.5_dp*el%bn(1)*k*x1*y1*si
+    ENDIF
+
+
+    IF(PRESENT(B).or.present(d)) THEN
+       do j=1,3
+          do kk=1,3
+             call alloc(da(j,kk))
+          enddo
+       enddo
+
+
+       DA(1,1)=el%bn(1)*(0.5_dp*k*y1*co)
+       DA(1,2)=el%bn(1)*((0.5_dp)*x1*co*k+(0.5_dp)*y1*si*k)
+       DA(1,3)=el%bn(1)*(-(0.5_dp)*x1*y1*si*k**2+(0.25_dp)*y1**2*co*k**2)
+       DA(2,1)=el%bn(1)*(-(0.5_dp)*x1*co*k-(0.5_dp)*y1*si*k)
+       DA(2,2)=-el%bn(1)*(0.5_dp*x1*si*k)
+       DA(2,3)=el%bn(1)*(-(0.5_dp)*x1*y1*co*k**2+(0.25_dp)*x1**2*si*k**2)
+       DA(3,1)=el%bn(1)*(-(0.25_dp)*x1*y1*si*k**2-(0.125_dp)*y1**2*co*k**2-(0.125_dp)*x1**2*co*k**2-co)
+       DA(3,2)=el%bn(1)*(-(0.125_dp)*x1**2*si*k**2-(0.125_dp)*y1**2*si*k**2-(0.25_dp)*x1*y1*co*k**2-si)
+
+       do j=1,3
+          do kk=1,3
+             if(present(d)) d(j,kk)=da(j,kk)
+             !SRM DEBUG ... mmy
+             !             call kill(da(j,kk))
+          enddo
+       enddo
+
+    ENDIF
+    IF(PRESENT(DA2)) THEN  !!
+       DA2(1)=el%bn(1)*(-(0.25_dp)*x1*y1*si*k**2-(0.125_dp)*y1**2*co*k**2-(0.125_dp)*x1**2*co*k**2-co)
+       DA2(2)=el%bn(1)*(-(0.125_dp)*x1**2*si*k**2-(0.125_dp)*y1**2*si*k**2-(0.25_dp)*x1*y1*co*k**2-si)
+    ENDIF
+
+    IF(PRESENT(B)) THEN
+       B(1)=DA(3,2)-DA(2,3)
+       B(2)=DA(1,3)-DA(3,1)
+       B(3)=DA(2,1)-DA(1,2)
+! Syphers correction now div/=0 but curl(A)=0
+!        B(3)=-el%bn(1)*k*(1+0.125_dp*k**2*(x1**2+y1**2))*(x1*co+y1*si)
+    ENDIF
+
+    !SRM DEBUG ... alloc/kill mmy
+    IF(PRESENT(B).or.present(d)) THEN
+       do j=1,3
+          do kk=1,3
+             call kill(da(j,kk))
+          enddo
+       enddo
+    ENDIF
+
+    if(present(int_ax_dy)) then
+       int_ax_dy=el%bn(1)*(0.5_dp*k*x1*y1*si+0.25_dp*k*x1**2*co)
+    endif
+    if(present(int_aY_dX)) then
+       int_aY_dX=el%bn(1)*(-0.5_dp*k*x1*y1*co-0.25_dp*k*y1**2*si)
+    endif
+
+
+    call kill(PHASE,co,si)
+    call kill(x1,y1,k )
+    call kill(int_x2_f_by_x_dy,int_y2_f_by_y_dx,int_f)
+
+  END SUBROUTINE compute_f4p
+
+ SUBROUTINE compute_f4rold(EL,X,Z,DA2,B,A,d,int_ax_dy,int_aY_dX)
     IMPLICIT NONE
     TYPE(HELICAL_DIPOLE), INTENT(INOUT)::EL
     real(dp),  INTENT(IN)::X(6),Z
@@ -15010,7 +18992,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
     PHASE=k*Z+EL%PHAS
     CO=COS(PHASE)
     SI=SIN(PHASE)
-    PHIR=EL%BN(1)*X(1)*SI +EL%AN(1)*X(3)*CO
+    PHIR=EL%BN(1)*X(1)*SI +el%bn(1)*X(3)*CO
     AR=-k*F*PHIR
     IF(PRESENT(A)) THEN
        A(1)=X(1)*AR
@@ -15021,28 +19003,28 @@ SUBROUTINE ZEROr_teapot(EL,I)
        da=0.0_dp
        DA(1,1)=-k*F*(EL%BN(1)*X(1)*SI +PHIR) &
             -X(1)**2*k*PHIR*DFR
-       DA(1,2)=-k*F*(EL%AN(1)*X(1)*CO ) &
+       DA(1,2)=-k*F*(el%bn(1)*X(1)*CO ) &
             -X(1)*X(3)*k*PHIR*DFR        !!!
        DA(2,1)=-k*F*(EL%BN(1)*X(3)*SI ) &    !!!! x(3)
             -X(1)*X(3)*k*PHIR*DFR
-       DA(2,2)=-k*F*(EL%AN(1)*X(3)*CO +PHIR) &
+       DA(2,2)=-k*F*(el%bn(1)*X(3)*CO +PHIR) &
             -X(3)**2*k*PHIR*DFR
-       PHIZ=-EL%BN(1)*X(1)*CO +EL%AN(1)*X(3)*SI
+       PHIZ=-EL%BN(1)*X(1)*CO +el%bn(1)*X(3)*SI
 
        DA(1,3)=k**2*PHIZ*F*X(1)
        DA(2,3)=k**2*PHIZ*F*X(3)
 
        DA(3,1)=(F+R2*DFR)*(-EL%BN(1)*CO)+PHIZ*(2.0_dp*DFR+DFR2)*X(1)
-       DA(3,2)=(F+R2*DFR)*(EL%AN(1)*SI)+ PHIZ*(2.0_dp*DFR+DFR2)*X(3)
+       DA(3,2)=(F+R2*DFR)*(el%bn(1)*SI)+ PHIZ*(2.0_dp*DFR+DFR2)*X(3)
        if(present(d)) d=da
     ENDIF
     IF(PRESENT(DA2)) THEN  !!
-       PHIZ=-EL%BN(1)*X(1)*CO +EL%AN(1)*X(3)*SI
+       PHIZ=-EL%BN(1)*X(1)*CO +el%bn(1)*X(3)*SI
 
        DA2(1)=(F+R2*DFR)*(-EL%BN(1)*CO)+PHIZ*(2.0_dp*DFR+DFR2)*X(1)
-       DA2(2)=(F+R2*DFR)*(EL%AN(1)*SI)+ PHIZ*(2.0_dp*DFR+DFR2)*X(3)
+       DA2(2)=(F+R2*DFR)*(el%bn(1)*SI)+ PHIZ*(2.0_dp*DFR+DFR2)*X(3)
     ENDIF
-
+!  On axis B_x=el%bn(1)*sin(k*Z+EL%PHAS) and B_y=EL%BN(1)*cos(k*Z+EL%PHAS)
     IF(PRESENT(B)) THEN
        B(1)=DA(3,2)-DA(2,3)
        B(2)=DA(1,3)-DA(3,1)
@@ -15058,18 +19040,18 @@ SUBROUTINE ZEROr_teapot(EL,I)
     if(present(int_ax_dy)) then
        int_f=r2/2.0_dp+k**2*r2**2/32.0_dp+k**4*r2**3/24.0_dp/48.0_dp
        int_x2_f_by_x_dy=(x1**3*(140*k**4*Y1**3+1680*k**2*Y1)+84*k**4*x1**5*Y1)/20160.0_dp
-       int_ax_dy=k*EL%BN(1)*SI*int_x2_f_by_x_dy+ k*EL%AN(1)*CO*(int_f+Y1**2*F)
+       int_ax_dy=k*EL%BN(1)*SI*int_x2_f_by_x_dy+ k*el%bn(1)*CO*(int_f+Y1**2*F)
        int_ax_dy=-int_ax_dy
     endif
     if(present(int_aY_dX)) then
        int_f=r2/2.0_dp+k**2*r2**2/32.0_dp+k**4*r2**3/24.0_dp/48.0_dp
        int_y2_f_by_y_dx=(84*k**4*x1*Y1**5+(140*k**4*x1**3+1680*k**2*x1)*Y1**3)/20160.0_dp
-       int_aY_dX=k*EL%BN(1)*SI*(int_f+x1**2*F) + k*EL%AN(1)*CO*int_y2_f_by_y_dx
+       int_aY_dX=k*EL%BN(1)*SI*(int_f+x1**2*F) + k*el%bn(1)*CO*int_y2_f_by_y_dx
        int_aY_dX=-int_aY_dX
     endif
-  END SUBROUTINE computeR_f4
+  END SUBROUTINE compute_f4rold
 
-  SUBROUTINE computeP_f4(EL,X,Z,DA2,B,A,d,int_ax_dy,int_aY_dX)
+ SUBROUTINE compute_f4pold(EL,X,Z,DA2,B,A,d,int_ax_dy,int_aY_dX)
     IMPLICIT NONE
     TYPE(HELICAL_DIPOLEP), INTENT(INOUT)::EL
     type(real_8),  INTENT(IN)::X(6),Z
@@ -15097,7 +19079,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
     PHASE=k*Z+EL%PHAS
     CO=COS(PHASE)
     SI=SIN(PHASE)
-    PHIR=EL%BN(1)*X(1)*SI +EL%AN(1)*X(3)*CO
+    PHIR=EL%BN(1)*X(1)*SI +el%bn(1)*X(3)*CO
     AR=-k*F*PHIR
     IF(PRESENT(A)) THEN
        A(1)=X(1)*AR
@@ -15112,19 +19094,19 @@ SUBROUTINE ZEROr_teapot(EL,I)
        enddo
        DA(1,1)=-k*F*(EL%BN(1)*X(1)*SI +PHIR) &
             -X(1)**2*k*PHIR*DFR
-       DA(1,2)=-k*F*(EL%AN(1)*X(1)*CO ) &
+       DA(1,2)=-k*F*(el%bn(1)*X(1)*CO ) &
             -X(1)*X(3)*k*PHIR*DFR        !!!
        DA(2,1)=-k*F*(EL%BN(1)*X(3)*SI ) &    !!!! x(3)
             -X(1)*X(3)*k*PHIR*DFR
-       DA(2,2)=-k*F*(EL%AN(1)*X(3)*CO +PHIR) &
+       DA(2,2)=-k*F*(el%bn(1)*X(3)*CO +PHIR) &
             -X(3)**2*k*PHIR*DFR
-       PHIZ=-EL%BN(1)*X(1)*CO +EL%AN(1)*X(3)*SI
+       PHIZ=-EL%BN(1)*X(1)*CO +el%bn(1)*X(3)*SI
 
        DA(1,3)=k**2*PHIZ*F*X(1)
        DA(2,3)=k**2*PHIZ*F*X(3)
 
        DA(3,1)=(F+R2*DFR)*(-EL%BN(1)*CO)+PHIZ*(2.0_dp*DFR+DFR2)*X(1)
-       DA(3,2)=(F+R2*DFR)*(EL%AN(1)*SI)+ PHIZ*(2.0_dp*DFR+DFR2)*X(3)
+       DA(3,2)=(F+R2*DFR)*(el%bn(1)*SI)+ PHIZ*(2.0_dp*DFR+DFR2)*X(3)
 
        do j=1,3
           do kk=1,3
@@ -15136,10 +19118,10 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
     ENDIF
     IF(PRESENT(DA2)) THEN  !!
-       PHIZ=-EL%BN(1)*X(1)*CO +EL%AN(1)*X(3)*SI
+       PHIZ=-EL%BN(1)*X(1)*CO +el%bn(1)*X(3)*SI
 
        DA2(1)=(F+R2*DFR)*(-EL%BN(1)*CO)+PHIZ*(2.0_dp*DFR+DFR2)*X(1)
-       DA2(2)=(F+R2*DFR)*(EL%AN(1)*SI)+ PHIZ*(2.0_dp*DFR+DFR2)*X(3)
+       DA2(2)=(F+R2*DFR)*(el%bn(1)*SI)+ PHIZ*(2.0_dp*DFR+DFR2)*X(3)
     ENDIF
 
     IF(PRESENT(B)) THEN
@@ -15168,13 +19150,13 @@ SUBROUTINE ZEROr_teapot(EL,I)
     if(present(int_ax_dy)) then
        int_f=r2/2.0_dp+k**2*r2**2/32.0_dp+k**4*r2**3/24.0_dp/48.0_dp
        int_x2_f_by_x_dy=(x1**3*(140*k**4*Y1**3+1680*k**2*Y1)+84*k**4*x1**5*Y1)/20160.0_dp
-       int_ax_dy=k*EL%BN(1)*SI*int_x2_f_by_x_dy+ k*EL%AN(1)*CO*(int_f+Y1**2*F)
+       int_ax_dy=k*EL%BN(1)*SI*int_x2_f_by_x_dy+ k*el%bn(1)*CO*(int_f+Y1**2*F)
        int_ax_dy=-int_ax_dy
     endif
     if(present(int_aY_dX)) then
        int_f=r2/2.0_dp+k**2*r2**2/32.0_dp+k**4*r2**3/24.0_dp/48.0_dp
        int_y2_f_by_y_dx=(84*k**4*x1*Y1**5+(140*k**4*x1**3+1680*k**2*x1)*Y1**3)/20160.0_dp
-       int_aY_dX=k*EL%BN(1)*SI*(int_f+x1**2*F) + k*EL%AN(1)*CO*int_y2_f_by_y_dx
+       int_aY_dX=k*EL%BN(1)*SI*(int_f+x1**2*F) + k*el%bn(1)*CO*int_y2_f_by_y_dx
        int_aY_dX=-int_aY_dX
     endif
 
@@ -15183,8 +19165,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
     call kill(x1,y1,k,F,FR )
     call kill(int_x2_f_by_x_dy,int_y2_f_by_y_dx,int_f)
 
-  END SUBROUTINE computeP_f4
-
+  END SUBROUTINE compute_f4pold
 
   SUBROUTINE KICKR_HE(EL,L,Z,X,k)
     IMPLICIT NONE
@@ -15208,11 +19189,15 @@ SUBROUTINE ZEROr_teapot(EL,I)
     TYPE(REAL_8) DA2(2)
     TYPE(INTERNAL_STATE) K
 
+    call PRTP("KICK_HE:0", X)
+
     CALL ALLOC(DA2,2)
     CALL compute_f4(EL,X,Z,DA2=DA2)
     X(2)=X(2)+EL%p%charge*el%p%dir*L*DA2(1)
     X(4)=X(4)+EL%p%charge*el%p%dir*L*DA2(2)
     CALL KILL(DA2,2)
+
+    call PRTP("KICK_HE:1", X)
 
   END SUBROUTINE KICKP_HE
 
@@ -15452,6 +19437,69 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
   END SUBROUTINE INTP_HE
 
+  subroutine fake_shiftr(EL,X)
+    IMPLICIT NONE
+    real(dp),INTENT(INOUT):: X(6)
+    TYPE(HELICAL_DIPOLE),INTENT(INOUT):: EL
+
+    x=x-el%fake_shift
+
+  end subroutine fake_shiftr
+
+  subroutine fringe_helr(EL,X,i)
+    IMPLICIT NONE
+    real(dp),INTENT(INOUT):: X(6)
+    TYPE(HELICAL_DIPOLE),INTENT(INOUT):: EL
+    integer i
+     if(.false.) then
+       if(i==1) then
+       x(2)=x(2)-el%p%dir*el%bn(1)*sin(EL%PHAS)/EL%freq
+       x(4)=x(4)+el%p%dir*el%bn(1)*cos(EL%PHAS)/EL%freq
+      else
+       x(2)=x(2)-el%p%dir*el%bn(1)*sin(EL%freq*EL%L+EL%PHAS)/EL%freq
+       x(4)=x(4)+el%p%dir*el%bn(1)*cos(EL%freq*EL%L+EL%PHAS)/EL%freq
+      endif
+     endif
+
+  end subroutine fringe_helr
+
+  subroutine fringe_help(EL,X,i)
+    IMPLICIT NONE
+    type(real_8),INTENT(INOUT):: X(6)
+    TYPE(HELICAL_DIPOLEP),INTENT(INOUT):: EL
+    integer i
+
+    call PRTP("FRNG_HEL:0", X)
+
+     if(.false.) then
+       if(i==1) then
+       x(2)=x(2)-el%p%dir*el%bn(1)*sin(EL%PHAS)/EL%freq
+       x(4)=x(4)+el%p%dir*el%bn(1)*cos(EL%PHAS)/EL%freq
+      else
+       x(2)=x(2)-el%p%dir*el%bn(1)*sin(EL%freq*EL%L+EL%PHAS)/EL%freq
+       x(4)=x(4)+el%p%dir*el%bn(1)*cos(EL%freq*EL%L+EL%PHAS)/EL%freq
+      endif
+     endif
+
+    call PRTP("FRNG_HEL:1", X)
+  end subroutine fringe_help
+
+  subroutine fake_shiftp(EL,X)
+    IMPLICIT NONE
+    type(real_8),INTENT(INOUT):: X(6)
+    TYPE(HELICAL_DIPOLEP),INTENT(INOUT):: EL
+    integer i
+
+    call PRTP("FAKE_SHIFT:0", X)
+
+    do i=1,6
+     x(i)=x(i)-el%fake_shift(i)
+    enddo
+
+    call PRTP("FAKE_SHIFT:1", X)
+
+  end subroutine fake_shiftp
+
   SUBROUTINE INTR_HE_TOT(EL,X,k,mid)
     IMPLICIT NONE
     real(dp),INTENT(INOUT):: X(6)
@@ -15460,15 +19508,18 @@ SUBROUTINE ZEROr_teapot(EL,I)
     INTEGER I
     TYPE(INTERNAL_STATE)  K
 
+
+    if(EL%P%DIR==-1) call fake_shift(el,x)
     !    CALL SET_W(EL%W)
+    call fringe_hel(el,x,1)
     IF(PRESENT(MID)) CALL XMID(MID,X,0)
 
     DO I=1,EL%P%NST
        call track_slice(el,x,k,i)
        IF(PRESENT(MID)) CALL XMID(MID,X,i)
     ENDDO
-
-
+    call fringe_hel(el,x,2)
+    if(EL%P%DIR==1) call fake_shift(el,x)
   END SUBROUTINE INTR_HE_TOT
 
   SUBROUTINE INTP_HE_TOT(EL,X,k)
@@ -15481,11 +19532,13 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
     !    CALL SET_W(EL%W)
 
-
+    if(EL%P%DIR==-1) call fake_shift(el,x)
+    call fringe_hel(el,x,1)
     DO I=1,EL%P%NST
        call track_slice(el,x,k,i)
     ENDDO
-
+        call fringe_hel(el,x,2)
+    if(EL%P%DIR==1) call fake_shift(el,x)
 
   END SUBROUTINE INTP_HE_TOT
   ! ETIENNE
@@ -15594,6 +19647,9 @@ SUBROUTINE ZEROr_teapot(EL,I)
     TYPE(INTERNAL_STATE),OPTIONAL :: K
     integer j,kk
     ! ETIENNE
+
+    call PRTP("KICKPATH_HE_X:0", X)
+
     CALL ALLOC(PZ)
     IF(EL%P%EXACT) THEN
        CALL ALLOC(PZ)
@@ -15641,6 +19697,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
     ENDIF
     CALL KILL(PZ)
 
+    call PRTP("KICKPATH_HE_X:1", X)
 
   END SUBROUTINE KICKPATHP_HE_exact_nonsymp
 
@@ -15652,6 +19709,9 @@ SUBROUTINE ZEROr_teapot(EL,I)
     TYPE(REAL_8) PZ,PZ0,DPZ
     TYPE(INTERNAL_STATE),OPTIONAL :: K
     ! ETIENNE
+
+    call PRTP("KICKPATH_HE:0", X)
+
     CALL ALLOC(PZ,PZ0,DPZ)
     IF(EL%P%EXACT) THEN
        if(k%TIME) then
@@ -15681,6 +19741,7 @@ SUBROUTINE ZEROr_teapot(EL,I)
     ENDIF
     CALL KILL(PZ,PZ0,DPZ)
 
+    call PRTP("KICKPATH_HE:1", X)
 
   END SUBROUTINE KICKPATHP_HE
 
@@ -15735,7 +19796,10 @@ SUBROUTINE ZEROr_teapot(EL,I)
     INTEGER, INTENT(IN)::PLANE
     TYPE(REAL_8) PZ,A(3),int_ax_dy,int_aY_dX
     TYPE(INTERNAL_STATE) K
+
     if(el%p%exact) return
+
+    call PRTP("DRIFT_HE:0", X)
 
     CALL ALLOC(PZ,int_ax_dy,int_aY_dX)
     CALL ALLOC(A,3)
@@ -15775,6 +19839,9 @@ SUBROUTINE ZEROr_teapot(EL,I)
     ENDIF
     CALL KILL(PZ,int_ax_dy,int_aY_dX)
     CALL KILL(A,3)
+
+    call PRTP("DRIFT_HE:1", X)
+
   END SUBROUTINE DRIFTP_HE
 
 !!!!   Enge function
@@ -15951,7 +20018,6 @@ SUBROUTINE ZEROr_teapot(EL,I)
     uv2=uv**2
     ac=acos(v)
 
-
     sqv=sqrt(1.0_dp-v**2)
 
     dUu=(u+dv+dd)/uv-2.0_dp*u*(u*dv+v*(ac-0.5_dp*pi)*sqv) /uv2
@@ -15976,194 +20042,6 @@ SUBROUTINE ZEROr_teapot(EL,I)
 
 
   end SUBROUTINE elliptical_b_p
-
- !!!!!!!!!!!!!!!!!!!!    electric field testing !!!!!!!!!!!!!!!!!!!!
- subroutine invert_electric_teapot(asni,bsni)
- implicit none
- real(dp) a(no_e,no_e),b(no_e,no_e),asni(no_e,0:no_e,0:no_e), &
-  bsni(no_e,0:no_e,0:no_e)
- integer no,np,nd,k,n,l,jc(2),ier,i,j
- type(taylor) fh,x,y,h
- type(taylorresonance) fhr
- type(complextaylor) fhc
- type(taylor) phi,e(2)
- type(taylor)   as(no_e),bs(no_e)
- real(dp)   asn(no_e,0:no_e,0:no_e),bsn(no_e,0:no_e,0:no_e)
- real(dp) h0
- type(damap) m
- no=no_e 
- nd=1
- np=0
- h0=1.d-1
- call init(no,nd,np,0)
- asn=0.0_dp
- bsn=0.0_dp
- a=0.0_dp
- b=0.0_dp
- call alloc(as,no)
- call alloc(bs,no)
- call alloc(m)
- call alloc(e)
- call alloc(fhc)
- call alloc(phi)
- call alloc(fhr)
- call alloc(fh,x,y,h)
- h=h0 !+one.mono.3
- m=1
- m%v(2)=0.0_dp
- 
- do n=1,no
- x=1.0_dp.mono.1
- y=1.0_dp.mono.2
- fhc=-(x+i_*y)**n/n
- 
- fh=fhc%r
- fhr=fh
- phi=0.0_dp 
-
-do k=1,c_%no+2
- call integrate_electric_teapot(fh,phi,h)
- !x=one+h*(one.mono.1)
- bs(n)=fh+phi
- !y= ((((y.d.1)*x).d.1)/x)+((y.d.2).d.2)
-enddo
-! call print(y,6)
- e(1)=-(bs(n).d.1)*m
- !call print(e(1),6)
-  jc=0
- do l=1,no
-  jc(1)=l-1
-  b(l,n)=e(1).sub.jc
- enddo
- ! write(6,*) b(n,1:no)
-
- fh=fhc%i
- fhr=fh
- phi=0.0_dp 
-
-do k=1,c_%no
- call integrate_electric_teapot(fh,phi,h)
-! x=one+h*(one.mono.1)
- as(n)=fh+phi
-! y= ((((y.d.1)*x).d.1)/x)+((y.d.2).d.2)
-enddo
-! call print(y,6)
- e(2)=-(as(n).d.2)*m
-! call print(e(2),6)
-   jc=0
- do l=1,no
-  jc(1)=l-1
-  a(l,n)=e(2).sub.jc
- enddo
- !write(6,*) a(n,1:no)
- !pause 12
-enddo
-   call matinv(a,a,no,no,ier)
-   if(ier/=0) then
-    write(6,*) ier
-    stop 9
-   endif
-   call matinv(b,b,no,no,ier)
-   if(ier/=0) then
-    write(6,*) ier
-    stop 10
-   endif
-  
-   do k=1,no
-    do i=0,no
-     do j=0,no
-      if(i+j>no) cycle
-      jc(1)=i
-      jc(2)=j
-      asn(k,i,j)=as(k).sub.jc
-      bsn(k,i,j)=bs(k).sub.jc
-     enddo
-    enddo
-   enddo
-
-
-  do i=0,no
-  do j=0,no
-  do k=1,no
-  do l=1,no
-   asni(l,i,j)=a(k,l)*asn(k,i,j)+asni(l,i,j)
-   bsni(l,i,j)=b(k,l)*bsn(k,i,j)+bsni(l,i,j)
-  enddo
-  enddo
-  enddo
-  enddo
-
- call kill(fh,x,y,h)
- call kill(fhr)
- call kill(fhc)
- call kill(phi)
- call kill(e)
- call kill(m)
- call kill(as,no)
- call kill(bs,no)
- 
- end  subroutine invert_electric_teapot
- 
- subroutine integrate_electric_teapot(fh,phi,h)
- implicit none
- integer n1,i
- type(taylor) fh
- type(taylorresonance) tr
- type(taylorresonance) ur
- type(complextaylor) u
- type(taylor) phi,h,f
- integer, allocatable :: jc(:)
- real(dp) val
-  
-  call alloc(u)
-  call alloc(tr)
-  call alloc(ur)
-  call alloc(f)
-  
-  
-  f=fh+phi
-  f=f.d.1
-  f=-(h/(1.0_dp+h*(1.0_dp.mono.1))  )*f
-  
-  tr=f
-  allocate(jc(c_%nv))
- u=0.0_dp
-    call taylor_cycle(tr%cos,size=n1)
-
-    do i=1,n1
-     
-     jc=0
-       call taylor_cycle(tr%cos,ii=i,value=val,j=jc)
-       
-       jc(1)=jc(1)+1
-       jc(2)=jc(2)+1
-        val=val/4.0_dp/jc(1)/jc(2)
-        u=u+(val.mono.jc)  
-    enddo
-
-    call taylor_cycle(tr%sin,size=n1)
-
-    do i=1,n1
-     
-     jc=0
-       call taylor_cycle(tr%sin,ii=i,value=val,j=jc)
-       
-       jc(1)=jc(1)+1
-       jc(2)=jc(2)+1
-        val=val/4.0_dp/jc(1)/jc(2)
-        u=u+i_*(val.mono.jc)  
-    enddo
-    
-    tr%cos=u%r
-    tr%sin=u%i
-    phi=tr
-  deallocate(jc)   
-  call kill(f)
-  call kill(u)
-  call kill(ur)
-  call kill(tr)
-
-end subroutine integrate_electric_teapot
 
 
 END MODULE S_DEF_KIND

@@ -11,9 +11,12 @@ module S_fitting
   real(dp) :: fuzzy_split=1.0_dp
   real(dp) :: max_ds=0.0_dp
   integer :: resplit_cutting = 0    ! 0 just magnets , 1 magnets as before / drifts separately
+
   logical :: sagan_even=my_true
   ! 2  space charge algorithm
   logical(lp) :: radiation_bend_split=my_false
+  type(mad_universe),private, pointer :: m_u=>null()
+  type(mad_universe),private, pointer :: m_t=>null()
 
   INTERFACE FIND_ORBIT
      ! LINKED
@@ -66,13 +69,13 @@ contains
   end SUBROUTINE lattice_GET_CHROM
 
 
-  SUBROUTINE lattice_GET_tune(R,my_state,mf)
+  SUBROUTINE lattice_GET_tune(R,my_state,mf,targ)
     IMPLICIT NONE
     TYPE(layout),target,INTENT(INOUT):: r
     TYPE(internal_state), intent(in):: my_state
     TYPE(internal_state) state
     integer mf
-    real(dp) closed(6)
+    real(dp) closed(6),targ(3)
     type(DAMAP) ID
     TYPE(NORMALFORM) NORM
     TYPE(REAL_8) Y(6)
@@ -97,6 +100,7 @@ contains
     CALL TRACK(R,Y,1,STATE)
     NORM=Y
     closed=y
+    targ(1:3)=NORM%tune(1:3)
     WRITE(6,'(6(1x,g21.14),a24)') CLOSED," <-- should be identical"
     if(mf==6) then
      WRITE(6,'(a19,3(1x,g21.14))') "Fractional Tunes = ",norm%tune(1:3)
@@ -104,9 +108,9 @@ contains
      WRITE(6,'(a20,(1x,g21.14))') "Synchrotron period = ",1.d0/abs(norm%tune(3))
      else
      if(norm%tune(3)/=0.0_dp.and.c_%ndpt==0) then
-       WRITE(mf,'(4(1x,g21.14))') xsm0%ac%t/clight,norm%tune(1:3)
+       WRITE(mf,'(4(1x,g21.14))') xsm0t/clight,norm%tune(1:3)
      else
-       WRITE(mf,'(3(1x,g21.14))') xsm0%ac%t/clight,norm%tune(1:2)
+       WRITE(mf,'(3(1x,g21.14))') xsm0t/clight,norm%tune(1:2)
      endif
     endif
     CALL kill(NORM)
@@ -630,8 +634,8 @@ eta2=0.0_dp
     gam(2)=(norm%a_t%v(4).sub.'001')**2+(norm%a_t%v(4).sub.'0001')**2
     write(6,*) "  Gamma= ",GAM
     !      CALL KANALNUMMER(MF)
-    OPEN(UNIT=1111,FILE='GAMMA.TXT')
-    WRITE(1111,*) "  Gamma= ",GAM
+  !  OPEN(UNIT=1111,FILE='GAMMA.TXT')
+  !  WRITE(1111,*) "  Gamma= ",GAM
 
     write(6,*) " tunes ",NORM%TUNE(1), NORM%TUNE(2)
 
@@ -742,9 +746,11 @@ eta2=0.0_dp
 
     SET_TPSAFIT=.FALSE.
 
+
     DO I=1,NPOLY
        R=POLY(i)
     ENDDO
+
     CLOSED(:)=0.0_dp
     it=0
 100 continue
@@ -769,13 +775,15 @@ eta2=0.0_dp
     write(6,*) c_%no,c_%nv,c_%nd,c_%nd2
     write(6,*) "c_%ndpt,c_%npara,c_%npara,c_%np_pol"
     write(6,*)  c_%ndpt,c_%npara,c_%npara,c_%np_pol
+
+
     NORM=Y
     gam(1)=(norm%a_t%v(2).sub.'1')**2+(norm%a_t%v(2).sub.'01')**2
     gam(2)=(norm%a_t%v(4).sub.'001')**2+(norm%a_t%v(4).sub.'0001')**2
     write(6,*) "  Gamma= ",GAM
     !      CALL KANALNUMMER(MF)
-    OPEN(UNIT=1111,FILE='GAMMA.TXT')
-    WRITE(1111,*) "  Gamma= ",GAM
+   ! OPEN(UNIT=1111,FILE='GAMMA.TXT')
+   ! WRITE(1111,*) "  Gamma= ",GAM
 
     write(6,*) " tunes ",NORM%TUNE(1), NORM%TUNE(2)
 
@@ -906,7 +914,7 @@ eta2=0.0_dp
     CHROM(1)=(NORM%dhdj%v(1)).SUB.'00001'
     CHROM(2)=(NORM%dhdj%v(2)).SUB.'00001'
     write(6,*) " CHROM ",CHROM
-
+ 
     eq(1)=       ((NORM%dhdj%v(1)).par.'00001')-targ(1)
     eq(2)=       ((NORM%dhdj%v(2)).par.'00001')-targ(2)
     epsnow=abs(eq(1))+abs(eq(2))
@@ -1261,12 +1269,13 @@ eta2=0.0_dp
     NORM=Y
     vr=norm%a%nonlinear
     fr=norm%a%pb
-    !    call print(vr%cos%v(2),6)
-    !    call print(vr%sin%v(2),6)
-    !    pause 1
+ !       call print(vr%cos%v(2),6)
+ !       call print(vr%sin%v(2),6)
+ !       pause 1
     call print(fr%cos,6)
     call print(fr%sin,6)
-    ipause=mypause(2)
+!write(6,*) " pausing -> type 1 "
+!read(5,*) i
 
 
     write(6,*) " tunes ",NORM%TUNE(1), NORM%TUNE(2), CHECK_STABLE
@@ -1342,7 +1351,7 @@ eta2=0.0_dp
 
     !    write(6,*) " more "
     !    read(5,*) more
-    ipause=mypause(777)
+    
     if(it>=max_fit_iter) goto 101
     if(epsnow<=epsr) goto 102
     GOTO 100
@@ -1357,6 +1366,197 @@ eta2=0.0_dp
     deallocate(jt)
 
   end subroutine lattice_fit_CHROM_gmap1
+
+ subroutine c_lattice_fit_CHROM_gmap1(R,my_state,EPSF,POLY,NPOLY,TARG,NP,n_extra,mf)
+    IMPLICIT NONE
+    integer ipause, mypause
+    TYPE(layout),target, intent(inout):: R
+    TYPE(POL_BLOCK), intent(inout),dimension(:)::POLY
+    INTEGER, intent(in):: NPOLY,NP
+    real(dp) , intent(IN),dimension(:)::TARG
+    real(dp) CLOSED(6)
+    TYPE(INTERNAL_STATE), intent(IN):: my_STATE
+    TYPE(INTERNAL_STATE) STATE
+    INTEGER I,SCRATCHFILE
+    TYPE(TAYLOR), allocatable:: EQ(:)
+    TYPE(REAL_8) Y(6)
+    TYPE(NORMALFORM) NORM
+    integer :: neq=2, no=3,nt,j,it,n_extra,mf
+    type(damap) id
+    type(vecresonance) vr
+    type(pbresonance) fr
+    type(gmap) g
+    TYPE(TAYLOR)t
+    type(c_normal_form) cn
+    type(c_damap) cmap
+    type(c_vector_field) cvec
+
+    real(dp) epsf,epsr,epsnow,CHROM(2)
+    integer, allocatable:: res(:,:),jt(:)
+
+    neq=2
+
+    allocate(res(n_extra,4))
+    allocate(jt(5))
+    res=0
+    do i=1,n_extra
+       read(mf,*) res(i,:)
+    enddo
+    !    EPSF=.0001
+    epsr=abs(epsf)
+    neq=neq+2*n_extra
+    allocate(eq(neq))
+
+    nt=neq+np
+    STATE=((((my_state+nocavity0)+delta0)+only_4d0)-RADIATION0)
+
+    !    CALL INIT(STATE,no,NP,BERZ)
+
+    !    SET_TPSAFIT=.FALSE.
+
+    DO I=1,NPOLY
+       R=POLY(i)
+    ENDDO
+    CLOSED(:)=0.0_dp
+    it=0
+100 continue
+    it=it+1
+
+    CALL FIND_ORBIT(R,CLOSED,1,STATE,1e-5_dp)
+    write(6,*) "closed orbit ", CHECK_STABLE
+    write(6,*) CLOSED
+
+
+    CALL INIT_all(STATE,no,NP,BERZ)
+    CALL ALLOC(NORM)
+    CALL ALLOC(Y)
+    CALL ALLOC(EQ)
+    call alloc(id)
+    call alloc(vr)
+    call alloc(fr)
+
+    call alloc(cn);call alloc(cmap); 
+    call alloc(cvec)
+
+    id=1
+    Y=CLOSED+id
+
+    CALL TRACK(R,Y,1,+STATE)
+    norm=y
+    cmap=y
+    call c_normal(cmap,cn,dospin=.false.)
+    call flatten_c_factored_lie(cn%ker,cvec)
+    cvec=transform_vector_field_by_map(cvec,to_phasor())
+    cmap=(cn%a_t)**(-1)
+    cvec=transform_vector_field_by_map(cvec,cmap) 
+    cmap=(cn%a_t).sub.1
+    cvec=transform_vector_field_by_map(cvec,cmap)
+    cvec=transform_vector_field_by_map(cvec,from_phasor())
+  vr%cos%v(2)=real(cvec%v(2))
+  vr%sin%v(2)=aimag(cvec%v(2))
+!    NORM=Y
+!    vr=norm%a%nonlinear
+!    fr=norm%a%pb
+ !       call print(vr%cos%v(2),6)
+ !       call print(vr%sin%v(2),6)
+ !       pause 1
+!call print(cvec%v(2),6)
+!    call print(vr%cos%v(2),6)
+!    call print(vr%sin%v(2),6)
+!pause 10
+!write(6,*) " pausing -> type 1 "
+!read(5,*) i
+
+
+    write(6,*) " tunes ",NORM%TUNE(1), NORM%TUNE(2), CHECK_STABLE
+    CHROM(1)=(NORM%dhdj%v(1)).SUB.'00001'
+    CHROM(2)=(NORM%dhdj%v(2)).SUB.'00001'
+    write(6,*) " CHROM ",CHROM
+
+    eq(1)=       ((NORM%dhdj%v(1)).par.'00001')-targ(1)
+    eq(2)=       ((NORM%dhdj%v(2)).par.'00001')-targ(2)
+    do i=1,n_extra
+       jt=0
+       jt(1:4)=res(i,:)
+       jt(1)=jt(1)-1
+       eq(2+2*i-1)=       ((vr%cos%v(2)).par.jt)
+       eq(2+2*i)=       ((vr%sin%v(2)).par.jt)
+    enddo
+
+    epsnow=0.0_dp
+    do i=1,neq
+       epsnow=abs(eq(i))+epsnow
+    enddo
+    call kanalnummer(SCRATCHFILE)
+    OPEN(UNIT=SCRATCHFILE,FILE='EQUATION.TXT')
+    rewind scratchfile
+
+    do i=1,neq
+       eq(i)=eq(i)<=c_%npara
+    enddo
+    do i=1,neq
+       call daprint(eq(i),scratchfile)
+    enddo
+    close(SCRATCHFILE)
+    CALL KILL(NORM)
+    CALL KILL(Y)
+    CALL KILL(id)
+    CALL KILL(vr)
+    CALL KILL(fr)
+    CALL KILL(EQ)
+
+
+
+    CALL INIT(1,nt)
+    call alloc(g,nt)
+    call kanalnummer(SCRATCHFILE)
+    OPEN(UNIT=SCRATCHFILE,FILE='EQUATION.TXT')
+    rewind scratchfile
+    do i=np+1,nt
+       call read(g%v(i),scratchfile)
+    enddo
+    close(SCRATCHFILE)
+
+    call alloc(t)
+    do i=1,np
+       g%v(i)=1.0_dp.mono.i
+       do j=np+1,nt
+          t=g%v(j).d.i
+          g%v(i)=g%v(i)+(1.0_dp.mono.j)*t
+       enddo
+    enddo
+    CALL KILL(t)
+
+    g=g.oo.(-1)
+    tpsafit(1:nt)=g
+
+    SET_TPSAFIT=.true.
+
+    DO I=1,NPOLY
+       R=POLY(i)
+    ENDDO
+    SET_TPSAFIT=.false.
+
+    CALL ELP_TO_EL(R)
+
+    !    write(6,*) " more "
+    !    read(5,*) more
+    
+    if(it>=max_fit_iter) goto 101
+    if(epsnow<=epsr) goto 102
+    GOTO 100
+
+101 continue
+    write(6,*) " warning did not converge "
+
+102 continue
+    CALL KILL_PARA(R)
+    deallocate(eq)
+    deallocate(res)
+    deallocate(jt)
+
+  end subroutine c_lattice_fit_CHROM_gmap1
+
 
   subroutine lattice_fit_tune_CHROM_gmap(R,my_state,EPSF,POLY,NPOLY,TARG,NP)
     IMPLICIT NONE
@@ -1416,8 +1616,8 @@ eta2=0.0_dp
     gam(2)=(norm%a_t%v(4).sub.'001')**2+(norm%a_t%v(4).sub.'0001')**2
     write(6,*) "  Gamma= ",GAM
     !      CALL KANALNUMMER(MF)
-    OPEN(UNIT=1111,FILE='GAMMA.TXT')
-    WRITE(1111,*) "  Gamma= ",GAM
+  !  OPEN(UNIT=1111,FILE='GAMMA.TXT')
+  !  WRITE(1111,*) "  Gamma= ",GAM
 
     write(6,*) " tunes ",NORM%TUNE(1), NORM%TUNE(2), CHECK_STABLE
     tune(1)=(NORM%dhdj%v(1)).SUB.'0000'
@@ -1674,10 +1874,10 @@ eta2=0.0_dp
     IF(PRESENT(TURNS)) TURNS0=TURNS
     Nullify(C);
     if(.not.ring%closed) then
-       w_p=0
-       w_p%nc=1
-       w_p%fc='((1X,a72))'
-       w_p%c(1)= " This line is not ring : FIND_ORBIT_LAYOUT "
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='((1X,a72))'
+       !w_p%c(1)= " This line is not ring : FIND_ORBIT_LAYOUT "
        ! call !write_e(100)
     endif
     dix(:)=0.0_dp
@@ -1697,11 +1897,11 @@ eta2=0.0_dp
              if(C%magp%kind==kind4.OR.C%magp%kind==kind21) goto 101
              C=>C%NEXT
           enddo
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,a72,/),(1X,a72))'
-          w_p%c(1)=  " No Cavity in the Line "
-          w_p%c(2)=  " FIND_ORBIT_LAYOUT will crash "
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,a72,/),(1X,a72))'
+          !w_p%c(1)=  " No Cavity in the Line "
+          !w_p%c(2)=  " FIND_ORBIT_LAYOUT will crash "
           ! call !write_e(111)
        ENDIF
     else
@@ -1716,11 +1916,11 @@ eta2=0.0_dp
              if(C%magp%kind==kind4.OR.C%magp%kind==kind21) goto 101
              C=>C%NEXT
           enddo
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,a72,/),(1X,a72))'
-          w_p%c(1)=  " No Cavity in the Line "
-          w_p%c(2)=  " FIND_ORBIT_LAYOUT will crash "
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,a72,/),(1X,a72))'
+          !w_p%c(1)=  " No Cavity in the Line "
+          !w_p%c(2)=  " FIND_ORBIT_LAYOUT will crash "
           ! call !write_e(112)
        ENDIF
     endif
@@ -1748,11 +1948,11 @@ eta2=0.0_dp
           i=i+1
        enddo
        if(freq==0.0_dp) then
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,a72,/),(1X,a72))'
-          w_p%c(1)=  " No Cavity in the Line or Frequency = 0 "
-          w_p%c(2)=  " FIND_ORBIT_LAYOUT will crash "
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,a72,/),(1X,a72))'
+          !w_p%c(1)=  " No Cavity in the Line or Frequency = 0 "
+          !w_p%c(2)=  " FIND_ORBIT_LAYOUT will crash "
           ! call !write_e(113)
        endif
        IF(RING%HARMONIC_NUMBER>0) THEN
@@ -1789,10 +1989,10 @@ eta2=0.0_dp
           CALL KILL(SX)
           CALL KILL(SXI)
           CALL KILL(IS)
-          w_p=0
-          w_p%nc=1
-          w_p%fc='((1X,a72))'
-          write(w_p%c(1),'(a30,i4)') " Lost in Fixed Point Searcher ",1
+          !w_p=0
+          !w_p%nc=1
+          !w_p%fc='((1X,a72))'
+          write(6,'(a30,i4)') " Lost in Fixed Point Searcher ",1
           messagelost(len_trim(messagelost)+1:255)=" -> Lost in Fixed Point Searcher "
           ! call ! WRITE_I
 
@@ -1823,7 +2023,7 @@ eta2=0.0_dp
        xdix=abs(dix(iu))+xdix
     enddo
 
-    if(verbose) write(w_p%c(1),'(a22,g21.14)') " Convergence Factor = ",xdix
+    if(verbose) write(6,'(a22,g21.14)') " Convergence Factor = ",xdix
     !    if(verbose) ! call ! WRITE_I
     if(xdix.gt.deps_tracking) then
        ite=1
@@ -1876,6 +2076,11 @@ eta2=0.0_dp
     APERTURE=c_%APERTURE_FLAG
     c_%APERTURE_FLAG=.false.
     messagelost=' Orbit most likely found'
+    if(state%radiation) then
+     write(6,*) "You have radiation : use find_orbit_x "
+     stop
+    endif
+
     if(.not.present(eps)) then
        if(.not.present(STATE)) then
           call FIND_ORBIT_LAYOUT(RING,FIX,LOC,TURNS=TURNS0)
@@ -1892,7 +2097,6 @@ eta2=0.0_dp
     if(.not.ring%closed) then
        write(6,*) " This line is not ring : FIND_ORBIT_LAYOUT_noda "
         check_stable=.false.
-        messagelost="So_fitting.f90 FIND_ORBIT_LAYOUT_noda : it is not a ring" !CERN
        ! call !write_e(100)
     endif
     dix(:)=0.0_dp
@@ -1911,9 +2115,8 @@ eta2=0.0_dp
              if(C%magp%kind==kind4.OR.C%magp%kind==kind21) goto 101
              C=>C%NEXT
           enddo
-          messagelost= "So_fitting.f90 FIND_ORBIT_LAYOUT :  FIND_ORBIT_LAYOUT will crash : exiting"
+          messagelost= " FIND_ORBIT_LAYOUT will crash : exiting"
          check_stable=.false.
-        
           return
        ENDIF
     else
@@ -1928,9 +2131,9 @@ eta2=0.0_dp
              if(C%magp%kind==kind4.OR.C%magp%kind==kind21) goto 101
              C=>C%NEXT
           enddo
-          messagelost="So_fitting.f90: State present; no cavity: FIND_ORBIT_LAYOUT will crash => exiting"
-          check_stable=.false.
-          return
+          messagelost=" State present; no cavity: FIND_ORBIT_LAYOUT will crash => exiting"
+         check_stable=.false.
+         return
        ENDIF
     endif
 101 continue
@@ -1955,9 +2158,8 @@ eta2=0.0_dp
        enddo
        if(freq==0.0_dp) then
        
-          messagelost= "So_fitting.f90 FIND_ORBIT_LAYOUT No Cavity in the Line or Frequency = 0 (totalpath==1)"
+          messagelost= " No Cavity in the Line or Frequency = 0 (totalpath==1)"
          check_stable=.false.
-        
          return
        endif
        IF(RING%HARMONIC_NUMBER>0) THEN
@@ -1984,10 +2186,10 @@ eta2=0.0_dp
           return
        endif
        !       if(.not.check_stable) then
-       !          w_p=0
-       !          w_p%nc=1
-       !          w_p%fc='((1X,a72))'
-       !          write(w_p%c(1),'(a30,i4)') " Lost in Fixed Point Searcher ",2
+       !          !w_p=0
+       !          !w_p%nc=1
+       !          !w_p%fc='((1X,a72))'
+       !          write(6,'(a30,i4)') " Lost in Fixed Point Searcher ",2
        !          ! call ! WRITE_I
 
        !          return
@@ -2031,9 +2233,8 @@ eta2=0.0_dp
 
     CALL matinv(SX,SXI,ND2,6,ier)
     IF(IER==132)  then
-       messagelost= "So_fitting.f90 FIND_ORBIT_LAYOUT_noda : Inversion failed in FIND_ORBIT_LAYOUT_noda"
+       messagelost= " Inversion failed in FIND_ORBIT_LAYOUT_noda"
         check_stable=.false.
-       
        return
     endif
 
@@ -2057,6 +2258,12 @@ eta2=0.0_dp
 
     if(verbose) write(6,*) " Convergence Factor = ",xdix
     !  if(verbose) ! call ! WRITE_I
+ !  if(item<10)        then
+
+ !   write(6,*) xdix,xdix0
+ !   pause 777
+ !    GOTO 3 
+ !  endif
     if(xdix.gt.deps_tracking) then
        ite=1
     else
@@ -2072,15 +2279,14 @@ eta2=0.0_dp
        !   C_%stable_da=.FALSE.
        !      IF(iteM==MAX_FIND_ITER+100) THEN
        !        write(6,*) " Unstable in find_orbit without TPSA"
-       messagelost= "So_fitting.f90 FIND_ORBIT_LAYOUT_noda: Maximum number of iterations in find_orbit without TPSA"
+       messagelost= "Maximum number of iterations in find_orbit without TPSA"
        xlost=fix
        check_stable=my_false
-       
        !     ENDIF
        ITE=0
     endif
 
-    if(ite.eq.1)  then
+    if(ite>=1)  then
        GOTO 3
 
     endif
@@ -2440,8 +2646,16 @@ eta2=0.0_dp
     if(pos==0) call kill(monkey)
   end SUBROUTINE  track_aperture
 
+ subroutine point_m_u(m1,m2)
+ implicit none
+ type(mad_universe), target :: m1,m2
 
-  SUBROUTINE  THIN_LENS_resplit(R,THIN,even,lim,lmax0,xbend,sexr,fib,useknob) ! A re-splitting routine
+  m_u=>m1
+  m_t=>m2
+
+ end  subroutine point_m_u
+
+  SUBROUTINE  THIN_LENS_resplit(R,THIN,even,lim,limit_wiggler,lmax0,xbend,sexr,fib,useknob,universe) ! A re-splitting routine
     IMPLICIT NONE
     INTEGER NTE
     TYPE(layout),target, intent(inout) :: R
@@ -2450,16 +2664,37 @@ eta2=0.0_dp
     real(dp), OPTIONAL, intent(in) ::xbend
     real(dp), OPTIONAL, intent(in) ::sexr
     type(fibre), OPTIONAL, target :: fib
-    logical(lp), OPTIONAL :: useknob
-    real(dp) gg,RHOI,XL,QUAD,THI,lm,dl,ggbt,xbend1,gf(7),sexr0,quad0
+    logical(lp), OPTIONAL :: useknob,universe
+    integer, optional :: limit_wiggler(2),lim(2)
+    real(dp) gg,RHOI,XL,QUAD,THI,lm,dl,ggbt,xbend1,gf(7),sexr0,quad0,dq
     INTEGER M1,M2,M3, MK1,MK2,MK3,limit(2),parity,inc,nst_tot,ntec,ii,metb,sexk
-    integer incold ,parityold
-    integer, optional :: lim(2)
+    integer incold ,parityold, nt,nsag,lim0(2),lims(2),kkk
+
     logical(lp) MANUAL,eject,doit,DOBEND
     TYPE (fibre), POINTER :: C
     logical(lp),optional :: even
     type(layout), pointer :: L
-    logical f1,f2
+    logical f1,f2,m_t_pres,uni
+    
+!!!! gymnastic for M_u and M_t (these are local m_u and m_t)
+     kkk=lielib_print(12) 
+     lielib_print(12)=0
+
+m_t_pres=my_false
+if(associated(m_u)) then
+ if(associated(m_t%start)) then
+  m_t_pres=associated(m_t%start%start) 
+ endif
+endif
+    uni=.false.
+    if(present(universe)) uni=universe
+
+    if(uni) then
+      if(r%parent_universe%nf==0) call TIE_MAD_UNIVERSE(r%parent_universe)
+      nt=r%parent_universe%nf
+    else
+      nt=r%n
+    endif
 
     sexr0=0.0_dp
 
@@ -2469,6 +2704,18 @@ eta2=0.0_dp
     f1=.false.
     f2=.false.
 
+if(m_t_pres) then
+   l=>m_t%start
+       do ii=1,m_t%n
+          call kill(l%t)
+          l=>l%next
+       enddo
+   l=>m_u%start
+       do ii=1,m_u%n
+          call kill(l%t)
+          l=>l%next
+       enddo
+else
     if(associated(r%parent_universe)) then
        f1=.true.
        l=>r%parent_universe%start
@@ -2480,6 +2727,7 @@ eta2=0.0_dp
        call kill(r%t)
        f2=.true.
     endif
+endif
     !    logical(lp) doneit
     nullify(C)
     parity=0
@@ -2524,13 +2772,15 @@ eta2=0.0_dp
 
 1001 CONTINUE
 
-    limit(1)=4
-    limit(2)=18
+    limit= limit_int0 
+ 
     if(present(lim)) limit=lim
+    lims=limit
     if(sixtrack_compatible) then
        limit(1)=1000000
        limit(2)=1000001
     endif
+    lim0=limit
     !    limit0(1)=limit(1)
     !    limit0(2)=limit(2)
 
@@ -2543,12 +2793,16 @@ eta2=0.0_dp
     r%NTHIN=0
     nst_tot=0
     sexk=0
-    C=>R%START
-    do  ii=1,r%n    ! WHILE(ASSOCIATED(C))
+    if(uni) then
+     c=>r%parent_universe%start%start
+    else
+     C=>R%START
+    endif
+    do  ii=1,nt    ! WHILE(ASSOCIATED(C))
        doit=(C%MAG%KIND==kind1.or.C%MAG%KIND==kind2.or.C%MAG%KIND==kind4.or.C%MAG%KIND==kind5)
        doit=DOIT.OR.(C%MAG%KIND==kind6.or.C%MAG%KIND==kind7)
        DOIT=DOIT.OR.(C%MAG%KIND==kind10.or.C%MAG%KIND==kind16)
-       DOIT=DOIT.OR.(C%MAG%KIND==kind17)
+       DOIT=DOIT.OR.(C%MAG%KIND==kind17.or.C%MAG%KIND==kindwiggler.or.C%MAG%KIND==KINDhel)
        doit=doit.and.C%MAG%recut
 
        if(doit) then
@@ -2567,16 +2821,20 @@ eta2=0.0_dp
        endif
        NST_tot=NST_tot+C%MAG%P%nst
 
-       C=>C%NEXT
-
+       if(uni) then
+        c=>c%n
+       else
+        C=>C%NEXT
+       endif
     enddo
+if(lielib_print(14)==1) then
     write(6,*) "Previous of cutable Elements ",r%NTHIN
     write(6,*) "METHOD 2 ",M1,MK1
     write(6,*) "METHOD 4 ",M2,MK2
     write(6,*) "METHOD 6 ",M3,MK3
     write(6,*)   "number of Slices ", MK1+MK2+MK3
     write(6,*)   "Total NST ", NST_tot
-
+endif
     if(eject) then
        !      limit(1)=limit0(1)
        !      limit(2)=limit0(2)
@@ -2595,8 +2853,12 @@ eta2=0.0_dp
     r%THIN=THI
 
     nst_tot=0
-    C=>R%START
-    do  ii=1,r%n    ! WHILE(ASSOCIATED(C))
+    if(uni) then
+     c=>r%parent_universe%start%start
+    else
+     C=>R%START
+    endif
+    do  ii=1,nt   ! WHILE(ASSOCIATED(C))
        doit=.true.
        if(present(useknob)) then
           if(useknob) then
@@ -2614,7 +2876,11 @@ eta2=0.0_dp
              parity=parityold
              inc=incold
           endif
-          C=>C%NEXT
+             if(uni) then
+              c=>c%n
+             else
+              C=>C%NEXT
+             endif
           cycle
        endif
 
@@ -2622,8 +2888,15 @@ eta2=0.0_dp
           parity=0
           inc=1
        endif
-
-
+             if(C%MAG%KIND==kindwiggler)  then
+                if(present(limit_wiggler)) then
+                 limit=limit_wiggler
+                else
+                 limit=limit_sag
+                endif
+             else
+               limit=lims
+             endif
        !       if(doit)  then
 
        select case(resplit_cutting)
@@ -2633,7 +2906,7 @@ eta2=0.0_dp
           doit=(C%MAG%KIND==kind1.or.C%MAG%KIND==kind2.or.C%MAG%KIND==kind4.or.C%MAG%KIND==kind5)
           doit=DOIT.OR.(C%MAG%KIND==kind6.or.C%MAG%KIND==kind7)
           DOIT=DOIT.OR.(C%MAG%KIND==kind10.or.C%MAG%KIND==kind16)
-          DOIT=DOIT.OR.(C%MAG%KIND==kind17)
+          DOIT=DOIT.OR.(C%MAG%KIND==kind17.or.C%MAG%KIND==kindwiggler.or.C%MAG%KIND==KINDhel)
           doit=doit.and.C%MAG%recut
           if(doit) then
              xl=C%MAG%L
@@ -2647,16 +2920,27 @@ eta2=0.0_dp
              IF(C%MAG%P%NMUL>=2) THEN
                 QUAD=SQRT(C%MAG%BN(2)**2+C%MAG%AN(2)**2)
                 IF(C%MAG%P%NMUL>=3) THEN
-                 quad0=SQRT(C%MAG%BN(3)**2+C%MAG%AN(3)**2)*sexr0
+                 if(sexr0>0) quad0=SQRT(C%MAG%BN(3)**2+C%MAG%AN(3)**2)*sexr0
                  QUAD=QUAD+quad0
                 endif
              ELSE
                 QUAD=0.0_dp
              ENDIF
              if(C%MAG%KIND==kind5.or.C%MAG%KIND==kind17) then
-                quad=quad+(C%MAG%b_sol)**2/4.0_dp+abs(C%MAG%b_sol/2.0_dp)
+                quad=quad+(C%MAG%b_sol)**2/4.0_dp !+abs(C%MAG%b_sol/2.0_dp)
              endif
-
+             if(C%MAG%KIND==kind10) then
+               if(associated(c%mag%tp10%ae).and.associated(c%mag%tp10%be)) then
+                quad=quad+SQRT(c%mag%tp10%ae(2)**2+c%mag%tp10%be(2)**2)*volt_c/c%mag%p%p0c  
+              endif
+             endif
+             if(C%MAG%KIND==kindwiggler) then
+               call eval_thin_q(C%MAG%wi,dQ,nsag)
+               quad=quad+dq
+     !          write(6,*) " wiggler detected ",dq,quad,nsag
+             else
+               nsag=1
+             endif
              DOBEND=MY_FALSE
              IF(xbend1>0.0_dp) THEN
                 IF(C%MAG%KIND==kind10) THEN
@@ -2675,6 +2959,7 @@ eta2=0.0_dp
              GG=XL*(RHOI**2+ABS(QUAD))
              GG=GG/THI
              NTE=INT(GG)
+
              sexk=sexk+xl*ABS(QUAD0)/thi
              metb=0
              if(dobend) then
@@ -2688,6 +2973,9 @@ eta2=0.0_dp
                 endif
              endif
 
+             if(C%MAG%KIND==kindwiggler) then
+              if(nsag>nte) nte=nsag
+             endif 
 
              IF(NTE.LT.limit(1).or.metb==2) THEN
                 M1=M1+1
@@ -2729,7 +3017,7 @@ eta2=0.0_dp
           doit=(C%MAG%KIND==kind1.or.C%MAG%KIND==kind2.or.C%MAG%KIND==kind4.or.C%MAG%KIND==kind5)
           doit=DOIT.OR.(C%MAG%KIND==kind6.or.C%MAG%KIND==kind7)
           DOIT=DOIT.OR.(C%MAG%KIND==kind10.or.C%MAG%KIND==kind16)
-          DOIT=DOIT.OR.(C%MAG%KIND==kind17)
+          DOIT=DOIT.OR.(C%MAG%KIND==kind17.or.C%MAG%KIND==kindwiggler.or.C%MAG%KIND==KINDhel)
           doit=doit.and.C%MAG%recut
 
           if(doit) then
@@ -2744,16 +3032,27 @@ eta2=0.0_dp
              IF(C%MAG%P%NMUL>=2) THEN
                 QUAD=SQRT(C%MAG%BN(2)**2+C%MAG%AN(2)**2)
                 IF(C%MAG%P%NMUL>=3) THEN
-                 quad0=SQRT(C%MAG%BN(3)**2+C%MAG%AN(3)**2)*sexr0
+                 if(sexr0>0) quad0=SQRT(C%MAG%BN(3)**2+C%MAG%AN(3)**2)*sexr0
                  QUAD=QUAD+quad0
                 endif
              ELSE
                 QUAD=0.0_dp
              ENDIF
              if(C%MAG%KIND==kind5.or.C%MAG%KIND==kind17) then
-                quad=quad+(C%MAG%b_sol)**2/4.0_dp+abs(C%MAG%b_sol/2.0_dp)
+                quad=quad+(C%MAG%b_sol)**2/4.0_dp   !+abs(C%MAG%b_sol/2.0_dp)
              endif
-
+             if(C%MAG%KIND==kind10) then
+               if(associated(c%mag%tp10%ae).and.associated(c%mag%tp10%be)) then
+                quad=quad+SQRT(c%mag%tp10%ae(2)**2+c%mag%tp10%be(2)**2)*volt_c/c%mag%p%p0c  
+              endif
+             endif
+             if(C%MAG%KIND==kindwiggler) then
+               call eval_thin_q(C%MAG%wi,dQ,nsag)
+               quad=quad+dq
+        !       write(6,*) " wiggler detected ",dq,quad,nsag
+             else
+               nsag=1
+             endif
              DOBEND=MY_FALSE
              IF(xbend1>0.0_dp) THEN
                 IF(C%MAG%KIND==kind10) THEN
@@ -2785,6 +3084,9 @@ eta2=0.0_dp
                 endif
              endif
 
+             if(C%MAG%KIND==kindwiggler) then
+              if(nsag>nte) nte=nsag
+             endif 
 
              IF(NTE.LT.limit(1).or.metb==2) THEN
                 M1=M1+1
@@ -2830,13 +3132,14 @@ eta2=0.0_dp
              !             endif
           endif
 
-       case(2)
+       case(2,-2)
 
+          doit=.not.(resplit_cutting==-2.and.C%MAG%KIND==kind1)
 
           doit=(C%MAG%KIND==kind1.or.C%MAG%KIND==kind2.or.C%MAG%KIND==kind4.or.C%MAG%KIND==kind5)
           doit=DOIT.OR.(C%MAG%KIND==kind6.or.C%MAG%KIND==kind7)
           DOIT=DOIT.OR.(C%MAG%KIND==kind10.or.C%MAG%KIND==kind16)
-          DOIT=DOIT.OR.(C%MAG%KIND==kind17)
+          DOIT=DOIT.OR.(C%MAG%KIND==kind17.or.C%MAG%KIND==kindwiggler.or.C%MAG%KIND==KINDhel)
           doit=doit.and.C%MAG%recut
 
           if(doit) then
@@ -2851,14 +3154,26 @@ eta2=0.0_dp
              IF(C%MAG%P%NMUL>=2) THEN
                 QUAD=SQRT(C%MAG%BN(2)**2+C%MAG%AN(2)**2)
                 IF(C%MAG%P%NMUL>=3) THEN
-                 quad0=SQRT(C%MAG%BN(3)**2+C%MAG%AN(3)**2)*sexr0
+                 if(sexr0>0) quad0=SQRT(C%MAG%BN(3)**2+C%MAG%AN(3)**2)*sexr0
                  QUAD=QUAD+quad0
                 endif
              ELSE
                 QUAD=0.0_dp
              ENDIF
              if(C%MAG%KIND==kind5.or.C%MAG%KIND==kind17) then
-                quad=quad+(C%MAG%b_sol)**2/4.0_dp+abs(C%MAG%b_sol/2.0_dp)
+                quad=quad+(C%MAG%b_sol)**2/4.0_dp   !+abs(C%MAG%b_sol/2.0_dp)
+             endif
+             if(C%MAG%KIND==kind10) then
+               if(associated(c%mag%tp10%ae).and.associated(c%mag%tp10%be)) then
+                quad=quad+SQRT(c%mag%tp10%ae(2)**2+c%mag%tp10%be(2)**2)*volt_c/c%mag%p%p0c  
+              endif
+             endif
+             if(C%MAG%KIND==kindwiggler) then
+               call eval_thin_q(C%MAG%wi,dQ,nsag)
+               quad=quad+dq
+          !     write(6,*) " wiggler detected ",dq,quad,nsag
+             else
+               nsag=1
              endif
 
              DOBEND=MY_FALSE
@@ -2892,6 +3207,9 @@ eta2=0.0_dp
                 endif
              endif
 
+             if(C%MAG%KIND==kindwiggler) then
+              if(nsag>nte) nte=nsag
+             endif 
 
              IF(NTE.LT.limit(1).or.metb==2) THEN
                 M1=M1+1
@@ -2918,7 +3236,7 @@ eta2=0.0_dp
                 MK3=MK3+NTE*7
              ENDIF
 
-
+  
              r%NTHIN=r%NTHIN+1  !C%MAG%NST
              !         write(6,*)"nte>ntec", nte,ntec
              if(nte>ntec.or.(.not.present(lmax0)) ) then
@@ -2952,7 +3270,16 @@ eta2=0.0_dp
        case default
           stop 988
        end select
-
+ 
+             if(C%MAG%KIND==kindwiggler)  then
+                if(present(limit_wiggler)) then
+                 limit=limit_wiggler
+                else
+                 limit=limit_sag
+                endif
+             else
+               limit=lims
+             endif             
 
        !      endif
        NST_tot=NST_tot+C%MAG%P%nst
@@ -2960,26 +3287,36 @@ eta2=0.0_dp
           parity=parityold
           inc=incold
        endif
-       C=>C%NEXT
+             if(uni) then
+              c=>c%n
+             else
+              C=>C%NEXT
+             endif
 
     enddo   !   end of do   WHILE
 
-
+if(lielib_print(14)==1) then
     write(6,*) "Present of cutable Elements ",r%NTHIN
     write(6,*) "METHOD 2 ",M1,MK1
     write(6,*) "METHOD 4 ",M2,MK2
     write(6,*) "METHOD 6 ",M3,MK3
     write(6,*)   "number of Slices ", MK1+MK2+MK3
     write(6,*)   "Total NST ", NST_tot
+endif
     if(radiation_bend_split) then
+if(lielib_print(14)==1) then
        write(6,*)   "Total NST due to Bend Closed Orbit ", int(ggbt)
        write(6,*)   "Restricted to method=2 for radiation or spin "
+endif
     else
+if(lielib_print(14)==1) then
        write(6,*)   "Total NST due to Bend Closed Orbit ", int(ggbt)
+endif
     endif
+if(lielib_print(14)==1) then
     write(6,*)   "Total NST due to Sextupoles ", sexk
     write(6,*)   "Biggest ds ", max_ds
-
+endif
 
 
     IF(MANUAL) THEN
@@ -3002,9 +3339,20 @@ eta2=0.0_dp
        ELSE
           GOTO 1001
        ENDIF
+    else
+          if(f1) then
+             l=>r%parent_universe%start
+             do ii=1,r%parent_universe%n
+                call make_node_layout(l)
+                l=>l%next
+             enddo
+          elseif(f2) then
+             call make_node_layout(r)  !!! bug (l) was wrong
+          endif
+
     ENDIF
 
-
+     lielib_print(12)=kkk
     !    limit(1)=limit0(1)
     !    limit(2)=limit0(2)
 
@@ -3133,69 +3481,140 @@ eta2=0.0_dp
     write(6,*) idc," elements only " 
   END SUBROUTINE  RECUT_KIND7
 
-  SUBROUTINE  ADD_SURVEY_INFO(R) ! A re-splitting routine
+
+
+subroutine dipole_check_step(m,n,L,b0,k1,x)
+implicit none
+integer m,n,i,j
+real(dp) L,b0,k1,h,x(2)
+real(dp) DH,D,D1,D2,DK1,DK2,DF(4),DK(4)
+
+x=0
+ 
+h=b0
+
+    SELECT CASE(m)
+ 
+    CASE(2)
+       DH=L/2.0_dp/n
+       D=L/n
+do i=1,n
+       call prot_drift(dh,X,h)
+       CALL SKICKt(x,D,b0,k1,h)
+       call prot_drift(dh,X,h)
+enddo
+    CASE(4)
+
+       D1=L*FD1/n
+       D2=L*FD2/n
+       DK1=L*FK1/n
+       DK2=L*FK2/n
+do i=1,n
+       call prot_drift(D1,X,h)
+       CALL SKICKt (x,DK1,b0,k1,h)
+       call prot_drift(D2,X,h)
+       CALL SKICKt (x,DK2,b0,k1,h)
+
+       call prot_drift(D2,X,h)
+ 
+       CALL SKICKt (x,DK1,b0,k1,h)
+       call prot_drift(D1,X,h)
+enddo
+
+    CASE(6)
+       DO I =1,4
+          DF(I)=L*YOSD(I)/n
+          DK(I)=L*YOSK(I)/n
+       ENDDO
+do i=1,n
+       DO J=4,2,-1
+       call prot_drift(Df(j),X,h)
+       CALL SKICKt (x,DK(J),b0,k1,h)
+       ENDDO
+ 
+       call prot_drift(Df(1),X,h)
+       CALL SKICKt (x,DK(1),b0,k1,h)
+
+       call prot_drift(Df(1),X,h)
+       DO J=2,4
+          CALL SKICKt (x,DK(J),b0,k1,h)
+       call prot_drift(Df(j),X,h)
+       ENDDO
+enddo
+
+
+    CASE DEFAULT
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1(1X,A72))'
+         write(6,'(a12,1x,i4,1x,a17)') " THE METHOD ",m," IS NOT SUPPORTED"
+       ! call !write_e(357)
+    END SELECT
+
+end subroutine dipole_check_step
+
+subroutine SKICKt(x,yL,b0,k1,h)
+implicit none
+real(dp) yL,b0,k1,h,x(2)
+
+
+x(2)=x(2)-yL*(b0*(1.0_dp+h*x(1))+k1*x(1))
+
+end subroutine SKICKt
+
+  SUBROUTINE prot_drift(YL,X,h)
     IMPLICIT NONE
-    TYPE(layout),target, intent(inout) :: R
-    TYPE(FIBRE),POINTER :: C
-    INTEGER I
-    real(dp) b1
+    real(dp) X(2)
+    real(dp) YL,h
+ 
+    real(dp) XN(2),PZ,pt
+    real(dp)  A,R
+           PZ=sqrt(1.0_dp-X(2)**2)
+    if(h/=0.0_dp) then
+       A=YL*h
+       R=1.0_dp/h
+ 
+ 
 
+          PT=1.0_dp-X(2)*TAN(A)/PZ
+          !       XN(1)=(X(1)+R)/COS(A)/PT-R
+          XN(1)=(X(1)+R*(2.0_dp*sin(a/2.0_dp)**2+X(2)*sin(A)/PZ))/COS(A)/PT
+          XN(2)=X(2)*COS(A)+SIN(A)*PZ
+ 
+    
+       X(1)=XN(1)
+       X(2)=XN(2)
+    else
+     x(1)=x(1)+x(2)*yl/pz
+    endif
 
-
-    C=>R%START
-    DO I=1,R%N
-       if(C%mag%kind==kind3) then
-          b1=C%mag%k3%thin_h_angle
-          if(b1/=0.0_dp) then
-             b1=b1/2.0_dp
-             C%mag%k3%patch=my_true
-             C%magp%k3%patch=my_true
-             c%patch%patch=3
-             c%patch%A_d=0.d0
-             c%patch%B_d=0.d0
-             c%patch%A_ANG=0.d0
-             c%patch%B_ANG=0.d0
-             c%patch%A_ANG(2)=b1
-             c%patch%B_ANG(2)=b1
-          endif
-       endif
-       C=>C%NEXT
-    ENDDO
-
-  END SUBROUTINE  ADD_SURVEY_INFO
+  END SUBROUTINE prot_drift
 
 
 
   SUBROUTINE  check_bend(xl,ggi,rhoi,xbend1,gf,met) ! A re-splitting routine
     IMPLICIT NONE
-    real(dp) xl,gg,ggi,rhoi,ar,ggb,co(7),xbend1,gf(7)
+    real(dp) xl,gg,ggi,rhoi,ggb,ar,co(7),xbend1,gf(7)
     integer i,met
 
     gg=int(ggi)
     if(gg==0.d0) gg=1.d0
-    co(3)=1.d0/6.0_dp
-    co(5)=  0.2992989446749238e0_dp
-    co(7)=0.2585213173527224e-1_dp
-    ar=abs(rhoi)
-    gf=0.0_dp
-    !     do i=3,7,2
-    !              ggb=((XL/gg) * ar)**(i)*(XL/gg)*co(i)  ! approximate residual orbit
-    !              if(xbend1<ggb) then
-    !                gf(i)=(ar**(i)*co(i)/xbend1)**(one/(i+one))*xl
-    !              write(6,*) i,gf(i)
-    !              pause
-    !              endif
-    !     enddo
+    co(2)=1.d0/12.0_dp
+    co(4)=  0.17e0_dp
+    co(6)=0.17e-1_dp
 
+    gf=0.0_dp
+ 
     do i=3,7,2
-       ggb=((XL/gg) * ar)**(i-1)*(XL/gg)*co(i)*twopi  ! approximate residual orbit
-       !              if(xbend1<ggb) then
-       gf(i)=(ar**(i-1)*co(i)/xbend1/twopi)**(1.0_dp/(i+0.0_dp))*xl
-       !              endif
+           ar=i-1
+       gf(i)= (co(i-1)/xbend1)**(1.d0/ar)*abs(rhoi)*xl 
+       if(gf(i)<gg) gf(i)=gg
     enddo
+    
     gf(2)=gf(3)
     gf(4)=gf(5)*3
     gf(6)=gf(7)*7
+    
 
     met=2
 
@@ -3203,32 +3622,162 @@ eta2=0.0_dp
     if(gf(6)<gf(4).and.gf(6)<gf(2)) met=6
     if(radiation_bend_split) met=2
     if(sixtrack_compatible) met=2
+    
 
   end SUBROUTINE  check_bend
+! routine which computed check_bends co(i)
+!call init(15,2,2,0,.true.)
+!call alloc(h1,h2,h)
+!call alloc(id,idh,idi)
+!call alloc(onel)
+!call alloc(dl,del,bb,t1,t2)
+!del=1.d0.mono.3
+!dl=1.d0.mono.6
+!bb=1.d0.mono.5
+!id=1
+!t1=(-(1.d0+bb*id%v(1))*sqrt((1.d0+del)**2-id%v(2)**2)+del)*dl
+!t2=+bb*(id%v(1)+id%v(1)**2/2.d0*bb)*dl
+!nn=1
+!h%h=t1+t2
 
-  SUBROUTINE  THIN_LENS_restart(R,fib,useknob) ! A re-splitting routine
+!h1%h=t1/2.d0
+!h2%h=t2
+!idi=exp(h1,id)
+!idi=exp(h2,idi)
+!idi=exp(h1,idi)
+!onel=idi
+!
+!idh=exp(h,id)
+!
+!idi%v(nn)=idi%v(nn)-idh%v(nn)
+!call print(idi%v(nn),6)
+!pause 1
+!
+!h%h=t1+t2
+!id=1
+!h1%h=fd1*t1
+!idi=exp(h1,id) 
+!h2%h=fk1*t2
+!idi=exp(h2,idi) 
+!h1%h=fd2*t1    
+!idi=exp(h1,idi) 
+!h2%h=fk2*t2 
+!idi=exp(h2,idi) 
+! 
+!h1%h=fd2*t1    
+!idi=exp(h1,idi) 
+!h2%h=fk1*t2
+!idi=exp(h2,idi) 
+!h1%h=fd1*t1
+!idi=exp(h1,idi) 
+!onel=idi 
+! 
+!idh=exp(h,id)
+
+!idi%v(nn)=idi%v(nn)-idh%v(nn)
+!call print(idi%v(nn),6)
+!pause 2
+!h%h=t1+t2
+!id=1
+!
+!call MAKE_YOSHIDA
+!
+!       DO i=4,2,-1
+!        h1%h=YOSD(I)*t1
+!       if(i==4) then
+!        idi=exp(h1,id) 
+!       else
+!        idi=exp(h1,idi) 
+!       endif
+!       h2%h=YOSK(I)*t2
+!       idi=exp(h2,idi) 
+!       ENDDO
+!        h1%h=YOSD(1)*t1
+!       idi=exp(h1,idi) 
+!       h2%h=YOSK(1)*t2
+!       idi=exp(h2,idi) 
+!        h1%h=YOSD(1)*t1
+!       idi=exp(h1,idi) 
+!       DO i=2,4
+!       h2%h=YOSK(I)*t2
+!       idi=exp(h2,idi) 
+!        h1%h=YOSD(I)*t1
+!        idi=exp(h1,idi) 
+!       ENDDO
+!onel=idi 
+! 
+!idh=exp(h,id)
+!
+!idi%v(nn)=idi%v(nn)-idh%v(nn)
+!call print(idi%v(nn),6)
+
+  SUBROUTINE  THIN_LENS_restart(R,fib,useknob,universe,ignore_recut) ! A re-splitting routine
     IMPLICIT NONE
     INTEGER NTE
     TYPE(layout),target, intent(inout) :: R
-    INTEGER M1,M2,M3, MK1,MK2,MK3,nst_tot,ii  !,limit0(2)
+    INTEGER M1,M2,M3, MK1,MK2,MK3,nst_tot,ii,nt  !,limit0(2)
     type(fibre), OPTIONAL, target :: fib
-    logical(lp), OPTIONAL :: useknob
-    logical(lp) doit
+    logical(lp), OPTIONAL :: useknob,universe,ignore_recut
+    logical(lp) doit,uni,m_t_pres
     TYPE (fibre), POINTER :: C
     TYPE (layout), POINTER :: l
-    !    logical(lp) doneit
+     logical(lp) ignore 
     nullify(C)
-
+ignore=.false.
+if(present(ignore_recut)) ignore=ignore_recut
     !    CALL LINE_L(R,doneit)
+m_t_pres=my_false
+if(associated(m_u)) then
+ if(associated(m_t%start)) then
+  m_t_pres=associated(m_t%start%start) 
+ endif
+endif
+  
+!  if(associated(r%parent_universe)) then
+!       l=>r%parent_universe%start
+!       do ii=1,r%parent_universe%n
+!          call kill(l%t)
+!          l=>l%next
+!       enddo
+!    else
+!       call kill(r%t)
+!    endif
 
+
+
+
+
+if(m_t_pres) then
+   l=>m_t%start
+       do ii=1,m_t%n
+          call kill(l%t)
+          l=>l%next
+       enddo
+   l=>m_u%start
+       do ii=1,m_u%n
+          call kill(l%t)
+          l=>l%next
+       enddo
+else
     if(associated(r%parent_universe)) then
        l=>r%parent_universe%start
        do ii=1,r%parent_universe%n
           call kill(l%t)
           l=>l%next
        enddo
-    else
+    elseif(associated(r%t)) then
        call kill(r%t)
+    endif
+endif
+
+    uni=.false.
+    if(present(universe)) uni=universe
+
+    if(uni) then
+      if(r%parent_universe%nf==0) call TIE_MAD_UNIVERSE(r%parent_universe)
+      nt=r%parent_universe%nf
+    else
+      nt=r%n
     endif
 
 
@@ -3246,9 +3795,15 @@ eta2=0.0_dp
     r%NTHIN=0
 
     nst_tot=0
-    C=>R%START
-    do  ii=1,r%n    ! WHILE(ASSOCIATED(C))
-       doit=.true.
+    if(uni) then
+     c=>r%parent_universe%start%start
+    else
+     C=>R%START
+    endif
+    do  ii=1,nt    ! WHILE(ASSOCIATED(C))
+
+       doit=c%mag%recut.or.(ignore)
+
        if(present(useknob)) then
           if(useknob) then
              doit=c%magp%knob
@@ -3261,7 +3816,11 @@ eta2=0.0_dp
        endif
        if(.not.doit) then
           NST_tot=NST_tot+C%MAG%P%nst
-          C=>C%NEXT
+             if(uni) then
+              c=>c%n
+             else
+              C=>C%NEXT
+             endif
           cycle
        endif
 
@@ -3269,7 +3828,7 @@ eta2=0.0_dp
        doit=(C%MAG%KIND==kind1.and.C%MAG%KIND==kind2.or.C%MAG%KIND==kind5.or.C%MAG%KIND==kind4)
        doit=DOIT.OR.(C%MAG%KIND==kind6.or.C%MAG%KIND==kind7)
        DOIT=DOIT.OR.(C%MAG%KIND==kind10.or.C%MAG%KIND==kind16)
-       DOIT=DOIT.OR.(C%MAG%KIND==kind17)
+       DOIT=DOIT.OR.(C%MAG%KIND==kind17.or.C%MAG%KIND==kindwiggler)
 
 
        if(doit)  then
@@ -3293,17 +3852,21 @@ eta2=0.0_dp
        endif
 
        NST_tot=NST_tot+C%MAG%P%nst
-       C=>C%NEXT
+             if(uni) then
+              c=>c%n
+             else
+              C=>C%NEXT
+             endif
     enddo
 
-
+if(lielib_print(14)==1) then
     write(6,*) "Present of cutable Elements ",r%NTHIN
     write(6,*) "METHOD 2 ",M1,MK1
     write(6,*) "METHOD 4 ",M2,MK2
     write(6,*) "METHOD 6 ",M3,MK3
     write(6,*)   "number of Slices ", MK1+MK2+MK3
     write(6,*)   "Total NST ", NST_tot
-
+endif
 
 
     !    CALL RING_L(R,doneit)
@@ -3393,50 +3956,6 @@ eta2=0.0_dp
 
   ! THIN LENS EXAMPLE
 
-  SUBROUTINE assign_one_aperture(L,pos,kindaper,R,X,Y,dx,dy)
-    IMPLICIT NONE
-    TYPE(LAYOUT),TARGET :: L
-    integer pos,kindaper
-    REAL(DP) R(:),X,Y,dx,dy
-    type(fibre), pointer :: P
-
-    call move_to(L,p,pos)
-
-    if(.NOT.ASSOCIATED(P%MAG%p%aperture)) THEN
-       call alloc(P%MAG%p%aperture)
-       call alloc(P%MAGP%p%aperture)
-    ENDIF
-    if(kindaper/=0) then
-       P%MAG%p%aperture%kind = kindaper
-       P%MAGP%p%aperture%kind = kindaper
-       P%MAG%p%aperture%r    = R
-       P%MAG%p%aperture%x    = X
-       P%MAG%p%aperture%y    = y
-       P%MAG%p%aperture%dx    = dX
-       P%MAG%p%aperture%dy    = dy
-       P%MAGP%p%aperture%r    = R
-       P%MAGP%p%aperture%x    = X
-       P%MAGP%p%aperture%y    = y
-       P%MAGP%p%aperture%dx    = dX
-       P%MAGP%p%aperture%dy    = dy
-    endif
-
-  end SUBROUTINE assign_one_aperture
-
-  SUBROUTINE TURN_OFF_ONE_aperture(R,pos)
-    IMPLICIT NONE
-    TYPE(LAYOUT),TARGET :: R
-    integer pos
-    type(fibre), pointer :: P
-
-    call move_to(r,p,pos)
-
-    if(ASSOCIATED(P%MAG%p%aperture)) THEN
-       P%MAG%p%aperture%kind = -P%MAG%p%aperture%kind
-       P%MAGP%p%aperture%kind = P%MAG%p%aperture%kind
-    ENDIF
-
-  end SUBROUTINE TURN_OFF_ONE_aperture
 
   SUBROUTINE REVERSE_BEAM_LINE(R, changeanbn )
     IMPLICIT NONE
@@ -3479,14 +3998,16 @@ eta2=0.0_dp
   SUBROUTINE PUTFRINGE(R, changeanbn )
     IMPLICIT NONE
     TYPE(LAYOUT),TARGET :: R
-    integer I
+    integer I,perm
     type(fibre), pointer :: P
     logical(lp) changeanbn
 
+     perm=0
+    if(changeanbn) perm=1 
     p=>r%start
     do i=1,r%n
-       p%mag%p%PERMFRINGE =changeanbn
-       p%magP%p%PERMFRINGE=changeanbn
+       p%mag%p%PERMFRINGE =perm
+       p%magP%p%PERMFRINGE=perm
        P=>P%next
     ENDDO
   end SUBROUTINE PUTFRINGE

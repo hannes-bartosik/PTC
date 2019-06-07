@@ -3,7 +3,7 @@
 
 
 MODULE S_DEF_ELEMENT
-  USE S_DEF_KIND
+ ! USE S_DEF_KIND
   !  USE USER_kind1
   !  USE USER_kind2
   USE sagan_WIGGLER
@@ -21,7 +21,7 @@ MODULE S_DEF_ELEMENT
   private ZERO_EL,ZERO_ELP
   !  PRIVATE MAGPSTATE,MAGSTATE
   PRIVATE SETFAMILYR,SETFAMILYP
-  PRIVATE ADDR_ANBN,ADDP_ANBN,bL_0,EL_BL,ELp_BL,COPY_BL,UNARYP_BL
+  PRIVATE ADD_ANBNR,ADD_ANBNP,bL_0,EL_BL,ELp_BL,COPY_BL,UNARYP_BL
   PRIVATE ELp_POL,bLPOL_0
   PRIVATE work_0,work_r,ELp_WORK,EL_WORK,WORK_EL,WORK_ELP,BL_EL,BL_ELP,unaryw_w
   PRIVATE ZERO_ANBN,ZERO_ANBN_R,ZERO_ANBN_P
@@ -59,8 +59,8 @@ MODULE S_DEF_ELEMENT
   end  INTERFACE
 
   INTERFACE ADD
-     MODULE PROCEDURE ADDR_ANBN
-     MODULE PROCEDURE ADDP_ANBN
+     MODULE PROCEDURE ADD_ANBNR
+     MODULE PROCEDURE ADD_ANBNP
   end  INTERFACE
 
   INTERFACE ZERO_ANBN
@@ -144,7 +144,9 @@ CONTAINS
     TYPE(WORM),OPTIONAL, INTENT(INOUT):: MID
     TYPE(INTERNAL_STATE) K
 
-    if(associated(el%p%aperture)) call CHECK_APERTURE(EL%p%aperture,X)
+    if(associated(el%p%aperture)) then
+     if(el%p%dir*el%p%aperture%pos==0.OR.el%p%dir*el%p%aperture%pos==-1) call CHECK_APERTURE(EL%p%aperture,X)
+    endif
     !    if(other_program) then
     !       call track_R(x)
     !       return
@@ -191,13 +193,19 @@ CONTAINS
        call TRACK(EL%WI,X,k,MID)
     case(KINDPA)
        call TRACK(EL%PA,X,k,MID)
+    case(kindsuperdrift)
+       call TRACK(EL%SDR,X,k,MID)
+    case(KINDABELL)
+       call TRACK(EL%AB,X,k,MID)
+
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1((1X,a72)))'
-       write(w_p%c(1),'(1x,i4,a21)') el%kind," not supported TRACKR"
+ 
+       write(6,'(1x,i4,a21)') el%kind," not supported TRACKR"
        ! call !write_e(0)
     END SELECT
+    if(associated(el%p%aperture)) then
+     if(el%p%dir*el%p%aperture%pos==0.OR.el%p%dir*el%p%aperture%pos==1)  call CHECK_APERTURE(EL%p%aperture,X)
+    endif
   END SUBROUTINE TRACKR
 
   SUBROUTINE TRACKP(EL,X,K)
@@ -207,11 +215,9 @@ CONTAINS
     !    TYPE(WORM_8),OPTIONAL, INTENT(INOUT):: MID
     TYPE(INTERNAL_STATE) K
 
-    if(associated(el%p%aperture)) call CHECK_APERTURE(EL%p%aperture,X)
-    !    if(other_program) then
-    !       call track_p(x)
-    !       return
-    !    endif
+    if(associated(el%p%aperture)) then
+     if(el%p%dir*el%p%aperture%pos==0.OR.el%p%dir*el%p%aperture%pos==-1)  call CHECK_APERTURE(EL%p%aperture,X)
+    endif
     SELECT CASE(EL%KIND)
     CASE(KIND0)
        !       IF(PRESENT(MID)) CALL XMID(MID,X,0)
@@ -253,13 +259,17 @@ CONTAINS
        call TRACK(EL%WI,X,k)
     case(KINDPA)
        call TRACK(EL%PA,X,k)
+    case(kindsuperdrift)
+       call TRACK(EL%SDR,X,k)
+    case(KINDABELL)
+       call TRACK(EL%AB,X,k)
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1((1X,a72)))'
-       write(w_p%c(1),'(1x,i4,a21)') el%kind," not supported TRACKP"
+       write(6,'(1x,i4,a21)') el%kind," not supported TRACKP"
        ! call !write_e(0)
     END SELECT
+    if(associated(el%p%aperture)) then
+     if(el%p%dir*el%p%aperture%pos==0.OR.el%p%dir*el%p%aperture%pos==1)  call CHECK_APERTURE(EL%p%aperture,X)
+    endif
   END SUBROUTINE TRACKP
 
   !  SUBROUTINE TRACK_R(X)
@@ -271,6 +281,7 @@ CONTAINS
   !
   !    if(j_global==1) return  ! skipping OBJECT OF ZGOUBI = TRACKING COMMAND INTERNAL TO ZGOUBI
   !    icharef=0
+
   !
   !    x(1)=x(1)*c_100
   !    x(3)=x(3)*c_100
@@ -401,9 +412,7 @@ CONTAINS
        !       if(s2%kind==kinduser2) call scale_user2(s2%u2,S2%P%P0C,S1%P0C,S1%power)
        if(s2%kind==KINDwiggler) call scale_sagan(s2%wi,S2%P%P0C,S1%P0C,S1%power)
 
-    endif
-
-    if(S1%power/=-1) then       ! just rescaling  -1=ramping
+    else   ! ramping
        !       S2%P%BETA0=S1%BETA0
        !       S2%P%GAMMA0I=S1%GAMMA0I
        !       S2%P%GAMBET=S1%GAMBET
@@ -430,10 +439,9 @@ CONTAINS
        !       if(s2%kind==kinduser1) call scale_user1(s2%u1,S2%P%P0C,S1%P0C,S1%power)
        !       if(s2%kind==kinduser2) call scale_user2(s2%u2,S2%P%P0C,S1%P0C,S1%power)
        if(s2%kind==KINDwiggler) call scale_sagan(s2%wi,S2%P%P0C,S1%P0C,S1%power)
-    endif
+    else  ! ramping
 
 
-    if(S1%power/=-1) then       ! just rescaling  -1=ramping
        !       S2%P%BETA0=S1%BETA0
        !       S2%P%GAMMA0I=S1%GAMMA0I
        !       S2%P%GAMBET=S1%GAMBET
@@ -477,13 +485,7 @@ CONTAINS
     implicit none
     integer, intent(in) :: i,j
     integer k
-    if(j<=0) then
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1((1X,A72)))'
-       write(w_p%c(1),'(A4,1X,I4)') "j = ",j
-       ! call !write_e(812)
-    endif
+ 
     k=i
     if(i<1) then
        do while(k<1)
@@ -509,17 +511,11 @@ CONTAINS
        s2%nmul=S1
        s2%ADD=0
     ELSEIF(S1>NMAX) THEN
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1((1X,A72)))'
-       write(w_p%c(1),'(A38,1X,I4)') " NMAX NOT BIG ENOUGH: PLEASE INCREASE ",NMAX
-       ! call !write_e(100)
+ 
+       write(6,'(A38,1X,I4)') " NMAX NOT BIG ENOUGH: PLEASE INCREASE ",NMAX
+ 
     ELSE
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1((1X,A72)))'
-       w_p%c(1) = " UNDEFINED  ASSIGNMENT IN BL_0"
-       ! call !write_e(101)
+      stop 135
     ENDIF
 
   END SUBROUTINE bL_0
@@ -579,10 +575,10 @@ CONTAINS
     INTEGER I
 
     IF(S2%P%NMUL>NMAX) THEN
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1((1X,A72)))'
-       write(w_p%c(1),'(A21,1X,I4,1X,I4)')  " NMAX NOT BIG ENOUGH ", S2%P%NMUL,NMAX
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1((1X,A72)))'
+       write(*,'(A21,1X,I4,1X,I4)')  " NMAX NOT BIG ENOUGH ", S2%P%NMUL,NMAX
        ! call !write_e(456)
     ENDIF
     S1=S2%P%NMUL
@@ -601,10 +597,10 @@ CONTAINS
     INTEGER I
 
     IF(S2%P%NMUL>NMAX) THEN
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1((1X,A72)))'
-       write(w_p%c(1),'(A21,1X,I4,1X,I4)')  " NMAX NOT BIG ENOUGH ", S2%P%NMUL,NMAX
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1((1X,A72)))'
+       write(*,'(A21,1X,I4,1X,I4)')  " NMAX NOT BIG ENOUGH ", S2%P%NMUL,NMAX
        ! call !write_e(456)
     ENDIF
     S1=S2%P%NMUL
@@ -623,10 +619,10 @@ CONTAINS
     INTEGER I
 
     IF(S2%P%NMUL>NMAX) THEN
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1((1X,A72)))'
-       write(w_p%c(1),'(A21,1X,I4,1X,I4)')  " NMAX NOT BIG ENOUGH ", S2%P%NMUL,NMAX
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1((1X,A72)))'
+       write(*,'(A21,1X,I4,1X,I4)')  " NMAX NOT BIG ENOUGH ", S2%P%NMUL,NMAX
        ! call !write_e(456)
     ENDIF
     IF(s1%nmul>s2%P%nmul) CALL ADD(s2,s1%nmul,1,0.0_dp)
@@ -646,10 +642,10 @@ CONTAINS
     INTEGER I
 
     IF(S2%P%NMUL>NMAX) THEN
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1((1X,A72)))'
-       write(w_p%c(1),'(A21,1X,I4,1X,I4)')  " NMAX NOT BIG ENOUGH ", S2%P%NMUL,NMAX
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1((1X,A72)))'
+       write(*,'(A21,1X,I4,1X,I4)')  " NMAX NOT BIG ENOUGH ", S2%P%NMUL,NMAX
        ! call !write_e(456)
     ENDIF
 
@@ -673,10 +669,10 @@ CONTAINS
 
 
     IF(S2%P%NMUL>NMAX) THEN
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1((1X,A72)))'
-       write(w_p%c(1),'(A21,1X,I4,1X,I4)')  " NMAX NOT BIG ENOUGH ", S2%P%NMUL,NMAX
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1((1X,A72)))'
+       write(*,'(A21,1X,I4,1X,I4)')  " NMAX NOT BIG ENOUGH ", S2%P%NMUL,NMAX
        ! call !write_e(456)
     ENDIF
 
@@ -723,10 +719,10 @@ CONTAINS
     logical(lp) DOIT,DONEIT                    !,checkname
 
     IF(S2%P%NMUL>NMAX) THEN
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1((1X,A72)))'
-       write(w_p%c(1),'(A21,1X,I4,1X,I4)')  " NMAX NOT BIG ENOUGH ", S2%P%NMUL,NMAX
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(1((1X,A72)))'
+       write(*,'(A21,1X,I4,1X,I4)')  " NMAX NOT BIG ENOUGH ", S2%P%NMUL,NMAX
        ! call !write_e(456)
     ENDIF
 
@@ -762,8 +758,8 @@ CONTAINS
           s2%AN(I)%I=S1%IAN(I)+S1%NPARA
           s2%AN(I)%S=S1%SAN(I)
           s2%AN(I)%KIND=3
-          s2%AN(I)%g=S1%g
-          s2%AN(I)%nb=S1%nb
+!          s2%AN(I)%g=S1%g
+!          s2%AN(I)%nb=S1%nb
           DONEIT=.TRUE.
           IF(S1%SET_TPSAFIT) THEN
              s2%aN(I)%R=s2%aN(I)%R+scale_tpsafit*s2%AN(I)%S*s1%TPSAFIT(S1%IAN(I))
@@ -776,8 +772,8 @@ CONTAINS
           s2%BN(I)%I=S1%IBN(I)+S1%NPARA
           s2%BN(I)%S=S1%SBN(I)
           s2%BN(I)%KIND=3
-          s2%BN(I)%g=S1%g
-          s2%BN(I)%nb=S1%nb
+!          s2%BN(I)%g=S1%g
+!          s2%BN(I)%nb=S1%nb
           DONEIT=.TRUE.
           IF(S1%SET_TPSAFIT) THEN
              s2%BN(I)%R=s2%BN(I)%R+scale_tpsafit*s2%BN(I)%S*s1%TPSAFIT(S1%IBN(I))
@@ -796,8 +792,8 @@ CONTAINS
           s2%VOLT%I=S1%IVOLT+S1%NPARA
           s2%VOLT%S=S1%SVOLT
           s2%VOLT%KIND=3
-          s2%VOLT%g=S1%g
-          s2%VOLT%nb=S1%nb
+!          s2%VOLT%g=S1%g
+!          s2%VOLT%nb=S1%nb
           DONEIT=.TRUE.
           if(S1%IVOLT>c_%np_pol) c_%np_pol=S1%IVOLT
           IF(S1%SET_TPSAFIT) THEN
@@ -810,8 +806,8 @@ CONTAINS
        IF(S1%IFREQ>0) THEN
           s2%FREQ%I=S1%IFREQ+S1%NPARA
           s2%FREQ%S=S1%SFREQ
-          s2%FREQ%g=S1%g
-          s2%FREQ%nb=S1%nb
+!          s2%FREQ%g=S1%g
+!          s2%FREQ%nb=S1%nb
           s2%FREQ%KIND=3
           if(S1%IFREQ>c_%np_pol) c_%np_pol=S1%IFREQ
           IF(S1%SET_TPSAFIT) THEN
@@ -826,8 +822,8 @@ CONTAINS
           s2%PHAS%I=S1%IPHAS+S1%NPARA
           s2%PHAS%S=S1%SPHAS
           s2%PHAS%KIND=3
-          s2%PHAS%g=S1%g
-          s2%PHAS%nb=S1%nb
+ !         s2%PHAS%g=S1%g
+ !         s2%PHAS%nb=S1%nb
           DONEIT=.TRUE.
           if(S1%IPHAS>c_%np_pol) c_%np_pol=S1%IPHAS
           IF(S1%SET_TPSAFIT) THEN
@@ -843,8 +839,8 @@ CONTAINS
        IF(S1%IVOLT>0) THEN
           s2%VOLT%I=S1%IVOLT+S1%NPARA
           s2%VOLT%S=S1%SVOLT
-          s2%PHAS%g=S1%g
-          s2%PHAS%nb=S1%nb
+!          s2%PHAS%g=S1%g
+!          s2%PHAS%nb=S1%nb
           s2%VOLT%KIND=3
           if(S1%IVOLT>c_%np_pol) c_%np_pol=S1%IVOLT
           DONEIT=.TRUE.
@@ -858,8 +854,8 @@ CONTAINS
        IF(S1%IFREQ>0) THEN
           s2%FREQ%I=S1%IFREQ+S1%NPARA
           s2%FREQ%S=S1%SFREQ
-          s2%FREQ%g=S1%g
-          s2%FREQ%nb=S1%nb
+!          s2%FREQ%g=S1%g
+!          s2%FREQ%nb=S1%nb
           s2%FREQ%KIND=3
           if(S1%IFREQ>c_%np_pol) c_%np_pol=S1%IFREQ
           IF(S1%SET_TPSAFIT) THEN
@@ -873,8 +869,8 @@ CONTAINS
        IF(S1%IPHAS>0) THEN
           s2%PHAS%I=S1%IPHAS+S1%NPARA
           s2%PHAS%S=S1%SPHAS
-          s2%PHAS%g=S1%g
-          s2%PHAS%nb=S1%nb
+  !        s2%PHAS%g=S1%g
+  !        s2%PHAS%nb=S1%nb
           s2%PHAS%KIND=3
           if(S1%IPHAS>c_%np_pol) c_%np_pol=S1%IPHAS
           DONEIT=.TRUE.
@@ -891,8 +887,8 @@ CONTAINS
        IF(S1%IB_SOL>0) THEN
           s2%B_SOL%I=S1%IB_SOL+S1%NPARA
           s2%B_SOL%S=S1%SB_SOL
-          s2%B_SOL%g=S1%g
-          s2%B_SOL%nb=S1%nb
+    !      s2%B_SOL%g=S1%g
+    !      s2%B_SOL%nb=S1%nb
           s2%B_SOL%KIND=3
           DONEIT=.TRUE.
           if(S1%IB_SOL>c_%np_pol) c_%np_pol=S1%IB_SOL
@@ -1004,11 +1000,12 @@ CONTAINS
 
 
   !  SUBROUTINE SETFAMILYR(EL,T,t_ax,t_ay,NTOT,ntot_rad,NTOT_REV,ntot_rad_REV,ND2)
-  SUBROUTINE SETFAMILYR(EL,T)  !,NTOT,ntot_rad,NTOT_REV,ntot_rad_REV,ND2)
+  SUBROUTINE SETFAMILYR(EL,T)  !,angc,xc,dc,h)  !,NTOT,ntot_rad,NTOT_REV,ntot_rad_REV,ND2)
     IMPLICIT NONE
     TYPE(ELEMENT), INTENT(INOUT) ::EL
     !    INTEGER,OPTIONAL :: NTOT,ntot_rad,NTOT_REV,ntot_rad_REV,ND2
     type(tree_element),OPTIONAL :: T(:) !,t_ax(:),t_ay(:)
+ !   real(dp), optional :: angc,xc,dc,h
    ! EL%P%permfringe=>EL%permfringe
     SELECT CASE(EL%KIND)
     CASE(KIND1)
@@ -1017,11 +1014,11 @@ CONTAINS
        EL%D0%L=>EL%L
     CASE(KIND2)
        IF(EL%P%EXACT) THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)=" ERROR IN SETFAMILYR "
-          write(w_p%c(2),'(A37,1x,I4)') " EXACT OPTION NOT SUPPORTED FOR KIND ", EL%KIND
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)=" ERROR IN SETFAMILYR "
+          write(*,'(A43,1x,I4)') " 'NOT EXACT' OPTION NOT SUPPORTED FOR KIND ", EL%KIND
           ! call !write_e(222)
        ENDIF
        if(.not.ASSOCIATED(EL%K2)) THEN
@@ -1065,7 +1062,27 @@ CONTAINS
        ALLOCATE(EL%K3%thin_v_angle);EL%K3%thin_v_angle=0
        ALLOCATE(EL%K3%patch);EL%K3%patch=my_false
        EL%K3%B_SOL=>EL%B_SOL
-    CASE(KIND4)
+       NULLIFY(EL%k3%dx);ALLOCATE(EL%k3%dx);EL%k3%dx=0.d0;
+       NULLIFY(EL%k3%dy);ALLOCATE(EL%k3%dy);EL%k3%dy=0.d0;
+       NULLIFY(EL%k3%pitch_x);ALLOCATE(EL%k3%pitch_x);EL%k3%pitch_x=0.d0;
+       NULLIFY(EL%k3%pitch_y);ALLOCATE(EL%k3%pitch_y);EL%k3%pitch_y=0.d0;
+    CASE(kindsuperdrift)
+       if(.not.ASSOCIATED(EL%sdr)) THEN
+          ALLOCATE(EL%sdr)
+          EL%sdr=0
+       ELSE
+          EL%sdr=-1
+          EL%sdr=0
+       ENDIF
+       EL%SDR%P=>EL%P
+       EL%SDR%L=>EL%L
+
+       ALLOCATE(EL%SDR%D(3));EL%SDR%D=0.0_dp;
+       ALLOCATE(EL%SDR%ANG(3));EL%SDR%ANG=0.0_dp;
+       ALLOCATE(EL%SDR%a_x1);EL%SDR%a_x1=1.0_dp;
+       ALLOCATE(EL%SDR%a_x2);EL%SDR%a_x2=1.0_dp;
+
+    CASE(kind4)
        if(.not.ASSOCIATED(EL%C4)) THEN
           ALLOCATE(EL%C4)
           el%C4=0
@@ -1116,6 +1133,7 @@ CONTAINS
        ALLOCATE(EL%CAV21%DPHAS);EL%CAV21%DPHAS=0.0_dp
        ALLOCATE(EL%CAV21%cavity_totalpath);EL%CAV21%cavity_totalpath=cavity_totalpath
        ALLOCATE(EL%CAV21%phase0);EL%CAV21%phase0=phase0
+       ALLOCATE(EL%CAV21%always_on);EL%CAV21%always_on=my_false;
     CASE(KIND22)
        if(.not.ASSOCIATED(EL%HE22)) THEN
           ALLOCATE(EL%HE22)
@@ -1131,8 +1149,16 @@ CONTAINS
        EL%HE22%BN=>EL%BN
        EL%HE22%FREQ=>EL%FREQ
        EL%HE22%PHAS=>EL%PHAS
+       ALLOCATE(EL%HE22%N_BESSEL);EL%HE22%N_BESSEL=0
+       ALLOCATE(EL%HE22%fake_shift(6));EL%HE22%fake_shift=0
     CASE(KIND5)
-       if(.not.ASSOCIATED(EL%S5))ALLOCATE(EL%S5)
+       if(.not.ASSOCIATED(EL%S5)) THEN
+          ALLOCATE(EL%S5)
+          EL%S5=0
+       ELSE
+          EL%S5=-1
+          EL%S5=0
+       ENDIF
        EL%S5%P=>EL%P
        EL%S5%L=>EL%L
        IF(EL%P%NMUL==0) CALL ZERO_ANBN(EL,1)
@@ -1145,13 +1171,17 @@ CONTAINS
        EL%S5%VA=>EL%VA
        EL%S5%VS=>EL%VS
        EL%S5%B_SOL=>EL%B_SOL
+       NULLIFY(EL%s5%dx);ALLOCATE(EL%s5%dx);EL%s5%dx=0.d0;
+       NULLIFY(EL%s5%dy);ALLOCATE(EL%s5%dy);EL%s5%dy=0.d0;
+       NULLIFY(EL%s5%pitch_x);ALLOCATE(EL%s5%pitch_x);EL%s5%pitch_x=0.d0;
+       NULLIFY(EL%s5%pitch_y);ALLOCATE(EL%s5%pitch_y);EL%s5%pitch_y=0.d0;
     CASE(KIND6)
        IF(EL%P%EXACT.AND.EL%P%B0/=0.0_dp) THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)=" ERROR IN SETFAMILYR "
-          write(w_p%c(2),'(A37,1x,I4)') " EXACT OPTION NOT SUPPORTED FOR KIND ", EL%KIND
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)=" ERROR IN SETFAMILYR "
+          write(*,'(A37,1x,I4)') " EXACT OPTION NOT SUPPORTED FOR KIND ", EL%KIND
           ! call !write_e(777)
        ENDIF
        if(.not.ASSOCIATED(EL%T6)) THEN
@@ -1164,11 +1194,11 @@ CONTAINS
        EL%T6%P=>EL%P
        EL%T6%L=>EL%L
        IF(EL%P%NMUL==0)       THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)= " ERROR IN SETFAMILYR "
-          w_p%c(2)= " ERROR ON T6: SLOW THICK "
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)= " ERROR IN SETFAMILYR "
+          !w_p%c(2)= " ERROR ON T6: SLOW THICK "
           ! call !write_e(0)
        ENDIF
        EL%T6%AN=>EL%AN
@@ -1185,11 +1215,11 @@ CONTAINS
        nullify(EL%T6%LY);ALLOCATE(EL%T6%LY(3));
     CASE(KIND7)
        IF(EL%P%EXACT.AND.EL%P%B0/=0.0_dp) THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)=" ERROR IN SETFAMILYR "
-          write(w_p%c(2),'(A37,1x,I4)') " EXACT OPTION NOT SUPPORTED FOR KIND ", EL%KIND
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)=" ERROR IN SETFAMILYR "
+          write(*,'(A37,1x,I4)') " EXACT OPTION NOT SUPPORTED FOR KIND ", EL%KIND
           ! call !write_e(777)
        ENDIF
        !       if(.not.ASSOCIATED(EL%T7))ALLOCATE(EL%T7)
@@ -1203,10 +1233,10 @@ CONTAINS
        EL%T7%P=>EL%P
        EL%T7%L=>EL%L
        IF(EL%P%NMUL==0)       THEN
-          w_p=0
-          w_p%nc=1
-          w_p%fc='((1X,A72))'
-          w_p%c(1)= "ERROR ON T7: FAST THICK "
+          !w_p=0
+          !w_p%nc=1
+          !w_p%fc='((1X,A72))'
+          !w_p%c(1)= "ERROR ON T7: FAST THICK "
           ! call !write_e(0)
        ENDIF
        EL%T7%AN=>EL%AN
@@ -1229,11 +1259,11 @@ CONTAINS
        if(.not.ASSOCIATED(EL%S8))ALLOCATE(EL%S8)
        EL%S8%P=>EL%P
        IF(EL%P%NMUL==0)       THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)= " ERROR IN SETFAMILYR "
-          w_p%c(2)= "ERROR ON S8:  NORMAL SMI "
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)= " ERROR IN SETFAMILYR "
+          !w_p%c(2)= "ERROR ON S8:  NORMAL SMI "
           ! call !write_e(0)
        ENDIF
        EL%S8%BN=>EL%BN
@@ -1241,21 +1271,21 @@ CONTAINS
        if(.not.ASSOCIATED(EL%S9))ALLOCATE(EL%S9)
        EL%S9%P=>EL%P
        IF(EL%P%NMUL==0)       THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)= " ERROR IN SETFAMILYR "
-          w_p%c(2)= "ERROR ON S9: SKEW SMI "
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)= " ERROR IN SETFAMILYR "
+          !w_p%c(2)= "ERROR ON S9: SKEW SMI "
           ! call !write_e(0)
        ENDIF
        EL%S9%AN=>EL%AN
     CASE(KIND10)
        IF(.not.EL%P%EXACT) THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)=" ERROR IN SETFAMILYR "
-          write(w_p%c(2),'(A37,1x,I4)') " EXACT OPTION NOT SUPPORTED FOR KIND ", EL%KIND
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)=" ERROR IN SETFAMILYR "
+          write(*,'(A43,1x,I4)') " 'NOT EXACT' OPTION NOT SUPPORTED FOR KIND ", EL%KIND
           ! call !write_e(777)
        ENDIF
        if(.not.ASSOCIATED(EL%TP10)) THEN
@@ -1267,12 +1297,12 @@ CONTAINS
        ENDIF
        EL%TP10%P=>EL%P
        EL%TP10%L=>EL%L
-       IF(EL%P%NMUL==0.OR.EL%P%NMUL>SECTOR_NMUL_MAX)       THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)= " ERROR IN SETFAMILYR "
-          w_p%c(2)= "ERROR ON TP10: TEAPOT "
+       IF(EL%P%NMUL==0.OR.EL%P%NMUL>SECTOR_NMUL)       THEN
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)= " ERROR IN SETFAMILYR "
+          !w_p%c(2)= "ERROR ON TP10: TEAPOT "
           ! call !write_e(0)
        ENDIF
        EL%TP10%AN=>EL%AN
@@ -1281,32 +1311,46 @@ CONTAINS
        EL%TP10%HGAP=>EL%HGAP
        EL%TP10%H1=>EL%H1
        EL%TP10%H2=>EL%H2
+       EL%TP10%VA=>EL%VA
+       EL%TP10%VS=>EL%VS
 
-       NULLIFY(EL%TP10%BF_X);ALLOCATE(EL%TP10%BF_X(S_B(SECTOR_NMUL)%N_MONO))
-       NULLIFY(EL%TP10%BF_Y);ALLOCATE(EL%TP10%BF_Y(S_B(SECTOR_NMUL)%N_MONO))
-!       NULLIFY(EL%TP10%BF_X);ALLOCATE(EL%TP10%BF_X(S_B0%N_MONO))
-!       NULLIFY(EL%TP10%BF_Y);ALLOCATE(EL%TP10%BF_Y(S_B0%N_MONO))
-       !       NULLIFY(EL%TP10%BF_X);ALLOCATE(EL%TP10%BF_X(S_B(EL%P%NMUL)%N_MONO))
-       !       NULLIFY(EL%TP10%BF_Y);ALLOCATE(EL%TP10%BF_Y(S_B(EL%P%NMUL)%N_MONO))
+
+       NULLIFY(EL%TP10%BF_X);
+       NULLIFY(EL%TP10%BF_Y);
+
+       EL%TP10%ELECTRIC=>EL%ELECTRIC
+
+        ALLOCATE(EL%TP10%BF_X(S_E%N_MONO))
+        ALLOCATE(EL%TP10%BF_Y(S_E%N_MONO))
+ 
+
+        NULLIFY(EL%TP10%VM);ALLOCATE(EL%TP10%VM(S_E%N_MONO))
+
+        EL%TP10%VM=0.0_dp
+        EL%TP10%BF_X=0.0_dp
+        EL%TP10%BF_Y=0.0_dp
+
        NULLIFY(EL%TP10%DRIFTKICK);ALLOCATE(EL%TP10%DRIFTKICK);EL%TP10%DRIFTKICK=.true.;
-       if(EL%ELECTRIC) then
-        NULLIFY(EL%TP10%E_X);ALLOCATE(EL%TP10%E_X)
-        NULLIFY(EL%TP10%E_Y);ALLOCATE(EL%TP10%E_Y)
-        NULLIFY(EL%TP10%PHI);ALLOCATE(EL%TP10%PHI)
-        NULLIFY(EL%TP10%AE);ALLOCATE(EL%TP10%AE(NO_E))
-        NULLIFY(EL%TP10%BE);ALLOCATE(EL%TP10%BE(NO_E))
-        NULLIFY(EL%TP10%AS);ALLOCATE(EL%TP10%AS(NO_E,0:NO_E,0:NO_E))
-        NULLIFY(EL%TP10%BS);ALLOCATE(EL%TP10%BS(NO_E,0:NO_E,0:NO_E))
-        EL%TP10%AS=0.0_dp
-        EL%TP10%BS=0.0_dp
-        EL%TP10%AE=0.0_dp
-        EL%TP10%BE=0.0_dp
+!       if(EL%ELECTRIC) then
+        NULLIFY(EL%TP10%E_X);ALLOCATE(EL%TP10%E_X(S_E%N_MONO))
+        NULLIFY(EL%TP10%E_Y);ALLOCATE(EL%TP10%E_Y(S_E%N_MONO))
+        NULLIFY(EL%TP10%PHI);ALLOCATE(EL%TP10%PHI(S_E%N_MONO))
+
+        NULLIFY(EL%TP10%AE);ALLOCATE(EL%TP10%AE(SECTOR_NMUL_max));
+        NULLIFY(EL%TP10%BE);ALLOCATE(EL%TP10%BE(SECTOR_NMUL_max));
+
+
         EL%TP10%E_X=0.0_dp
         EL%TP10%E_Y=0.0_dp
         EL%TP10%PHI=0.0_dp
-        call invert_electric_teapot(EL%TP10%AS,EL%TP10%BS)
-       endif
-       call GETANBN(EL%TP10)
+
+        EL%TP10%AE=0.0_DP;
+        EL%TP10%BE=0.0_DP;
+        call GETAEBE(EL%TP10) ! not efective here because ae=be=0 but need on magnetic field
+ !      ELSE
+ !       call GETANBN(EL%TP10)  
+ !      endif
+
        NULLIFY(EL%TP10%F);ALLOCATE(EL%TP10%F);EL%TP10%F=1;
     CASE(KIND11:KIND14)
        if(.not.ASSOCIATED(EL%MON14)) THEN
@@ -1414,18 +1458,43 @@ CONTAINS
        !       IF(EL%P%NMUL==0) CALL ZERO_ANBN(EL,1)
        !       EL%mu%AN=>EL%AN
        !       EL%mu%BN=>EL%BN
-       CALL POINTERS_pancake(EL%pa,T) !,t_ax,t_ay)
+       CALL POINTERS_pancake(EL%pa,T) !,angc,xc,dc,h) !,t_ax,t_ay)
+    CASE(KINDabell)
+       if(.not.ASSOCIATED(EL%ab)) THEN
+          ALLOCATE(EL%ab)
+          EL%ab=0
+       ELSE
+          EL%ab=-1
+          EL%ab=0
+       ENDIF
+       EL%ab%P=>EL%P
+       EL%ab%L=>EL%L
+       IF(EL%P%NMUL==0) CALL ZERO_ANBN(EL,1)
+       EL%ab%AN=>EL%AN
+       EL%ab%BN=>el%BN
+   !real(dp), POINTER :: DZ => null(), T(:) => null()
+   !complex(dp), POINTER :: B(:,:) => null()
+   !INTEGER , POINTER :: N,M => null()  
+
+       ALLOCATE(EL%ab%m);EL%ab%m=m_abell;
+       ALLOCATE(EL%ab%n);EL%ab%n=n_abell;
+       ALLOCATE(EL%ab%dz(0:m_abell));EL%ab%dz=0
+       ALLOCATE(EL%ab%t(0:m_abell));EL%ab%t=0.0_dp;
+       ALLOCATE(EL%ab%b(0:m_abell,-n_abell/2:n_abell/2-1));EL%ab%b=0.0_dp; 
+       ALLOCATE(EL%ab%tE(0:m_abell));EL%ab%tE=0.0_dp;
+       ALLOCATE(EL%ab%E(0:m_abell,-n_abell/2:n_abell/2-1));EL%ab%E=0.0_dp; 
+       CALL POINTERS_abell(EL%ab) !,angc,xc,dc,h) !,t_ax,t_ay)
     END SELECT
   END SUBROUTINE SETFAMILYR
 
 
-  SUBROUTINE SETFAMILYP(EL,T)  !,NTOT,ntot_rad,NTOT_REV,ntot_rad_REV,ND2)
+  SUBROUTINE SETFAMILYP(EL,T)  !,angc,xc,dc,h)  !,NTOT,ntot_rad,NTOT_REV,ntot_rad_REV,ND2)
     !  SUBROUTINE SETFAMILYP(EL,T,t_ax,t_ay,NTOT,ntot_rad,NTOT_REV,ntot_rad_REV,ND2)
     IMPLICIT NONE
     TYPE(ELEMENTP), INTENT(INOUT) ::EL
     !    INTEGER,OPTIONAL :: NTOT,ntot_rad,NTOT_REV,ntot_rad_REV,ND2
     type(tree_element),OPTIONAL :: T(:) !,t_ax(:),t_ay(:)
-
+ !   real(dp), optional :: angc,xc,dc,h
 !    EL%P%permfringe=>EL%permfringe
     SELECT CASE(EL%KIND)
     CASE(KIND1)
@@ -1434,11 +1503,11 @@ CONTAINS
        EL%D0%L=>EL%L
     CASE(KIND2)
        IF(EL%P%EXACT) THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)=" ERROR IN SETFAMILYP "
-          write(w_p%c(2),'(A37,1x,I4)') " EXACT OPTION NOT SUPPORTED FOR KIND ", EL%KIND
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)=" ERROR IN SETFAMILYP "
+          write(*,'(A43,1x,I4)') " 'NOT EXACT' OPTION NOT SUPPORTED FOR KIND ", EL%KIND
           ! call !write_e(222)
        ENDIF
        if(.not.ASSOCIATED(EL%K2)) THEN
@@ -1482,6 +1551,26 @@ CONTAINS
        ALLOCATE(EL%K3%thin_v_angle);CALL ALLOC(EL%K3%thin_v_angle);EL%K3%thin_v_angle=0.0_dp
        ALLOCATE(EL%K3%patch);EL%K3%patch=my_false
        EL%K3%B_SOL=>EL%B_SOL
+       NULLIFY(EL%k3%dx);ALLOCATE(EL%k3%dx);EL%k3%dx=0.d0;
+       NULLIFY(EL%k3%dy);ALLOCATE(EL%k3%dy);EL%k3%dy=0.d0;
+       NULLIFY(EL%k3%pitch_x);ALLOCATE(EL%k3%pitch_x);EL%k3%pitch_x=0.d0;
+       NULLIFY(EL%k3%pitch_y);ALLOCATE(EL%k3%pitch_y);EL%k3%pitch_y=0.d0;
+    CASE(kindsuperdrift)
+       if(.not.ASSOCIATED(EL%sdr)) THEN
+          ALLOCATE(EL%sdr)
+          EL%sdr=0
+       ELSE
+          EL%sdr=-1
+          EL%sdr=0
+       ENDIF
+       EL%SDR%P=>EL%P
+       EL%SDR%L=>EL%L
+ 
+       ALLOCATE(EL%SDR%a_x1);EL%SDR%a_x1=1.0_dp;
+       ALLOCATE(EL%SDR%a_x2);EL%SDR%a_x2=1.0_dp;
+       ALLOCATE(EL%SDR%D(3));EL%SDR%D=0.0_dp;
+       ALLOCATE(EL%SDR%ANG(3));EL%SDR%ANG=0.0_dp;
+
     CASE(KIND4)
        if(.not.ASSOCIATED(EL%C4)) THEN
           ALLOCATE(EL%C4)
@@ -1531,6 +1620,7 @@ CONTAINS
        ALLOCATE(EL%CAV21%DVDS);CALL ALLOC(EL%CAV21%DVDS);EL%CAV21%DVDS=0.0_dp
        ALLOCATE(EL%CAV21%DPHAS);CALL ALLOC(EL%CAV21%DPHAS);EL%CAV21%DPHAS=0.0_dp
        ALLOCATE(EL%CAV21%cavity_totalpath);EL%CAV21%cavity_totalpath=cavity_totalpath
+       ALLOCATE(EL%CAV21%always_on);EL%CAV21%always_on=my_false;
        ALLOCATE(EL%CAV21%phase0);EL%CAV21%phase0=phase0
     CASE(KIND22)
        if(.not.ASSOCIATED(EL%HE22)) THEN
@@ -1547,8 +1637,16 @@ CONTAINS
        EL%HE22%BN=>EL%BN
        EL%HE22%FREQ=>EL%FREQ
        EL%HE22%PHAS=>EL%PHAS
+       ALLOCATE(EL%HE22%N_BESSEL);EL%HE22%N_BESSEL=0
+       ALLOCATE(EL%HE22%fake_shift(6));call alloc(EL%HE22%fake_shift);EL%HE22%fake_shift=0
     CASE(KIND5)
-       if(.not.ASSOCIATED(EL%S5))ALLOCATE(EL%S5)
+       if(.not.ASSOCIATED(EL%S5)) THEN
+          ALLOCATE(EL%S5)
+          EL%S5=0
+       ELSE
+          EL%S5=-1
+          EL%S5=0
+       ENDIF
        EL%S5%P=>EL%P
        EL%S5%L=>EL%L
        IF(EL%P%NMUL==0) CALL ZERO_ANBN(EL,1)
@@ -1561,13 +1659,17 @@ CONTAINS
        EL%S5%VA=>EL%VA
        EL%S5%VS=>EL%VS
        EL%S5%B_SOL=>EL%B_SOL
+       NULLIFY(EL%s5%dx);ALLOCATE(EL%s5%dx);EL%s5%dx=0.d0;
+       NULLIFY(EL%s5%dy);ALLOCATE(EL%s5%dy);EL%s5%dy=0.d0;
+       NULLIFY(EL%s5%pitch_x);ALLOCATE(EL%s5%pitch_x);EL%s5%pitch_x=0.d0;
+       NULLIFY(EL%s5%pitch_y);ALLOCATE(EL%s5%pitch_y);EL%s5%pitch_y=0.d0;
     CASE(KIND6)
        IF(EL%P%EXACT.AND.EL%P%B0/=0.0_dp) THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)=" ERROR IN SETFAMILYP "
-          write(w_p%c(2),'(A37,1x,I4)') " EXACT OPTION NOT SUPPORTED FOR KIND ", EL%KIND
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)=" ERROR IN SETFAMILYP "
+          write(*,'(A37,1x,I4)') " EXACT OPTION NOT SUPPORTED FOR KIND ", EL%KIND
           ! call !write_e(777)
        ENDIF
        if(.not.ASSOCIATED(EL%T6)) THEN
@@ -1580,11 +1682,11 @@ CONTAINS
        EL%T6%P=>EL%P
        EL%T6%L=>EL%L
        IF(EL%P%NMUL==0)       THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)= " ERROR IN SETFAMILYP "
-          w_p%c(2)= "ERROR ON T6: SLOW THICK "
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)= " ERROR IN SETFAMILYP "
+          !w_p%c(2)= "ERROR ON T6: SLOW THICK "
           ! call !write_e(0)
        ENDIF
        EL%T6%AN=>EL%AN
@@ -1601,11 +1703,11 @@ CONTAINS
        nullify(EL%T6%LY);ALLOCATE(EL%T6%LY(3));
     CASE(KIND7)
        IF(EL%P%EXACT.AND.EL%P%B0/=0.0_dp) THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)=" ERROR IN SETFAMILYP "
-          write(w_p%c(2),'(A37,1x,I4)') " EXACT OPTION NOT SUPPORTED FOR KIND ", EL%KIND
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)=" ERROR IN SETFAMILYP "
+          write(*,'(A37,1x,I4)') " EXACT OPTION NOT SUPPORTED FOR KIND ", EL%KIND
           ! call !write_e(777)
        ENDIF
        if(.not.ASSOCIATED(EL%T7)) THEN
@@ -1618,11 +1720,11 @@ CONTAINS
        EL%T7%P=>EL%P
        EL%T7%L=>EL%L
        IF(EL%P%NMUL==0)       THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)= " ERROR IN SETFAMILYP "
-          w_p%c(2)= "ERROR ON T7: FAST THICK "
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)= " ERROR IN SETFAMILYP "
+          !w_p%c(2)= "ERROR ON T7: FAST THICK "
           ! call !write_e(0)
        ENDIF
        EL%T7%AN=>EL%AN
@@ -1646,11 +1748,11 @@ CONTAINS
        if(.not.ASSOCIATED(EL%S8))ALLOCATE(EL%S8)
        EL%S8%P=>EL%P
        IF(EL%P%NMUL==0)       THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)= " ERROR IN SETFAMILYP "
-          w_p%c(2)= "ERROR ON S8:  NORMAL SMI "
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)= " ERROR IN SETFAMILYP "
+          !w_p%c(2)= "ERROR ON S8:  NORMAL SMI "
           ! call !write_e(0)
        ENDIF
        EL%S8%BN=>EL%BN
@@ -1658,21 +1760,21 @@ CONTAINS
        if(.not.ASSOCIATED(EL%S9))ALLOCATE(EL%S9)
        EL%S9%P=>EL%P
        IF(EL%P%NMUL==0)       THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)= " ERROR IN SETFAMILYP "
-          w_p%c(2)= "ERROR ON S9: SKEW SMI "
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)= " ERROR IN SETFAMILYP "
+          !w_p%c(2)= "ERROR ON S9: SKEW SMI "
           ! call !write_e(0)
        ENDIF
        EL%S9%AN=>EL%AN
     CASE(KIND10)
        IF(.not.EL%P%EXACT) THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)=" ERROR IN SETFAMILYP "
-          write(w_p%c(2),'(A37,1x,I4)') " EXACT OPTION NOT SUPPORTED FOR KIND ", EL%KIND
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)=" ERROR IN SETFAMILYP "
+          write(*,'(A43,1x,I4)') " 'NOT EXACT' OPTION NOT SUPPORTED FOR KIND ", EL%KIND
           ! call !write_e(777)
        ENDIF
        if(.not.ASSOCIATED(EL%TP10)) THEN
@@ -1684,12 +1786,12 @@ CONTAINS
        ENDIF
        EL%TP10%P=>EL%P
        EL%TP10%L=>EL%L
-       IF(EL%P%NMUL==0.OR.EL%P%NMUL>SECTOR_NMUL_MAX)       THEN
-          w_p=0
-          w_p%nc=2
-          w_p%fc='((1X,A72,/,1X,A72))'
-          w_p%c(1)= " ERROR IN SETFAMILYP "
-          w_p%c(2)= "ERROR ON TP10: TEAPOT "
+       IF(EL%P%NMUL==0.OR.EL%P%NMUL>SECTOR_NMUL)       THEN
+          !w_p=0
+          !w_p%nc=2
+          !w_p%fc='((1X,A72,/,1X,A72))'
+          !w_p%c(1)= " ERROR IN SETFAMILYP "
+          !w_p%c(2)= "ERROR ON TP10: TEAPOT "
           ! call !write_e(0)
        ENDIF
        EL%TP10%AN=>EL%AN
@@ -1698,31 +1800,34 @@ CONTAINS
        EL%TP10%HGAP=>EL%HGAP
        EL%TP10%H1=>EL%H1
        EL%TP10%H2=>EL%H2
-       NULLIFY(EL%TP10%BF_X);ALLOCATE(EL%TP10%BF_X(S_B(SECTOR_NMUL)%N_MONO))
-       NULLIFY(EL%TP10%BF_Y);ALLOCATE(EL%TP10%BF_Y(S_B(SECTOR_NMUL)%N_MONO))
-!       NULLIFY(EL%TP10%BF_X);ALLOCATE(EL%TP10%BF_X(S_B0%N_MONO))
-!       NULLIFY(EL%TP10%BF_Y);ALLOCATE(EL%TP10%BF_Y(S_B0%N_MONO))
-       !       NULLIFY(EL%TP10%BF_X);ALLOCATE(EL%TP10%BF_X(S_B(EL%P%NMUL)%N_MONO))
-       !       NULLIFY(EL%TP10%BF_Y);ALLOCATE(EL%TP10%BF_Y(S_B(EL%P%NMUL)%N_MONO))
+       EL%TP10%VA=>EL%VA
+       EL%TP10%VS=>EL%VS
+       NULLIFY(EL%TP10%BF_X); 
+       NULLIFY(EL%TP10%BF_Y);
+       EL%TP10%ELECTRIC=>EL%ELECTRIC
+        ALLOCATE(EL%TP10%BF_X(S_B_FROM_V%N_MONO))
+        ALLOCATE(EL%TP10%BF_Y(S_B_FROM_V%N_MONO))
        NULLIFY(EL%TP10%DRIFTKICK);ALLOCATE(EL%TP10%DRIFTKICK);EL%TP10%DRIFTKICK=.true.;
-       CALL ALLOC(EL%TP10)
-       if(EL%ELECTRIC) then
-        NULLIFY(EL%TP10%E_X);ALLOCATE(EL%TP10%E_X)
-        NULLIFY(EL%TP10%E_Y);ALLOCATE(EL%TP10%E_Y)
-        NULLIFY(EL%TP10%PHI);ALLOCATE(EL%TP10%PHI)
-        NULLIFY(EL%TP10%AE);ALLOCATE(EL%TP10%AE(NO_E))
-        NULLIFY(EL%TP10%BE);ALLOCATE(EL%TP10%BE(NO_E))
-        call alloc(EL%TP10%E_X,EL%TP10%E_Y,EL%TP10%PHI)
-        call alloc(EL%TP10%AE,NO_E)
-        call alloc(EL%TP10%BE,NO_E)
-        NULLIFY(EL%TP10%AS);ALLOCATE(EL%TP10%AS(NO_E,0:NO_E,0:NO_E))
-        NULLIFY(EL%TP10%BS);ALLOCATE(EL%TP10%BS(NO_E,0:NO_E,0:NO_E))
-        EL%TP10%AS=0.0_dp
-        EL%TP10%BS=0.0_dp
-        call invert_electric_teapot(EL%TP10%AS,EL%TP10%BS)
-              !  write(6,*) " electric polymorph"
-       endif
-       call GETANBN(EL%TP10)
+  !     CALL ALLOC(EL%TP10)
+
+        NULLIFY(EL%TP10%VM);ALLOCATE(EL%TP10%VM(S_E%N_MONO))
+
+
+ !      if(EL%ELECTRIC) then
+        NULLIFY(EL%TP10%E_X);ALLOCATE(EL%TP10%E_X(S_E%N_MONO))
+        NULLIFY(EL%TP10%E_Y);ALLOCATE(EL%TP10%E_Y(S_E%N_MONO))
+        NULLIFY(EL%TP10%PHI);ALLOCATE(EL%TP10%PHI(S_E%N_MONO))
+
+        NULLIFY(EL%TP10%AE);ALLOCATE(EL%TP10%AE(SECTOR_NMUL_max)); 
+        NULLIFY(EL%TP10%BE);ALLOCATE(EL%TP10%BE(SECTOR_NMUL_max)); 
+
+        call alloc(EL%TP10)
+        call GETAEBE(EL%TP10) ! not efective here because ae=be=0 but need on magnetic field
+ !      ELSE
+!        call alloc(EL%TP10)
+!        call GETANBN(EL%TP10)
+!       endif
+
        NULLIFY(EL%TP10%F);ALLOCATE(EL%TP10%F);EL%TP10%F=1;
     CASE(KIND11:KIND14)
        if(.not.ASSOCIATED(EL%MON14)) THEN
@@ -1802,64 +1907,7 @@ CONTAINS
        ENDIF
        EL%ECOL19%P=>EL%P
        EL%ECOL19%L=>EL%L
-!       nullify(EL%ECOL19%A);!ALLOCATE(EL%ECOL19%A);CALL ALLOC(EL%ECOL19%A)
-       !    CASE(KIND22)
-       !       if(.not.ASSOCIATED(EL%M22)) THEN
-       !          ALLOCATE(EL%M22)
-       !          el%M22=0
-       !       ELSE
-       !          el%M22=-1
-       !          el%M22=0
-       !       ENDIF
-       !       EL%M22%P=>EL%P
-       !       allocate(EL%M22%DELTAMAP)
-       !       EL%M22%DELTAMAP=.TRUE.
-       !       if(NTOT/=0) then
-       !          allocate(EL%M22%T)
-       !          CALL ALLOC_TREE(EL%M22%T,NTOT,ND2)
-       !       endif
-       !       if(NTOT_rad/=0) then
-       !          allocate(EL%M22%T_rad)
-       !          CALL ALLOC_TREE(EL%M22%T_rad,NTOT_rad,ND2)
-       !       endif
-       !       if(NTOT_REV/=0) then
-       !          allocate(EL%M22%T_REV)
-       !          CALL ALLOC_TREE(EL%M22%T_REV,NTOT_REV,ND2)
-       !       endif
-       !       if(NTOT_rad_REV/=0) then
-       !          allocate(EL%M22%T_rad_REV)
-       !          CALL ALLOC_TREE(EL%M22%T_rad_REV,NTOT_rad_REV,ND2)
-       !       endif
-       !    CASE(KINDUSER1)
-       !       if(.not.ASSOCIATED(EL%U1)) THEN
-       !          ALLOCATE(EL%U1)
-       !          EL%U1=0
-       !       ELSE
-       !          EL%U1=-1
-       !          EL%U1=0
-       !       ENDIF
-       !       EL%U1%P=>EL%P
-       !       EL%U1%L=>EL%L
-       !       IF(EL%P%NMUL==0) CALL ZERO_ANBN(EL,1)
-       !       EL%U1%AN=>EL%AN
-       !       EL%U1%BN=>EL%BN
-       !       CALL POINTERS_USER1(EL%U1)
-       !       CALL ALLOC(EL%U1)
-       !    CASE(KINDUSER2)
-       !       if(.not.ASSOCIATED(EL%U2)) THEN
-       !          ALLOCATE(EL%U2)
-       !          EL%U2=0
-       !       ELSE
-       !          EL%U2=-1
-       !          EL%U2=0
-       !       ENDIF
-       !       EL%U2%P=>EL%P
-       !       EL%U2%L=>EL%L
-       !       IF(EL%P%NMUL==0) CALL ZERO_ANBN(EL,1)
-       !       EL%U2%AN=>EL%AN
-       !       EL%U2%BN=>EL%BN
-       !       CALL POINTERS_USER2(EL%U2)
-       !       CALL ALLOC(EL%U2)
+
     CASE(KINDWIGGLER)
        if(.not.ASSOCIATED(EL%WI)) THEN
           ALLOCATE(EL%WI)
@@ -1888,11 +1936,39 @@ CONTAINS
        !       IF(EL%P%NMUL==0) CALL ZERO_ANBN(EL,1)
        !       EL%mu%AN=>EL%AN
        !       EL%mu%BN=>EL%BN
-       CALL POINTERS_pancake(EL%pa,T)  !,t_ax,t_ay)
-       CALL ALLOC(EL%pa%SCALE)
+
+       CALL POINTERS_pancake(EL%pa,T) !,angc,xc,dc,h)  !,t_ax,t_ay)
+
+    CASE(KINDabell)
+       if(.not.ASSOCIATED(EL%ab)) THEN
+          ALLOCATE(EL%ab)
+          EL%ab=0
+       ELSE
+          EL%ab=-1
+          EL%ab=0
+       ENDIF
+       EL%ab%P=>EL%P
+       EL%ab%L=>EL%L
+       IF(EL%P%NMUL==0) CALL ZERO_ANBN(EL,1)
+       EL%ab%AN=>EL%AN
+       EL%ab%BN=>el%BN
+   !real(dp), POINTER :: DZ => null(), T(:) => null()
+   !complex(dp), POINTER :: B(:,:) => null()
+   !INTEGER , POINTER :: N,M => null()  
+
+
+       ALLOCATE(EL%ab%m);EL%ab%m=m_abell;
+       ALLOCATE(EL%ab%n);EL%ab%n=n_abell;
+       ALLOCATE(EL%ab%dz(0:m_abell));EL%ab%dz=0
+       ALLOCATE(EL%ab%t(0:m_abell));EL%ab%t=0.0_dp;
+       ALLOCATE(EL%ab%b(0:m_abell,-n_abell/2:n_abell/2-1));EL%ab%b=0.0_dp; 
+       ALLOCATE(EL%ab%tE(0:m_abell));EL%ab%tE=0.0_dp;
+       ALLOCATE(EL%ab%E(0:m_abell,-n_abell/2:n_abell/2-1));EL%ab%E=0.0_dp; 
+       CALL POINTERS_abell(EL%ab) !,angc,xc,dc,h) !,t_ax,t_ay)
     END SELECT
 
   END SUBROUTINE SETFAMILYP
+
 
 
 
@@ -1929,47 +2005,58 @@ CONTAINS
 
   END SUBROUTINE ZERO_ANBN_P
 
-  SUBROUTINE transfer_ANBN(EL,ELP,VR,DVR,VP,DVP)
+  SUBROUTINE transfer_ANBN(EL,ELP,VR,DVR,VP,DVP,T)
     IMPLICIT NONE
     TYPE(ELEMENT),TARGET, INTENT(INOUT) ::EL
     TYPE(ELEMENTp),TARGET, INTENT(INOUT) ::ELp
     real(dp),OPTIONAL :: VR
-    real(dp),OPTIONAL :: DVR
+    real(dp),OPTIONAL :: DVR,T
     TYPE(REAL_8),OPTIONAL :: VP
     TYPE(REAL_8),OPTIONAL :: DVP
     INTEGER N
+    !     DV=(XS%AC(n)%X(1)*COS(EL%theta_ac)-XS%AC(n)%X(2)*SIN(EL%theta_ac))
+    !     V=EL%DC_ac+EL%A_ac*DV
+    !     DV=el%D_ac*DV
+    !CALL transfer_ANBN(EL,ELP,VR=V,DVR=DV)
 
     if(EL%KIND==kind1) return
 
     if(associated(EL%ramp)) then
+    
+      if(EL%KIND/=kind15) then
           do n=1,EL%P%NMUL
              EL%BN(N)= EL%ramp%table(0)%bn(n)
              EL%AN(N)= EL%ramp%table(0)%an(n)
              ELP%BN(N)= ELP%ramp%table(0)%bn(n)
              ELP%AN(N)= ELP%ramp%table(0)%an(n)
           enddo  
-
-          if(EL%ramp%table(0)%b_t/=0.0_dp) then
-              if(EL%parent_fibre%PATCH%TIME==0) EL%parent_fibre%PATCH%TIME=2
-              if(EL%parent_fibre%PATCH%TIME==1) EL%parent_fibre%PATCH%TIME=3
-              EL%parent_fibre%PATCH%b_T=EL%ramp%table(0)%b_t
-            else
-              if(EL%parent_fibre%PATCH%TIME==2) EL%parent_fibre%PATCH%TIME=0
-              if(EL%parent_fibre%PATCH%TIME==3) EL%parent_fibre%PATCH%TIME=1
-            EL%parent_fibre%PATCH%b_T=0.0_dp
-        endif
+      else
+            EL%VOLT=EL%ramp%table(0)%bn(1)*COS(twopi*EL%ramp%table(0)%an(1)*T/clight+EL%ramp%table(0)%bn(2))+EL%ramp%table(0)%an(2)
+           ELP%VOLT=EL%ramp%table(0)%bn(1)*COS(twopi*EL%ramp%table(0)%an(1)*T/clight+EL%ramp%table(0)%bn(2))+EL%ramp%table(0)%an(2)
+         write(6,*) " volt ",el%volt,EL%ramp%table(0)%bn(1)
+      endif
+      
+      if(EL%ramp%table(0)%b_t/=0.0_dp) then
+          if(EL%parent_fibre%PATCH%TIME==0) EL%parent_fibre%PATCH%TIME=2
+          if(EL%parent_fibre%PATCH%TIME==1) EL%parent_fibre%PATCH%TIME=3
+          EL%parent_fibre%PATCH%b_T=EL%ramp%table(0)%b_t
+        else
+          if(EL%parent_fibre%PATCH%TIME==2) EL%parent_fibre%PATCH%TIME=0
+          if(EL%parent_fibre%PATCH%TIME==3) EL%parent_fibre%PATCH%TIME=1
+        EL%parent_fibre%PATCH%b_T=0.0_dp
+      endif
           
     else
 
-    IF(EL%P%NMUL>=1) THEN
-       if(present(VR))then
+      IF(EL%P%NMUL>=1) THEN
+        if(present(VR))then
           do n=1,EL%P%NMUL
              EL%BN(N)= vR*EL%D0_BN(N)+DVR*EL%D_BN(N) 
              EL%AN(N)= vR*EL%D0_AN(N)+DVR*EL%D_AN(N)
              ELP%BN(N)= vR*EL%D0_BN(N)+DVR*EL%D_BN(N)
              ELP%AN(N)= vR*EL%D0_AN(N)+DVR*EL%D_AN(N)
           enddo
-       else
+        else
           do n=1,EL%P%NMUL
              EL%BN(N)= vp*EL%D0_BN(N)+DVp*EL%D_BN(N)
              EL%AN(N)= vp*EL%D0_AN(N)+DVp*EL%D_AN(N)
@@ -2002,7 +2089,7 @@ CONTAINS
     p=>r%start
 
     do N=1,R%N
-       IF(P%MAG%SLOW_AC) THEN
+       IF(P%MAG%SLOW_AC/=0) THEN
           CALL restore_ANBN_SINGLE(P%MAG,P%MAGP)
        ELSE
           CYCLE
@@ -2069,20 +2156,44 @@ CONTAINS
     p=>r%start
 
     do N=1,R%N
-       IF(P%MAG%SLOW_AC) CALL force_restore_ANBN_SINGLE(P%MAG,P%MAGP)
+       IF(P%MAG%SLOW_AC/=0) CALL force_restore_ANBN_SINGLE(P%MAG,P%MAGP)
        P=>P%NEXT
     ENDDO
 
   END SUBROUTINE force_restore_ANBN
 
 
-  SUBROUTINE ADDR_ANBN(EL,NM,F,V)
+  SUBROUTINE ADD_ANBNR(EL,NM,F,V,electric)
     IMPLICIT NONE
     TYPE(ELEMENT), INTENT(INOUT) ::EL
     real(dp), INTENT(IN) ::V
     INTEGER, INTENT(IN) ::NM,F
     INTEGER I,N
     real(dp), ALLOCATABLE,dimension(:)::AN,BN
+    logical(lp), optional :: electric
+    logical(lp) elec
+    elec=my_false
+    if(present(electric)) elec=electric
+    if(elec.and.(.not.EL%KIND==kind10)) return
+
+if(elec) then
+    N=NM
+    IF(NM<0) N=-N
+    if(N>SECTOR_NMUL_max) THEN
+     WRITE(6,*) " ADD_ANBNR NOT PERMITTED N>SECTOR_NMUL  " ,N,SECTOR_NMUL_max
+     STOP
+    ENDIF
+    ! ALREADY THERE
+       IF(NM>0) THEN
+          EL%TP10%BE(N)= F*EL%TP10%BE(N)+V*volt_i
+       ELSE
+          EL%TP10%AE(N)= F*EL%TP10%AE(N)+V*volt_i
+       ENDIF
+       if(el%kind==kind10) then
+          call GETAEBE(EL%TP10)
+       endif
+else
+
     if(EL%KIND==kind1) return
     N=NM
     IF(NM<0) N=-N
@@ -2094,7 +2205,11 @@ CONTAINS
           EL%AN(N)= F*EL%AN(N)+V
        ENDIF
        if(el%kind==kind10) then
-          call GETANBN(EL%TP10)
+        if(el%electric) then
+        call GETAEBE(EL%TP10)
+        else
+         call GETANBN(EL%TP10)
+        endif
        endif
        if(el%kind==kind7) then
           call GETMAT7(EL%T7)
@@ -2159,7 +2274,11 @@ CONTAINS
     CASE(KIND10)
        EL%TP10%AN=>EL%AN
        EL%TP10%BN=>EL%BN
-       call GETANBN(EL%TP10)
+       if(el%electric) then
+        call GETAEBE(EL%TP10)
+       else
+        call GETANBN(EL%TP10)
+       endif
     CASE(KIND16,KIND20)
        EL%K16%AN=>EL%AN
        EL%K16%BN=>EL%BN
@@ -2179,13 +2298,13 @@ CONTAINS
        EL%HE22%AN=>EL%AN
        EL%HE22%BN=>EL%BN
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='((1X,A72,/,1X,A72))'
-       write(w_p%c(1),'(A13,A24,A27)')" THIS MAGNET ", MYTYPE(EL%KIND), " CANNOT ACCEPT ANs AND BNs "
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='((1X,A72,/,1X,A72))'
+       write(*,'(A13,A24,A27)')" THIS MAGNET ", MYTYPE(EL%KIND), " CANNOT ACCEPT ANs AND BNs "
        ! call !write_e(988)
     END SELECT
-
+endif
 
     !    if(el%kind==kind10) then
     !    call GETANBN(EL%TP10)
@@ -2194,15 +2313,38 @@ CONTAINS
     !       call GETMAT7(EL%T7)
     !    endif
 
-  END SUBROUTINE ADDR_ANBN
+  END SUBROUTINE ADD_ANBNR
 
-  SUBROUTINE ADDP_ANBN(EL,NM,F,V)
+  SUBROUTINE ADD_ANBNP(EL,NM,F,V,electric)
     IMPLICIT NONE
     TYPE(ELEMENTP), INTENT(INOUT) ::EL
     real(dp), INTENT(IN) ::V
     INTEGER, INTENT(IN) ::NM,F
     INTEGER I,N
     TYPE(REAL_8), ALLOCATABLE,dimension(:)::AN,BN
+    logical(lp), optional :: electric
+    logical(lp) elec
+    elec=my_false
+    if(present(electric)) elec=electric
+    if(elec.and.(.not.EL%KIND==kind10)) return
+if(elec) then
+    N=NM
+    IF(NM<0) N=-N
+    if(N>SECTOR_NMUL_max) THEN
+     WRITE(6,*) " ADD_ANBNP NOT PERMITTED N>SECTOR_NMUL  " ,N,SECTOR_NMUL_max
+     STOP
+    ENDIF
+    ! ALREADY THERE
+       IF(NM>0) THEN
+          EL%TP10%BE(N)= F*EL%TP10%BE(N)+V
+       ELSE
+          EL%TP10%AE(N)= F*EL%TP10%AE(N)+V
+       ENDIF
+       if(el%kind==kind10) then
+          call GETAEBE(EL%TP10)
+       endif
+else
+
     if(EL%KIND==kind1) return
 
     N=NM
@@ -2210,12 +2352,16 @@ CONTAINS
     ! ALREADY THERE
     IF(EL%P%NMUL>=N) THEN
        IF(NM>0) THEN
-          EL%BN(N)= F*EL%BN(N)+V
+          EL%BN(N)= F*EL%BN(N)+V*volt_i
        ELSE
-          EL%AN(N)= F*EL%AN(N)+V
+          EL%AN(N)= F*EL%AN(N)+V*volt_i
        ENDIF
        if(el%kind==kind10) then
-          call GETANBN(EL%TP10)
+        if(el%electric) then
+        call GETAEBE(EL%TP10)
+        else
+         call GETANBN(EL%TP10)
+        endif
        endif
        if(el%kind==kind7) then
           call GETMAT7(EL%T7)     !etienne
@@ -2278,7 +2424,11 @@ CONTAINS
     CASE(KIND10)
        EL%TP10%AN=>EL%AN
        EL%TP10%BN=>EL%BN
-       call GETANBN(EL%TP10)
+        if(el%electric) then
+        call GETAEBE(EL%TP10)
+        else
+         call GETANBN(EL%TP10)
+        endif
     CASE(KIND16,KIND20)
        EL%K16%AN=>EL%AN
        EL%K16%BN=>EL%BN
@@ -2298,13 +2448,13 @@ CONTAINS
        EL%WI%AN=>EL%AN
        EL%WI%BN=>EL%BN
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='((1X,A72,/,1X,A72))'
-       write(w_p%c(1),'(A13,A24,A27)')" THIS MAGNET ", MYTYPE(EL%KIND), " CANNOT ACCEPT ANs AND BNs "
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='((1X,A72,/,1X,A72))'
+       write(*,'(A13,A24,A27)')" THIS MAGNET ", MYTYPE(EL%KIND), " CANNOT ACCEPT ANs AND BNs "
        ! call !write_e(987)
     END SELECT
-
+ENDIF
     !if(el%kind==kind10) then
     !call GETANBN(EL%TP10)
     !endif
@@ -2312,7 +2462,7 @@ CONTAINS
     !   call GETMAT7(EL%T7)
     !endif
 
-  END SUBROUTINE ADDP_ANBN
+  END SUBROUTINE ADD_ANBNP
 
 
 
@@ -2322,13 +2472,13 @@ CONTAINS
     nullify(EL%KIND);
     nullify(EL%PLOT);
     nullify(EL%NAME);nullify(EL%vorname);nullify(EL%electric);
-
+nullify(EL%filef,el%fileb);
 !    nullify(EL%PERMFRINGE);
     nullify(EL%L);
     nullify(EL%AN);nullify(EL%BN);
     nullify(EL%FINT);nullify(EL%HGAP);
     nullify(EL%H1);nullify(EL%H2);
-    nullify(EL%VA);nullify(EL%VS);
+    nullify(EL%VA);nullify(EL%VS);nullify(EL%ene);
     nullify(EL%VOLT);nullify(EL%FREQ);nullify(EL%PHAS);nullify(EL%DELTA_E);
     nullify(EL%lag);
     nullify(EL%B_SOL);
@@ -2370,6 +2520,7 @@ CONTAINS
     nullify(EL%SIAMESE_FRAME);
     nullify(EL%girder_FRAME);
     nullify(EL%doko);
+    nullify(EL%forward,EL%backWARD,el%usef,el%useb,el%skip_ptc_f,el%skip_ptc_b,el%do1mapf,el%do1mapb);   
   end SUBROUTINE null_EL
 
   SUBROUTINE null_ELp(EL)
@@ -2421,6 +2572,7 @@ CONTAINS
     nullify(EL%PA);
     nullify(EL%P);
     nullify(EL%PARENT_FIBRE);
+    nullify(EL%forward,EL%backWARD,el%usef,el%useb,el%skip_ptc_f,el%skip_ptc_b,el%do1mapf,el%do1mapb);
   end SUBROUTINE null_ELp
 
 
@@ -2437,6 +2589,7 @@ CONTAINS
        DEALLOCATE(EL%even);
        DEALLOCATE(EL%NAME);DEALLOCATE(EL%VORNAME);DEALLOCATE(EL%electric);
        DEALLOCATE(EL%L);
+        DEALLOCATE(EL%filef,el%fileb);
        DEALLOCATE(EL%MIS); !DEALLOCATE(EL%EXACTMIS);
        call kill(EL%P)    ! AIMIN MS 4.0
 !       DEALLOCATE(EL%PERMFRINGE);
@@ -2450,6 +2603,7 @@ CONTAINS
        IF(ASSOCIATED(EL%H2)) DEALLOCATE(EL%H2)
        IF(ASSOCIATED(EL%VA)) DEALLOCATE(EL%VA)
        IF(ASSOCIATED(EL%VS)) DEALLOCATE(EL%VS)
+              IF(ASSOCIATED(EL%ene)) DEALLOCATE(EL%ene)
        IF(ASSOCIATED(EL%VOLT)) DEALLOCATE(EL%VOLT)
        IF(ASSOCIATED(EL%lag)) DEALLOCATE(EL%lag)
        IF(ASSOCIATED(EL%FREQ)) DEALLOCATE(EL%FREQ)
@@ -2467,7 +2621,11 @@ CONTAINS
        IF(ASSOCIATED(EL%D0_BN)) DEALLOCATE(EL%D0_BN)
        IF(ASSOCIATED(EL%THIN)) DEALLOCATE(EL%THIN)
        IF(ASSOCIATED(EL%d0)) DEALLOCATE(EL%d0)       ! drift
-       IF(ASSOCIATED(EL%K2)) DEALLOCATE(EL%K2)       ! INTEGRATOR
+!       IF(ASSOCIATED(EL%K2)) DEALLOCATE(EL%K2)       ! INTEGRATOR
+       IF(ASSOCIATED(EL%K2)) then
+          EL%K2=-1
+        DEALLOCATE(EL%K2)       ! SOLENOID
+       endif
        !       IF(ASSOCIATED(EL%K16)) DEALLOCATE(EL%K16)       ! INTEGRATOR
        !       IF(ASSOCIATED(EL%K3)) DEALLOCATE(EL%K3)       !  THIN LENS
        IF(ASSOCIATED(EL%K3)) then
@@ -2482,7 +2640,10 @@ CONTAINS
           DEALLOCATE(EL%K3)
        endif
 
-       IF(ASSOCIATED(EL%S5)) DEALLOCATE(EL%S5)       ! SOLENOID
+       IF(ASSOCIATED(EL%S5)) then
+          EL%S5=-1
+        DEALLOCATE(EL%S5)       ! SOLENOID
+       endif
        !       IF(ASSOCIATED(EL%T6)) DEALLOCATE(EL%T6)       ! INTEGRATOR
        !       IF(ASSOCIATED(EL%T7)) DEALLOCATE(EL%T7)       ! INTEGRATOR
        IF(ASSOCIATED(EL%S8)) DEALLOCATE(EL%S8)       ! NORMAL SMI
@@ -2548,6 +2709,24 @@ CONTAINS
           DEALLOCATE(EL%WI)
        ENDIF
 
+       IF(ASSOCIATED(EL%forward))        then
+          call kill(EL%forward)     
+          DEALLOCATE(EL%forward)
+       ENDIF
+
+
+       IF(ASSOCIATED(EL%backWARD))        then
+          call kill(EL%backWARD)     
+          DEALLOCATE(EL%backWARD)
+       ENDIF
+
+    IF(ASSOCIATED(EL%skip_ptc_f))DEALLOCATE(EL%skip_ptc_f)
+    IF(ASSOCIATED(EL%skip_ptc_b))DEALLOCATE(EL%skip_ptc_b)
+    IF(ASSOCIATED(el%do1mapf))DEALLOCATE(el%do1mapf)
+    IF(ASSOCIATED(el%do1mapb))DEALLOCATE(el%do1mapb)
+    IF(ASSOCIATED(el%usef))DEALLOCATE(el%usef)
+    IF(ASSOCIATED(el%useb))DEALLOCATE(el%useb)
+
        IF(ASSOCIATED(EL%ramp))        then
           el%ramp=-1     !USER DEFINED MAGNET
           DEALLOCATE(EL%ramp)
@@ -2584,8 +2763,13 @@ CONTAINS
        ALLOCATE(EL%RECUT);EL%RECUT=MY_TRUE;
        ALLOCATE(EL%even);EL%even=MY_false;
        ALLOCATE(EL%NAME);ALLOCATE(EL%VORNAME);ALLOCATE(EL%electric);
+       ALLOCATE(EL%filef,el%fileb);
+       ALLOCATE(EL%skip_ptc_f);   EL%skip_ptc_f=0;   ALLOCATE(EL%skip_ptc_b);EL%skip_ptc_b=0  ;
+       ALLOCATE(el%do1mapf);   el%do1mapf=.false. ;   ALLOCATE(el%do1mapb);el%do1mapb=.false.  ;
+  ALLOCATE(el%usef);   el%usef=.false. ;   ALLOCATE(el%useb);el%useb=.false.  ;
+
        EL%NAME=' ';EL%NAME=TRIM(ADJUSTL(EL%NAME));
-       EL%VORNAME=' ';EL%VORNAME=TRIM(ADJUSTL(EL%VORNAME));
+       EL%VORNAME=' ';EL%VORNAME=TRIM(ADJUSTL(EL%VORNAME));el%filef=' ';el%fileb=' ';
        EL%electric=solve_electric
 !       ALLOCATE(EL%PERMFRINGE);EL%PERMFRINGE=.FALSE.;  ! PART OF A STATE INITIALIZED BY EL=DEFAULT
        ALLOCATE(EL%L);EL%L=0.0_dp;
@@ -2600,16 +2784,17 @@ CONTAINS
        !       EL=DEFAULT;
        !   ANBN
        CALL ZERO_ANBN(EL,I)
-       ALLOCATE(EL%FINT);EL%FINT=0.5_dp;
-       ALLOCATE(EL%HGAP);EL%HGAP=0.0_dp;
+       ALLOCATE(EL%FINT(2));EL%FINT(1)=0.5_dp;EL%FINT(2)=0.5_dp;
+       ALLOCATE(EL%HGAP(2));EL%HGAP(1)=0.0_dp;EL%HGAP(2)=0.0_dp;
        ALLOCATE(EL%H1);EL%H1=0.0_dp;
        ALLOCATE(EL%H2);EL%H2=0.0_dp;
        ALLOCATE(EL%VA);EL%VA=0.0_dp;
        ALLOCATE(EL%VS);EL%VS=0.0_dp;
+              ALLOCATE(EL%ene);EL%ene=0.0_dp;
        !       ALLOCATE(EL%theta_ac); EL%theta_ac= zero ;
        !       ALLOCATE(EL%a_ac);  EL%a_ac = zero;
        !       ALLOCATE(EL%DC_ac); EL%DC_ac= zero ;
-       ALLOCATE(EL%slow_ac); EL%slow_ac=.false. ;
+       ALLOCATE(EL%slow_ac); EL%slow_ac=0 ;
     ENDIF
 
   END SUBROUTINE ZERO_EL
@@ -2634,7 +2819,11 @@ CONTAINS
        ENDIF
 
        IF(ASSOCIATED(EL%d0)) DEALLOCATE(EL%d0)       ! drift
-       IF(ASSOCIATED(EL%K2)) DEALLOCATE(EL%K2)       ! INTEGRATOR
+!       IF(ASSOCIATED(EL%K2)) DEALLOCATE(EL%K2)       ! INTEGRATOR
+       IF(ASSOCIATED(EL%K2)) then
+          EL%K2=-1
+        DEALLOCATE(EL%K2)       ! SOLENOID
+       endif
        !       IF(ASSOCIATED(EL%K16)) DEALLOCATE(EL%K16)       ! INTEGRATOR
        !       IF(ASSOCIATED(EL%K3)) DEALLOCATE(EL%K3)       !  THIN LENS
        IF(ASSOCIATED(EL%K3)) then
@@ -2684,6 +2873,7 @@ CONTAINS
        ENDIF
 
        IF(ASSOCIATED(EL%S5)) THEN
+          EL%S5=-1
           DEALLOCATE(EL%S5)       ! solenoid
           !          CALL KILL(EL%B_SOL)    ! sagan
           !         IF(ASSOCIATED(EL%B_SOL)) DEALLOCATE(EL%B_SOL)     ! sagan
@@ -2745,6 +2935,22 @@ CONTAINS
           DEALLOCATE(EL%WI)
        ENDIF
 
+       IF(ASSOCIATED(EL%forward))        then
+          call kill(EL%forward)     
+          DEALLOCATE(EL%forward)
+       ENDIF
+
+       IF(ASSOCIATED(EL%backWARD))        then
+          call kill(EL%backWARD)     
+          DEALLOCATE(EL%backWARD)
+       ENDIF
+
+    IF(ASSOCIATED(EL%skip_ptc_f))DEALLOCATE(EL%skip_ptc_f)
+    IF(ASSOCIATED(EL%skip_ptc_b))DEALLOCATE(EL%skip_ptc_b)    
+    IF(ASSOCIATED(el%do1mapb))DEALLOCATE(el%do1mapb)
+    IF(ASSOCIATED(el%do1mapf))DEALLOCATE(el%do1mapf)
+    IF(ASSOCIATED(el%usef))DEALLOCATE(el%usef)
+    IF(ASSOCIATED(el%useb))DEALLOCATE(el%useb)
 
        IF(ASSOCIATED(EL%ramp))        then
           el%ramp=-1     !USER DEFINED MAGNET
@@ -2830,6 +3036,10 @@ CONTAINS
 
        ALLOCATE(EL%KIND);EL%KIND=0;ALLOCATE(EL%KNOB);EL%KNOB=.FALSE.;
        ALLOCATE(EL%NAME);ALLOCATE(EL%VORNAME);ALLOCATE(EL%electric);
+       ALLOCATE(EL%skip_ptc_f);   EL%skip_ptc_f=0 ;   ALLOCATE(EL%skip_ptc_b);EL%skip_ptc_b=0  ;
+       ALLOCATE(el%do1mapb);   el%do1mapb=.false. ;   ALLOCATE(el%do1mapf);el%do1mapf=.false.  ;
+  ALLOCATE(el%usef);   el%usef=.false. ;   ALLOCATE(el%useb);el%useb=.false.  ;
+
        EL%NAME=' ';EL%NAME=TRIM(ADJUSTL(EL%NAME));
        EL%VORNAME=' ';EL%VORNAME=TRIM(ADJUSTL(EL%VORNAME));
        EL%electric=solve_electric
@@ -2844,8 +3054,8 @@ CONTAINS
        !      EL=DEFAULT;
        !   ANBN
        CALL ZERO_ANBN(EL,I)
-       ALLOCATE(EL%FINT);CALL ALLOC(EL%FINT);EL%FINT=0.5_dp;
-       ALLOCATE(EL%HGAP);CALL ALLOC(EL%HGAP);EL%HGAP=0.0_dp;
+       ALLOCATE(EL%FINT(2));CALL ALLOC(EL%FINT);EL%FINT(1)=0.5_dp;EL%FINT(2)=0.5_dp;
+       ALLOCATE(EL%HGAP(2));CALL ALLOC(EL%HGAP);EL%HGAP(1)=0.0_dp;EL%HGAP(2)=0.0_dp;
        ALLOCATE(EL%H1);CALL ALLOC(EL%H1);EL%H1=0.0_dp;
        ALLOCATE(EL%H2);CALL ALLOC(EL%H2);EL%H2=0.0_dp;
        ALLOCATE(EL%VA);CALL ALLOC(EL%VA);EL%VA=0.0_dp;
@@ -2853,7 +3063,7 @@ CONTAINS
        !       ALLOCATE(EL%theta_ac);CALL ALLOC(EL%theta_ac); EL%theta_ac= zero ;
        !       ALLOCATE(EL%a_ac);CALL ALLOC(EL%a_ac);  EL%a_ac = zero;
        !       ALLOCATE(EL%DC_ac); EL%DC_ac= zero ;
-       ALLOCATE(EL%slow_ac); EL%slow_ac=.false. ;
+       ALLOCATE(EL%slow_ac); EL%slow_ac=0 ;
     ENDIF
 
   END SUBROUTINE ZERO_ELP
@@ -2893,8 +3103,10 @@ CONTAINS
     ELP%vorname=EL%vorname
     ELP%KIND=EL%KIND
     ELP%L=EL%L
-    ELP%FINT=EL%FINT
-    ELP%HGAP=EL%HGAP
+    ELP%FINT(1)=EL%FINT(1)
+    ELP%FINT(2)=EL%FINT(2)
+    ELP%HGAP(1)=EL%HGAP(1)
+    ELP%HGAP(2)=EL%HGAP(2)
     ELP%H1=EL%H1
     ELP%H2=EL%H2
     ELP%VA=EL%VA
@@ -2989,6 +3201,8 @@ CONTAINS
 
     IF(EL%KIND==KIND1) CALL SETFAMILY(ELP)
     IF(EL%KIND==KIND2) then
+  !     write(6,*) associated(elp%k2)
+  !     ELP%K2=0   ! new 2014.8.5
        CALL SETFAMILY(ELP)
        ELP%K2%F=EL%K2%F
     ENDIF
@@ -3014,6 +3228,10 @@ CONTAINS
        ELP%K3%thin_v_angle=EL%K3%thin_v_angle
        ELP%K3%patch=EL%K3%patch
        ELP%K3%ls=EL%K3%ls
+       ELP%k3%DX=EL%k3%DX
+       ELP%k3%DY=EL%k3%DY
+       ELP%k3%PITCH_X=EL%k3%PITCH_X
+       ELP%k3%PITCH_Y=EL%k3%PITCH_Y
     ENDIF
 
 
@@ -3045,6 +3263,19 @@ CONTAINS
        ELP%C4%Always_on=EL%C4%Always_on
     ENDIF
 
+    IF(EL%KIND==kindsuperdrift) THEN         !
+       if(.not.ASSOCIATED(ELP%SDR)) ALLOCATE(ELP%SDR)
+       ELP%SDR=0
+
+       CALL SETFAMILY(ELP)
+
+       ELP%SDR%a_x1=EL%SDR%a_x1
+       ELP%SDR%a_x2=EL%SDR%a_x2
+       ELP%SDR%D=EL%SDR%D
+       ELP%SDR%ANG=EL%SDR%ANG
+
+
+    ENDIF
     IF(EL%KIND==KIND21) THEN         !
        if(.not.ASSOCIATED(ELP%CAV21)) ALLOCATE(ELP%CAV21)
        ELP%CAV21=0
@@ -3064,6 +3295,7 @@ CONTAINS
        ELP%CAV21%DPHAS = EL%CAV21%DPHAS
        ELP%CAV21%cavity_totalpath = EL%CAV21%cavity_totalpath
        ELP%CAV21%phase0 = EL%CAV21%phase0
+       ELP%CAV21%Always_on=EL%CAV21%Always_on
     ENDIF
 
     IF(EL%KIND==KIND22) THEN         !
@@ -3075,38 +3307,30 @@ CONTAINS
        ELP%FREQ = EL%FREQ
        ELP%PHAS = EL%PHAS
        CALL SETFAMILY(ELP)
+       ELp%HE22%N_BESSEL=EL%HE22%N_BESSEL 
+       do i=1,6
+        ELp%HE22%fake_shift(i)=EL%HE22%fake_shift(i)
+       enddo
     ENDIF
 
     IF(EL%KIND==KIND5) THEN         !
        if(.not.ASSOCIATED(ELP%B_SOL)) ALLOCATE(ELP%B_SOL       )
        CALL ALLOC( ELP%B_SOL)
+       if(.not.ASSOCIATED(ELP%s5)) ALLOCATE(ELP%s5)
+       ELP%S5=0 ! 2014.8.5
        ELP%B_SOL = EL%B_SOL
        CALL SETFAMILY(ELP)
+       ELP%S5%DX=EL%S5%DX
+       ELP%S5%DY=EL%S5%DY
+       ELP%S5%PITCH_X=EL%S5%PITCH_X
+       ELP%S5%PITCH_Y=EL%S5%PITCH_Y
     ENDIF
 
-    !    IF(EL%KIND==KIND17) THEN         !
-    !       !       if(.not.ASSOCIATED(ELP%S17)) ALLOCATE(ELP%S17)
-    !       if(.not.ASSOCIATED(ELP%B_SOL)) ALLOCATE(ELP%B_SOL       )
-    !       CALL ALLOC( ELP%B_SOL) !! *** This line added *** Sagan
-    !       ELP%B_SOL = EL%B_SOL
-    !       CALL SETFAMILY(ELP)
-    !    ENDIF
+
 
     IF(EL%KIND==KIND6) CALL SETFAMILY(ELP)
 
-    !    IF(EL%KIND==KIND22) THEN
-    !       i=0;j=0;k=0;l=0;
-    !       if(associated(EL%M22%T_REV)) i=EL%M22%T_REV%N
-    !       if(associated(EL%M22%T_rad_REV)) j=EL%M22%T_rad_REV%N
-    !       if(associated(EL%M22%T)) k=EL%M22%T%N
-    !       if(associated(EL%M22%T_rad)) l=EL%M22%T_rad%N
-    !       CALL SETFAMILY(ELP,NTOT=k,ntot_rad=l,NTOT_REV=i,ntot_rad_REV=j,ND2=6)
-    !       ELP%M22%DELTAMAP=EL%M22%DELTAMAP
-    !       if(associated(EL%M22%T))  CALL COPY_TREE(EL%M22%T,ELP%M22%T)
-    !       if(associated(EL%M22%T_rad)) CALL COPY_TREE(EL%M22%T_rad,ELP%M22%T_rad)
-    !       if(associated(EL%M22%T_REV)) CALL COPY_TREE(EL%M22%T_REV,ELP%M22%T_REV)
-    !       if(associated(EL%M22%T_rad_REV)) CALL COPY_TREE(EL%M22%T_rad_REV,ELP%M22%T_rad_REV)
-    !    ENDIF
+
 
     IF(EL%KIND==KIND7) THEN         !
        GEN=.FALSE.
@@ -3136,13 +3360,19 @@ CONTAINS
        ELP%TP10%DRIFTKICK=EL%TP10%DRIFTKICK
        ELP%TP10%F=EL%TP10%F
        IF(EL%ELECTRIC) THEN
-        ELP%TP10%E_X=EL%TP10%E_X
-        ELP%TP10%E_Y=EL%TP10%E_Y
-        ELP%TP10%PHI=EL%TP10%PHI
-        DO I=1,NO_E
+ !     do i=1,S_E%N_MONO
+ !       ELP%TP10%E_X(I)=EL%TP10%E_X(i)
+ !       ELP%TP10%E_Y(I)=EL%TP10%E_Y(I)
+ !     enddo
+ !     do i=1,S_E%N_MONO
+ !       ELP%TP10%PHI(I)=EL%TP10%PHI(I)
+ !     enddo
+
+        DO I=1,SECTOR_NMUL_max     
          ELP%TP10%AE(I)=EL%TP10%AE(I)     
          ELP%TP10%BE(I)=EL%TP10%BE(I)     
-        enddo        
+        enddo   
+        call GETAEBE(ELP%TP10)     
        ENDIF
     ENDIF
 
@@ -3194,14 +3424,51 @@ CONTAINS
     
     
     IF(EL%KIND==KINDPA) THEN         !
-       CALL SETFAMILY(ELP,EL%PA%B)  !,EL%PA%ax,EL%PA%ay)
+       CALL SETFAMILY(ELP,t=EL%PA%B)  !,EL%PA%angc,EL%PA%xc,EL%PA%dc,EL%PA%h)  !,EL%PA%ax,EL%PA%ay)
        CALL COPY(EL%PA,ELP%PA)
+    ENDIF
+    IF(EL%KIND==KINDABELL) THEN 
+       M_ABELL=EL%ab%M
+       N_ABELL=EL%ab%N       !
+       CALL SETFAMILY(ELP)  !,EL%PA%angc,EL%PA%xc,EL%PA%dc,EL%PA%h)  !,EL%PA%ax,EL%PA%ay)
+       CALL COPY(EL%ab,ELP%ab)
     ENDIF
     !    IF(ASSOCIATED(EL%PARENT_FIBRE))        then
     !       ELP%PARENT_FIBRE=>EL%PARENT_FIBRE
     !    ENDIF
 
+       IF(ASSOCIATED(EL%backWARD))        then
+         if(associated(elp%backWARD)) then
+          call kill(ELp%backWARD)     
+          DEALLOCATE(ELp%backWARD)
+         endif
+         allocate(ELp%backWARD(3))
+         do i=1,3
+         call alloc_tree(ELp%backWARD(i),EL%backWARD(i)%n,EL%backWARD(i)%np)
+         enddo
+         call COPY_TREE_N(EL%backWARD,ELp%backWARD)
 
+       ENDIF
+
+
+       IF(ASSOCIATED(EL%forward))        then
+         if(associated(elp%forward)) then
+          call kill(ELp%forward)     
+          DEALLOCATE(ELp%forward)
+         endif
+         allocate(elp%forward(3))
+         do i=1,3
+         call alloc_tree(elp%forward(i),el%forward(i)%n,el%forward(i)%np)
+         enddo
+         call COPY_TREE_N(EL%forward,ELp%forward)
+
+       ENDIF
+       ELp%skip_ptc_f=EL%skip_ptc_f
+       ELp%skip_ptc_b=EL%skip_ptc_b
+       elp%do1mapf=el%do1mapf
+       elp%do1mapb=el%do1mapb
+          ELp%usef= EL%usef
+          ELp%useb= EL%useb
   END SUBROUTINE copy_el_elp
 
 
@@ -3221,8 +3488,10 @@ CONTAINS
     ELP%vorname=EL%vorname
     ELP%KIND=EL%KIND
     ELP%L=EL%L
-    ELP%FINT=EL%FINT
-    ELP%HGAP=EL%HGAP
+    ELP%FINT(1)=EL%FINT(1)
+    ELP%FINT(2)=EL%FINT(2)
+    ELP%HGAP(1)=EL%HGAP(1)
+    ELP%HGAP(2)=EL%HGAP(2)
     ELP%H1=EL%H1
     ELP%H2=EL%H2
     ELP%VA=EL%VA
@@ -3307,6 +3576,7 @@ CONTAINS
     IF(EL%KIND==KIND1) CALL SETFAMILY(ELP)
 
     IF(EL%KIND==KIND2) then
+ !      ELP%K2=0   ! new 2014.8.5
        CALL SETFAMILY(ELP)
        ELP%K2%F=EL%K2%F
     ENDIF
@@ -3331,6 +3601,10 @@ CONTAINS
        ELP%K3%thin_v_angle=EL%K3%thin_v_angle
        ELP%K3%patch=EL%K3%patch
        ELP%K3%ls=EL%K3%ls
+       ELP%k3%DX=EL%k3%DX
+       ELP%k3%DY=EL%k3%DY
+       ELP%k3%PITCH_X=EL%k3%PITCH_X
+       ELP%k3%PITCH_Y=EL%k3%PITCH_Y
     ENDIF
 
 
@@ -3359,6 +3633,19 @@ CONTAINS
        ELP%C4%Always_on=EL%C4%Always_on
     ENDIF
 
+    IF(EL%KIND==kindsuperdrift) THEN         !
+       if(.not.ASSOCIATED(ELP%SDR)) ALLOCATE(ELP%SDR)
+       ELP%SDR=0
+
+       CALL SETFAMILY(ELP)
+
+       ELP%SDR%a_x1=EL%SDR%a_x1
+       ELP%SDR%a_x2=EL%SDR%a_x2
+       ELP%SDR%D=EL%SDR%D
+       ELP%SDR%ANG=EL%SDR%ANG
+
+    ENDIF
+
     IF(EL%KIND==KIND21) THEN         !
        if(.not.ASSOCIATED(ELP%CAV21)) ALLOCATE(ELP%CAV21)
        ELP%CAV21=0
@@ -3375,6 +3662,7 @@ CONTAINS
        ELP%CAV21%DPHAS = EL%CAV21%DPHAS
        ELP%CAV21%cavity_totalpath = EL%CAV21%cavity_totalpath
        ELP%CAV21%phase0 = EL%CAV21%phase0
+       ELP%CAV21%Always_on=EL%CAV21%Always_on
     ENDIF
 
     IF(EL%KIND==KIND22) THEN         !
@@ -3384,13 +3672,23 @@ CONTAINS
        ELP%FREQ = EL%FREQ
        ELP%PHAS = EL%PHAS
        CALL SETFAMILY(ELP)
+       ELp%HE22%N_BESSEL=EL%HE22%N_BESSEL
+       do i=1,6
+        ELp%HE22%fake_shift(i)=EL%HE22%fake_shift(i)
+       enddo
     ENDIF
 
     IF(EL%KIND==KIND5) THEN         !
        if(.not.ASSOCIATED(ELP%S5)) ALLOCATE(ELP%S5)
        if(.not.ASSOCIATED(ELP%B_SOL)) ALLOCATE(ELP%B_SOL       )
+
+       ELP%S5=0 ! 2014.8.5      
        ELP%B_SOL = EL%B_SOL
        CALL SETFAMILY(ELP)
+       ELP%S5%DX=EL%S5%DX
+       ELP%S5%DY=EL%S5%DY
+       ELP%S5%PITCH_X=EL%S5%PITCH_X
+       ELP%S5%PITCH_Y=EL%S5%PITCH_Y
     ENDIF
 
     !    IF(EL%KIND==KIND17) THEN         !
@@ -3447,13 +3745,19 @@ CONTAINS
        ELP%TP10%DRIFTKICK=EL%TP10%DRIFTKICK
        ELP%TP10%F=EL%TP10%F
        IF(EL%ELECTRIC) THEN
-        ELP%TP10%E_X=EL%TP10%E_X
-        ELP%TP10%E_Y=EL%TP10%E_Y
-        ELP%TP10%PHI=EL%TP10%PHI
-        DO I=1,NO_E
+ !     do i=1,S_E%N_MONO
+ !       ELP%TP10%E_X(I)=EL%TP10%E_X(i)
+ !       ELP%TP10%E_Y(I)=EL%TP10%E_Y(I)
+ !     enddo
+ !     do i=1,S_E%N_MONO
+ !       ELP%TP10%PHI(I)=EL%TP10%PHI(I)
+ !     enddo
+
+        DO I=1,SECTOR_NMUL_max     
          ELP%TP10%AE(I)=EL%TP10%AE(I)     
          ELP%TP10%BE(I)=EL%TP10%BE(I)     
-        enddo        
+        enddo 
+        call GETAEBE(ELP%TP10)         
        ENDIF
        
     ENDIF
@@ -3503,15 +3807,49 @@ CONTAINS
     ENDIF
  
     IF(EL%KIND==KINDPA) THEN         !
-       CALL SETFAMILY(ELP,EL%PA%B) !,EL%PA%ax,EL%PA%ay)
+       CALL SETFAMILY(ELP,t=EL%PA%B) !,EL%PA%angc,EL%PA%xc,EL%PA%dc,EL%PA%h)  !,EL%PA%ax,EL%PA%ay)
        CALL COPY(EL%PA,ELP%PA)
     ENDIF
 
-    !    IF(ASSOCIATED(EL%PARENT_FIBRE))        then
-    !       ELP%PARENT_FIBRE=>EL%PARENT_FIBRE
-    !    ENDIF
+    IF(EL%KIND==KINDABELL) THEN 
+       M_ABELL=EL%ab%M
+       N_ABELL=EL%ab%N        !
+       CALL SETFAMILY(ELP)  !,EL%PA%angc,EL%PA%xc,EL%PA%dc,EL%PA%h)  !,EL%PA%ax,EL%PA%ay)
+       CALL COPY(EL%ab,ELP%ab)
+    ENDIF
 
+       IF(ASSOCIATED(EL%backWARD))        then
+         if(associated(elp%backWARD)) then
+          call kill(ELp%backWARD)     
+          DEALLOCATE(ELp%backWARD)
+         endif
+         allocate(ELp%backWARD(3))
+         do i=1,3
+         call alloc_tree(ELp%backWARD(i),EL%backWARD(i)%n,EL%backWARD(i)%np)
+         enddo
+         call COPY_TREE_N(EL%backWARD,ELp%backWARD)
+ 
+       ENDIF
+ 
 
+       IF(ASSOCIATED(EL%forward))        then
+         if(associated(elp%forward)) then
+          call kill(ELp%forward)     
+          DEALLOCATE(ELp%forward)
+         endif
+         allocate(ELp%forward(3))
+         do i=1,3
+         call alloc_tree(ELp%forward(i),EL%forward(i)%n,EL%forward(i)%np)
+         enddo
+         call COPY_TREE_N(EL%forward,ELp%forward)
+ 
+       ENDIF
+       ELp%skip_ptc_f=EL%skip_ptc_f
+       ELp%skip_ptc_b=EL%skip_ptc_b
+       elp%do1mapf=el%do1mapf
+       elp%do1mapb=el%do1mapb
+          ELp%usef= EL%usef
+          ELp%useb= EL%useb
   END SUBROUTINE copy_elp_el
 
 
@@ -3534,13 +3872,18 @@ CONTAINS
     ELP%KIND=EL%KIND
     ELP%PLOT=EL%PLOT
     ELP%L=EL%L
-    ELP%FINT=EL%FINT
-    ELP%HGAP=EL%HGAP
+    ELP%FINT(1)=EL%FINT(1)
+    ELP%FINT(2)=EL%FINT(2)
+    ELP%HGAP(1)=EL%HGAP(1)
+    ELP%HGAP(2)=EL%HGAP(2)
     ELP%H1=EL%H1
     ELP%H2=EL%H2
     ELP%VA=EL%VA
     ELP%VS=EL%VS
+        ELP%ene=EL%ene
     ELP%slow_ac=EL%slow_ac
+        ELp%filef=EL%filef
+        elp%fileb=EL%fileb
 
     IF(ASSOCIATED(EL%a_ac)) then
        ELP%a_ac=EL%a_ac
@@ -3616,6 +3959,7 @@ CONTAINS
     IF(EL%KIND==KIND1) CALL SETFAMILY(ELP)
 
     IF(EL%KIND==KIND2) then
+ !      ELP%K2=0   ! new 2014.8.5
        CALL SETFAMILY(ELP)
        ELP%K2%F=EL%K2%F
     ENDIF
@@ -3640,8 +3984,11 @@ CONTAINS
        ELP%K3%thin_v_angle=EL%K3%thin_v_angle
        ELP%K3%patch=EL%K3%patch
        ELP%K3%ls=EL%K3%ls
+       ELP%k3%DX=EL%k3%DX
+       ELP%k3%DY=EL%k3%DY
+       ELP%k3%PITCH_X=EL%k3%PITCH_X
+       ELP%k3%PITCH_Y=EL%k3%PITCH_Y
     ENDIF
-
 
     IF(EL%KIND==KIND4) THEN         !
        if(.not.ASSOCIATED(ELP%C4)) ALLOCATE(ELP%C4)
@@ -3670,6 +4017,21 @@ CONTAINS
        ELP%C4%Always_on=EL%C4%Always_on
     ENDIF
 
+
+    IF(EL%KIND==kindsuperdrift) THEN         !
+       if(.not.ASSOCIATED(ELP%SDR)) ALLOCATE(ELP%SDR)
+       ELP%SDR=0
+
+       CALL SETFAMILY(ELP)
+
+       ELP%SDR%a_x1=EL%SDR%a_x1
+       ELP%SDR%a_x2=EL%SDR%a_x2
+       ELP%SDR%D=EL%SDR%D
+       ELP%SDR%ANG=EL%SDR%ANG
+
+
+    ENDIF
+
     IF(EL%KIND==KIND21) THEN         !
        if(.not.ASSOCIATED(ELP%CAV21)) ALLOCATE(ELP%CAV21)
        ELP%CAV21=0
@@ -3688,6 +4050,7 @@ CONTAINS
        ELP%CAV21%DPHAS = EL%CAV21%DPHAS
        ELP%CAV21%cavity_totalpath = EL%CAV21%cavity_totalpath
        ELP%CAV21%phase0 = EL%CAV21%phase0
+       ELP%CAV21%Always_on=EL%CAV21%Always_on
     ENDIF
 
     IF(EL%KIND==KIND22) THEN         !
@@ -3697,13 +4060,22 @@ CONTAINS
        ELP%FREQ = EL%FREQ
        ELP%PHAS = EL%PHAS
        CALL SETFAMILY(ELP)
+       ELp%HE22%N_BESSEL=EL%HE22%N_BESSEL
+       do i=1,6
+        ELp%HE22%fake_shift(i)=EL%HE22%fake_shift(i)
+       enddo
     ENDIF
 
     IF(EL%KIND==KIND5) THEN         !
        if(.not.ASSOCIATED(ELP%S5)) ALLOCATE(ELP%S5)
        if(.not.ASSOCIATED(ELP%B_SOL)) ALLOCATE(ELP%B_SOL       )
+       ELP%S5=0 ! 2014.8.5
        ELP%B_SOL = EL%B_SOL
        CALL SETFAMILY(ELP)
+       ELP%S5%DX=EL%S5%DX
+       ELP%S5%DY=EL%S5%DY
+       ELP%S5%PITCH_X=EL%S5%PITCH_X
+       ELP%S5%PITCH_Y=EL%S5%PITCH_Y
     ENDIF
 
     !    IF(EL%KIND==KIND17) THEN         !
@@ -3759,13 +4131,19 @@ CONTAINS
        ELP%TP10%DRIFTKICK=EL%TP10%DRIFTKICK
        ELP%TP10%F=EL%TP10%F
        IF(EL%ELECTRIC) THEN
-        ELP%TP10%E_X=EL%TP10%E_X
-        ELP%TP10%E_Y=EL%TP10%E_Y
-        ELP%TP10%PHI=EL%TP10%PHI
-        DO I=1,NO_E
+ !     do i=1,S_E%N_MONO
+ !       ELP%TP10%E_X(I)=EL%TP10%E_X(i)
+ !       ELP%TP10%E_Y(I)=EL%TP10%E_Y(I)
+ !     enddo
+ !     do i=1,S_E%N_MONO
+ !       ELP%TP10%PHI(I)=EL%TP10%PHI(I)
+ !     enddo
+
+        DO I=1,SECTOR_NMUL_max     
          ELP%TP10%AE(I)=EL%TP10%AE(I)     
          ELP%TP10%BE(I)=EL%TP10%BE(I)     
-        enddo        
+        enddo  
+        call GETAEBE(ELP%TP10)         
        ENDIF
     ENDIF
 
@@ -3814,15 +4192,54 @@ CONTAINS
     ENDIF    
     
     IF(EL%KIND==KINDPA) THEN         !
-       CALL SETFAMILY(ELP,EL%PA%B)  !,EL%PA%ax,EL%PA%ay)
+       CALL SETFAMILY(ELP,t=EL%PA%B) !,EL%PA%angc,EL%PA%xc,EL%PA%dc,EL%PA%h)   !,EL%PA%ax,EL%PA%ay)
        CALL COPY(EL%PA,ELP%PA)
     ENDIF
-
+    IF(EL%KIND==KINDABELL) THEN 
+       M_ABELL=EL%ab%M
+       N_ABELL=EL%ab%N        !
+       CALL SETFAMILY(ELP)  !,EL%PA%angc,EL%PA%xc,EL%PA%dc,EL%PA%h)  !,EL%PA%ax,EL%PA%ay)
+       CALL COPY(EL%ab,ELP%ab)
+    ENDIF
     !    IF(ASSOCIATED(EL%PARENT_FIBRE))        then
     !       ELP%PARENT_FIBRE=>EL%PARENT_FIBRE
     !    ENDIF
 
 
+       IF(ASSOCIATED(EL%backWARD))        then
+         if(associated(elp%backWARD)) then
+          call kill(ELp%backWARD)     
+          DEALLOCATE(ELp%backWARD)
+         endif
+         allocate(ELp%backWARD(3))
+         do i=1,3
+         call alloc_tree(ELp%backWARD(i),EL%backWARD(i)%n,EL%backWARD(i)%np)
+         enddo
+         call COPY_TREE_N(EL%backWARD,ELp%backWARD)
+
+       ENDIF
+ 
+
+       IF(ASSOCIATED(EL%forward))        then
+         if(associated(elp%forward)) then
+          call kill(ELp%forward)     
+          DEALLOCATE(ELp%forward)
+         endif
+         allocate(ELp%forward(3))
+         do i=1,3
+         call alloc_tree(ELp%forward(i),EL%forward(i)%n,EL%forward(i)%np)
+         enddo
+         call COPY_TREE_N(EL%forward,ELp%forward)
+
+       ENDIF
+
+
+       ELp%skip_ptc_f=EL%skip_ptc_f
+       ELp%skip_ptc_b=EL%skip_ptc_b
+       elp%do1mapf=el%do1mapf
+       elp%do1mapb=el%do1mapb
+          ELp%usef= EL%usef
+          ELp%useb= EL%useb
   END SUBROUTINE copy_el_el
 
 
@@ -3834,8 +4251,10 @@ CONTAINS
     ELP%knob=.FALSE.
 
     CALL resetpoly_R31(ELP%L)         ! SHARED BY EVERYONE
-    CALL resetpoly_R31(ELP%FINT)         ! SHARED BY EVERYONE
-    CALL resetpoly_R31(ELP%HGAP)         ! SHARED BY EVERYONE
+    CALL resetpoly_R31(ELP%FINT(1))         ! SHARED BY EVERYONE
+    CALL resetpoly_R31(ELP%FINT(2))         ! SHARED BY EVERYONE
+    CALL resetpoly_R31(ELP%HGAP(1))         ! SHARED BY EVERYONE
+    CALL resetpoly_R31(ELP%HGAP(2))         ! SHARED BY EVERYONE
     CALL resetpoly_R31(ELP%H1)         ! SHARED BY EVERYONE
     CALL resetpoly_R31(ELP%H2)         ! SHARED BY EVERYONE
     CALL resetpoly_R31(ELP%VA)         ! SHARED BY EVERYONE
@@ -3861,6 +4280,14 @@ CONTAINS
        ENDDO
     ENDIF
 
+    IF(ELP%KIND==KIND10) THEN
+        IF(ELP%ELECTRIC) THEN
+           DO I=1,SIZE(ELP%tp10%BE)
+              CALL resetpoly_R31(ELP%tp10%AE(I))
+              CALL resetpoly_R31(ELP%tp10%BE(I))
+           ENDDO
+        ENDIF
+    ENDIF
 
     IF(ELP%KIND==KIND4) THEN
        CALL resetpoly_R31(ELP%VOLT)
@@ -3927,6 +4354,10 @@ CONTAINS
        CALL reset_PA(ELP%PA)
     ENDIF
 
+    IF(ELP%KIND==KINDabell) THEN
+       CALL reset_abell(ELP%ab)
+    ENDIF
+
 
   END SUBROUTINE reset31
 
@@ -3955,15 +4386,11 @@ CONTAINS
     PROTON=.NOT.ELECTRON
     cl=(clight/1e8_dp)
     CU=55.0_dp/24.0_dp/SQRT(3.0_dp)
-    w_p=0
-    w_p%nc=8
-    w_p%fc='(7((1X,A72,/)),1X,A72)'
+
     if(electron) then
        XMC2=muon*pmae
-       w_p%c(1)=" This is an electron "
     elseif(proton) then
        XMC2=pmap
-       w_p%c(1)=" This is a proton! "
     endif
     if(ENERGY1<0) then
        ENERGY1=-ENERGY1
@@ -3999,24 +4426,20 @@ CONTAINS
     BETa01=SQRT(kinetic1**2+2.0_dp*kinetic1*XMC2)/erg
     beta0i=1.0_dp/BETa01
     GAMMA0=erg/XMC2
-    write(W_P%C(2),'(A16,g21.14)') ' Kinetic Energy ',kinetic1
-    write(W_P%C(3),'(A7,g21.14)') ' gamma ',gamma0
-    write(W_P%C(4),'(A7,g21.14)')' beta0 ',BETa01
-    CON=3.0_dp*CU*CGAM*HBC/2.0_dp*TWOPII/XMC2**3
+ 
+    CON=3.0_dp*CU*CGAM*HBC/2.0_dp*TWOPII/pmae**3
+!    CON=3.0_dp*CU*CGAM*HBC/2.0_dp*TWOPII/XMC2**3
     CRAD=CGAM*TWOPII   !*ERG**3
     CFLUC=CON  !*ERG**5
     GAMMA2=erg**2/XMC2**2
     brho1=SQRT(ERG**2-XMC2**2)*10.0_dp/cl
     if(verbose) then
-       write(W_P%C(5),'(A7,g21.14)') ' p0c = ',p0c1
-       write(W_P%C(6),'(A9,g21.14)')' GAMMA0 = ',SQRT(GAMMA2)
-       write(W_P%C(7),'(A8,g21.14)')' BRHO = ',brho1
-       write(W_P%C(8),'(A15,G21.14,1X,g21.14)')"CRAD AND CFLUC ", crad ,CFLUC
+       write(6,*) ' p0c = ',p0c1
+       write(6,*)' GAMMA0 = ',SQRT(GAMMA2)
+       write(6,*)' BRHO = ',brho1
+      write(6,*)"CRAD AND CFLUC ", crad ,CFLUC
     endif
-    !    IF(VERBOSE) ! call ! WRITE_I
-    !END OF SET RADIATION STUFF  AND TIME OF FLIGHT SUFF
-    !    gamma0I=SQRT(one-beta0**2)
-    !    gambet =(gamma0I/beta0)**2
+ 
     gamma0I=XMC2*BETa01/p0c1
     GAMBET=(XMC2/p0c1)**2
 
@@ -4082,5 +4505,72 @@ CONTAINS
     endif
   end  subroutine remove_aperture_elp
 
+
+  SUBROUTINE decode_element(EL)
+    IMPLICIT NONE
+    TYPE(ELEMENT),INTENT(INOUT):: EL
+
+    SELECT CASE(EL%KIND)
+    CASE(KIND0)
+       print*,"this is KIND0"
+    case(KIND1)
+       print*,"this is KIND1"
+    case(KIND2)
+       print*,"this is KIND2"
+    case(KIND3)
+       print*,"this is KIND3"
+    case(KIND4)
+       print*,"this is KIND4"
+    case(KIND5)
+       print*,"this is KIND5"
+    case(KIND6)
+       print*,"this is KIND6"
+    case(KIND7)
+       print*,"this is KIND7"
+    case(KIND8)
+       print*,"this is KIND8"
+    case(KIND9)
+       print*,"this is KIND9"
+    case(KIND10)
+       print*,"this is KIND11"
+    CASE(KIND11)
+       print*,"this is KIND12"
+    CASE(KIND12)
+       print*,"this is KIND13"
+    CASE(KIND13)
+       print*,"this is KIND14"
+    CASE(KIND14)
+       print*,"this is KIND11"
+    CASE(KIND15)
+       print*,"this is KIND15"
+    CASE(KIND16)
+       print*,"this is KIND16"
+    CASE(KIND18)
+       print*,"this is KIND18"
+    CASE(KIND19)
+       print*,"this is KIND19"
+    CASE(KIND20)
+       print*,"this is KIND20"
+    CASE(KIND21)
+       print*,"this is KIND21"
+    CASE(KIND22)
+       print*,"this is KIND22"
+    case(KINDWIGGLER)
+       print*,"this is KINDWIGGLER"
+    case(KINDPA)
+       print*,"this is KINDPA"
+    case(kindsuperdrift)
+       print*,"this is KINDSUPERDRIFT"
+    case(KINDABELL)
+       print*,"this is KINDABELL"
+
+    case default
+ 
+       write(6,'(1x,i4,a21)') el%kind," not supported decode_element"
+       ! call !write_e(0)
+    END SELECT
+     
+    
+  end SUBROUTINE decode_element
 
 END MODULE S_DEF_ELEMENT
