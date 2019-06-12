@@ -64,6 +64,7 @@ subroutine ptc_init(p_in_file)
     write (6,*) "ptcinterface.f90: ptc_init: ORBIT_MAKE_NODE_LAYOUT ..."
 
     if(lmax>0) then
+       !implemented in Sq_orbit_ptc.f90
        CALL ORBIT_MAKE_NODE_LAYOUT(o_ring,my_true)
     else
        lmax=-lmax

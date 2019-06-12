@@ -21,6 +21,8 @@ module orbit_ptc
   integer :: n_fill_patch=0
   integer :: n_used_patch=0, extra_node=0  
   real(dp) :: t0_main=0.0_dp
+  character(len=50) :: signature
+  
   character(nlp), allocatable :: orbitname(:)
   !   integer mfff
   INTERFACE ORBIT_TRACK_NODE
@@ -433,9 +435,10 @@ contains
     TYPE(INTEGRATION_NODE), POINTER  :: T
     TYPE(INTERNAL_STATE), target, OPTIONAL :: STATE
     TYPE(INTERNAL_STATE), pointer :: STATE0
-    logical :: ldbg = .true.
- 
-
+    logical :: ldbg = .false.
+    integer, save :: lastk=0, trackno=0
+    
+    
     if (( .not. check_stable ) .or. ( .not. c_%stable_da )) then
       write(whymsg,*) 'ORBIT_TRACK_NODE_Standard_R: DA IS unstable already at the start of tracking : PTC msg: ', &
                        messagelost(:len_trim(messagelost))
@@ -444,9 +447,10 @@ contains
     endif
 
     
-    if (ldbg) then
-      print*,'orbit_tracknode_std: in orb ', x
-    endif
+   ! if (ldbg) then
+   !   print*,'orbit_tracknode_std: NODE = ', K
+   !   print*,'orbit_tracknode_std: in orb ', x
+   ! endif
     
     IF(my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS) THEN
        x(1:4)=x(1:4)*1.e-3_dp
@@ -455,13 +459,25 @@ contains
        X(6)=X5/my_ORBIT_LATTICE%ORBIT_OMEGA
     ENDIF
 
-    if (ldbg) then
-      print*,'orbit_tracknode_std: in ptc ', x
-    endif
 
     u=my_false
 
     T=>my_ORBIT_LATTICE%ORBIT_NODES(K)%NODE
+
+    if (ldbg ) then
+      if (lastk /= k ) then
+         trackno = 0
+         print*,''
+         print*,'orbit_tracknode_std: node ', K, t%parent_fibre%mag%name, " DPOS=",my_ORBIT_LATTICE%ORBIT_NODES(K)%dpos
+         lastk = k
+      endif
+      trackno = trackno + 1
+    endif
+
+    if (ldbg .and. trackno == 1) then
+      print*,'orbit_tracknode_std: ',trackno,'  in ptc x = ', x
+    endif
+    
 
     if(present(state)) then
        state0=>state
@@ -479,9 +495,13 @@ contains
     ENDIF !accelerate
 
 
-
-
     DO I=1,my_ORBIT_LATTICE%ORBIT_NODES(K)%dpos
+
+
+       if (ldbg .and. trackno == 1) then
+         print*,'orbit_tracknode_std: ', trackno, t%parent_fibre%mag%name, &
+                " CAS=", T%CAS, " pos_in_fibre=",T%POS_IN_FIBRE, " pos=",T%POS, ' K+I-1=', K+I-1
+       endif
 
 
        !!!! ACCEL
@@ -506,11 +526,23 @@ contains
        endif !accelerate
 
        if(first_particle.and.(accelerate.or.ramp)) then !accelerate
+
+          if (ldbg .and. trackno == 1) then
+            print*,'orbit_tracknode_std: 1st amd AccOrRamp Part1 x in = ', x_orbit_sync
+          endif
+
           call TRACK_NODE_fake_totalpath_half(T,x_orbit_sync,STATE0,my_true)  ! accelerate
+
+          if (ldbg .and. trackno == 1) then
+            print*,'orbit_tracknode_std: 1st amd AccOrRamp Part1 x out = ', x_orbit_sync
+          endif
+
        endif
 
        if(RAMP.and.first_particle) then !modulate
-          if(t%parent_fibre%mag%slow_ac/=0 .and. t%cas==CASEP1) CALL do_ramping_r(T,x_orbit_sync(6),STATE0) !modulate
+          if(t%parent_fibre%mag%slow_ac/=0 .and. t%cas==CASEP1) then 
+             CALL do_ramping_r(T,x_orbit_sync(6),STATE0) !modulate
+          endif
        endif !modulate
 
        if(u) then 
@@ -524,14 +556,25 @@ contains
       !   print*,'orbit_tracknode_std: I = ',I, t%parent_fibre%mag%name
       !   print*,X
       ! endif
+
+
+
+       if (ldbg .and. trackno == 1) then
+         print*,'orbit_tracknode_std: ',trackno,' ii  ptc x = ', x
+       endif
+
+
        
        CALL TRACK_NODE_SINGLE(T,X,STATE0) !,my_ORBIT_LATTICE%ORBIT_CHARGE
+
+
+
 
        if(.not.CHECK_STABLE) then 
           
           if (ldbg) then
             
-            print*,'orbit_tracknode_std: track is lost at I = ',I
+            print*,'orbit_tracknode_std: track is lost at I = ',I, t%parent_fibre%mag%name
             write(whymsg,*) ' check_stable ',check_stable,' c_%stable_da ',c_%stable_da,' PTC msg: ', &
                        messagelost(:len_trim(messagelost))
             call fort_warn('orbit_tracknode_std track lost : ',whymsg(:len_trim(whymsg)))   
@@ -550,9 +593,24 @@ contains
           exit
        endif
 
+       if (ldbg .and. trackno == 1) then
+         print*,'orbit_tracknode_std: ',trackno,' out ptc x = ', x
+       endif
+
 
        if(first_particle.and.(accelerate.or.ramp)) then !accelerate
+       
+          if (ldbg .and. trackno == 1) then
+            print*,'orbit_tracknode_std: 1st amd AccOrRamp Part2 x in = ', x_orbit_sync
+          endif
+       
           call TRACK_NODE_fake_totalpath_half(T,x_orbit_sync,STATE0,my_true)  ! accelerate
+
+
+          if (ldbg .and. trackno == 1) then
+            print*,'orbit_tracknode_std: 1st amd AccOrRamp Part2 x out = ', x_orbit_sync
+          endif
+
        endif
 
 
@@ -586,7 +644,10 @@ contains
        endif
 
        T=>T%NEXT
+
+       
     ENDDO
+    
     first_particle=.false.
 
     IF(my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS) THEN
@@ -1039,11 +1100,15 @@ contains
     type(element), pointer :: el
     type(elementp), pointer :: elp
     integer :: hh=0
+    logical :: ldbg = .false.
     
-    print*,"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    print*,"         set_cavity           "
-    print*,"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    if (ldbg) then
+      print*,"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      print*,"         set_cavity           "
+      print*,"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    endif
     
+    tot_t = 0
     
     hh=hh+1
     t=>tin
@@ -1058,6 +1123,10 @@ contains
 
 
     n=t%pos_in_fibre-2
+    
+    if (ldbg) then
+      print*, " n = ",n, ' t%pos_in_fibre=',t%pos_in_fibre, " EL%freq = ", EL%freq, " EL%volt = ", EL%volt
+    endif
 
     t0=>t     !!!!!!!!!!!!!!!
 
@@ -1076,8 +1145,17 @@ contains
     energy0=energy0+a%de(n)   ! final energy after that cavity
 
     call find_energy(a%w2,kinetic=energy0)
-
-    if(a%de(n)/=0.0_dp ) then
+    
+    if (ldbg) then
+      call print(state0,6)
+      print*, "Initial energy"
+      call print(a%w2,6)
+      print*, "a%de = ", a%de
+      print*, "el%c4%t = ", el%c4%t
+    endif
+     
+    if(a%de(n) /= 0.0_dp ) then
+    
        if(mdebug/=0) then
           write(mdebug,*) hh,a%de(n)
           tc=el%c4%t
@@ -1090,27 +1168,43 @@ contains
           enddo
           el%c4%t=tc
        endif
+       
        dtc0=1.e38_dp
+       
        do i=1,nit
           tc=el%c4%t
+          
           x=0.d0;
           CALL TRACK_NODE_SINGLE(T,X,STATE0)
+          ! print*,"t + 0 :  x5 x6", x(5),x(6)
+          
           en0=x(5)*w%p0c
 
           x=0.d0;
           el%c4%t=tc+dep
           CALL TRACK_NODE_SINGLE(T,X,STATE0)
-          !  !  write(6,*) x(5)*w%p0c
+          !print*,"t + d :  x5 x6", x(5),x(6)
+          !write(6,*) " i= ",i," t0=",tc, " t1=",el%c4%t, "en0=",en0, x(5)*w%p0c
+          
           dtc=(x(5)*w%p0c-en0)/dep
+          !write(6,*) " dtc1= ",dtc
           dtc=(a%de(n)-en0)/dtc
+          !write(6,*) " dtc= ",dtc
+          
           el%c4%t=tc+dtc
 
+          if (ldbg) then
+            write(6,*) "i=",i," new t = ",el%c4%t, " old t = ", tc, " dtc = ", dtc
+          endif
+          
           if(i>100) then
              if(abs(dtc)<small_tc.and.abs(dtc)>=dtc0) exit
              dtc0=abs(dtc)
              !    pause 123
           endif
-          !    write(6,*) " more ",i,dtc,small_tc
+
+          !write(6,*) " i= ",i,el%c4%t,dtc,small_tc
+
        enddo
        el%c4%t=tc+dtc
        !     elp%c4%t=tc+dtc
@@ -1126,6 +1220,14 @@ contains
           stop 1939
        endif
     endif  ! de=zero
+
+    if (ldbg) then
+      print*,"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      print*,"         end set_cavity           "
+      print*,"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    endif
+    
+    
   end SUBROUTINE set_cavity
 
   SUBROUTINE ORBIT_restore_ANBN
@@ -1258,6 +1360,8 @@ contains
 
   END SUBROUTINE ptc_to_orbit
 
+
+  !___________________________________________________________________
   SUBROUTINE ORBIT_MAKE_NODE_LAYOUT_accel(R,no_end_mag)
     IMPLICIT NONE
     TYPE(LAYOUT),TARGET :: R
@@ -1275,7 +1379,11 @@ contains
     TYPE(ORBIT_NODE), pointer :: ORBIT_NODES(:)
     logical(lp) doit,cav
      integer mf,i1
-
+    
+    signature = "Sq_orbit_ptc.f90: ORBIT_MAKE_NODE_LAYOUT_accel "
+    !signature(18:28) = char(0)
+    write(6,*) signature,"START"
+    
     END_MAG=.not.no_end_mag
     ALLOCATE(R%T%ORBIT_LATTICE)
     CALL Set_Up_ORBIT_LATTICE(R%T%ORBIT_LATTICE,0,MY_TRUE)
@@ -1287,7 +1395,7 @@ contains
     IF(FREQ/=0.0_dp) THEN
        my_ORBIT_LATTICE%ORBIT_OMEGA=twopi*FREQ/CLIGHT
     ELSE
-       WRITE(6,*) " COULD NOT LOCALIZE NON 0.0_dp CAVITY FREQUENCY "
+       WRITE(6,*) signature," COULD NOT LOCALIZE NON 0.0_dp CAVITY FREQUENCY "
        my_ORBIT_LATTICE%ORBIT_OMEGA=1.0_dp
        my_ORBIT_LATTICE%ORBIT_WARNING=1
     ENDIF
@@ -1404,16 +1512,16 @@ contains
     CALL ALLOC_ORBIT_NODE1(ORBIT_NODES(K),NL)
     !    CALL ALLOC_ORBIT_NODE(ORBIT_NODES,K,NL)
 
-    !   write(6,*) k,DLMAX,LMAX
+    !   write(6,*) signature,k,DLMAX,LMAX
     !      MY_ORBIT_STATE=>DEFAULT
     my_ORBIT_LATTICE%ORBIT_CHARGE=R%start%CHARGE
     my_ORBIT_LATTICE%ORBIT_N_NODE=k-1
     
-    !    write(6,*) size(ORBIT_NODES),my_ORBIT_LATTICE%ORBIT_N_NODE,k
+    !    write(6,*) signature,size(ORBIT_NODES),my_ORBIT_LATTICE%ORBIT_N_NODE,k
 
     IF(DLMAX>LMAX) THEN
-       WRITE(6,*) " DLMAX > LMAX ",DLMAX
-       WRITE(6,*)  "CONSIDER RESPLITTING LATTICE "
+       WRITE(6,*)  signature,"DLMAX > LMAX ",DLMAX
+       WRITE(6,*)  signature,"CONSIDER RESPLITTING LATTICE "
        my_ORBIT_LATTICE%ORBIT_WARNING=10+my_ORBIT_LATTICE%ORBIT_WARNING
     ENDIF
 
@@ -1421,9 +1529,9 @@ contains
        ORBIT_NODES(K)%DPOS=-ORBIT_NODES(K)%NODE%POS+ORBIT_NODES(K+1)%NODE%POS
        IF(ORBIT_NODES(K)%DPOS<=0)ORBIT_NODES(K)%DPOS=ORBIT_NODES(K)%DPOS+r%t%n
        if(ORBIT_NODES(K)%node%parent_fibre%mag%p%p0c/=my_ORBIT_LATTICE%ORBIT_P0C) then
-          write(6,*) " element ",ORBIT_NODES(K)%node%parent_fibre%pos,ORBIT_NODES(K)%node%parent_fibre%mag%name
-          write(6,*) " has different energy ",ORBIT_NODES(K)%node%parent_fibre%mag%p%p0c,my_ORBIT_LATTICE%ORBIT_P0C
-          write(6,*) " fatal "
+          write(6,*) signature," element ",ORBIT_NODES(K)%node%parent_fibre%pos,ORBIT_NODES(K)%node%parent_fibre%mag%name
+          write(6,*) signature," has different energy ",ORBIT_NODES(K)%node%parent_fibre%mag%p%p0c,my_ORBIT_LATTICE%ORBIT_P0C
+          write(6,*) signature," fatal "
           stop
        endif
     ENDDO
@@ -1433,11 +1541,11 @@ contains
        IF(P%PATCH%PATCH/=0) THEN
           IF(ABS(P%PATCH%A_D(3))>my_ORBIT_LATTICE%ORBIT_MAX_PATCH_TZ) THEN
              my_ORBIT_LATTICE%ORBIT_WARNING=100+my_ORBIT_LATTICE%ORBIT_WARNING
-             WRITE(6,*)  "LARGE FRONT PATCH "
+             WRITE(6,*)  signature,"LARGE FRONT PATCH "
           ENDIF
           IF(ABS(P%PATCH%B_D(3))>my_ORBIT_LATTICE%ORBIT_MAX_PATCH_TZ) THEN
              my_ORBIT_LATTICE%ORBIT_WARNING=1000+my_ORBIT_LATTICE%ORBIT_WARNING
-             WRITE(6,*)  "LARGE BACK PATCH "
+             WRITE(6,*)  signature,"LARGE BACK PATCH "
           ENDIF
        ENDIF
        P=>P%NEXT
@@ -1456,23 +1564,35 @@ contains
 
  !   CALL FIND_ORBIT(R,CLOSED,1,STATE,c_1d_5)
     closed(1)=0.001d0
+    
+    write(6,*) signature,"Tracking a test particle, producing junk.txt"
+    
     call kanalnummer(mf,"junk.txt")
     p=>r%start
     do i=1,r%n
         CALL TRACK(R,closed,i,i+1,STATE)
-    write(mf,*) i,p%mag%name
-    write(mf,*) closed(1:2)
+        write(mf,*) i,p%mag%name
+        write(mf,*) closed(1:2)
     p=>p%next
     enddo
     !write(6,*) closed
     close(mf)
     !pause 123
 
-	CALL FIND_ORBIT(R,CLOSED,1,STATE,1e-5_dp)
+
+    WRITE(6,*) signature,"Looking for closed orbit"
+    CALL FIND_ORBIT(R,CLOSED,1,STATE,1e-5_dp)
+    WRITE(6,*) signature,"Closed orbit:"
+    WRITE(6,*) signature, closed
+
+    WRITE(6,*) signature,"Producing One Turn Map"
+    
     ID=1
     Y=CLOSED+ID
     CALL TRACK(R,Y,1,STATE)
 
+    WRITE(6,*) signature,"DOING NORMAL FORM"
+    
     NORM=Y
 
     Y=CLOSED+NORM%A_T
@@ -1485,15 +1605,18 @@ contains
     ETAP(1)=Y(2).SUB.'00001'
     ETAP(2)=Y(4).SUB.'00001'
 
-    WRITE(6,*) "Sq_orbit_ptc.f90: ORBIT_MAKE_NODE_LAYOUT: TWISS PARAMETERS AT THE ENTRANCE"
-    WRITE(6,*) "Sq_orbit_ptc.f90: ORBIT_MAKE_NODE_LAYOUT: BETAS ", BET
-    WRITE(6,*) "Sq_orbit_ptc.f90: ORBIT_MAKE_NODE_LAYOUT: ALPHAS ",ALF
-    WRITE(6,*) "Sq_orbit_ptc.f90: ORBIT_MAKE_NODE_LAYOUT: ETAS ", ETA
-    WRITE(6,*) "Sq_orbit_ptc.f90: ORBIT_MAKE_NODE_LAYOUT: ETAPS ", ETAP
-    
+    WRITE(6,*) signature,"CLOSED TWISS PARAMETERS AT THE ENTRANCE"
+    WRITE(6,*) signature,"BETAS ", BET
+    WRITE(6,*) signature,"ALPHAS ",ALF
+    WRITE(6,*) signature,"ETAS ", ETA
+    WRITE(6,*) signature,"ETAPS ", ETAP
+    WRITE(6,*) signature,"ETAPS ", ETAP
+
+    WRITE(6,*) signature,"PRODUCING TWISS FOR EACH NODE"
+
     DO K=1,my_ORBIT_LATTICE%ORBIT_N_NODE
        CALL ORBIT_TRACK_NODE(K,Y,STATE)
-       CALL ORBIT_TRACK_NODE(K,CLOSED,STATE)
+       CALL ORBIT_TRACK_NODE(K,CLOSED,STATE) !usless: closed(1) == Y(1).sub.'0'
        BET(1)=(Y(1).SUB.'1')**2+(Y(1).SUB.'01')**2
        BET(2)=(Y(3).SUB.'001')**2+(Y(3).SUB.'0001')**2
        ALF(1)=-((Y(1).SUB.'1')*(Y(2).SUB.'1')+(Y(1).SUB.'01')*(Y(2).SUB.'01'))
@@ -1514,11 +1637,11 @@ contains
        ORBIT_NODES(K)%LATTICE(13)=CLOSED(4)
     ENDDO
     
-    WRITE(6,*) "Sq_orbit_ptc.f90: ORBIT_MAKE_NODE_LAYOUT: TWISS PARAMETERS AT THE EXIT"
-    WRITE(6,*) "Sq_orbit_ptc.f90: ORBIT_MAKE_NODE_LAYOUT: BETAS ", BET
-    WRITE(6,*) "Sq_orbit_ptc.f90: ORBIT_MAKE_NODE_LAYOUT: ALPHAS ",ALF
-    WRITE(6,*) "Sq_orbit_ptc.f90: ORBIT_MAKE_NODE_LAYOUT: ETAS ", ETA
-    WRITE(6,*) "Sq_orbit_ptc.f90: ORBIT_MAKE_NODE_LAYOUT: ETAPS ", ETAP
+    WRITE(6,*) signature,"TWISS PARAMETERS AT THE EXIT"
+    WRITE(6,*) signature,"BETAS ", BET
+    WRITE(6,*) signature,"ALPHAS ",ALF
+    WRITE(6,*) signature,"ETAS ", ETA
+    WRITE(6,*) signature,"ETAPS ", ETAP
 
 
     my_ORBIT_LATTICE%ORBIT_L=r%t%end%s(1)
@@ -1549,19 +1672,26 @@ contains
     !    my_ORBIT_LATTICE%orbit_dppfac=one/sqrt(w1_orbit%beta0)/w1_orbit%energy
     my_ORBIT_LATTICE%orbit_deltae=0.0_dp;
 
-    write(6,*) my_ORBIT_LATTICE%ORBIT_L
-    write(6,*) my_ORBIT_LATTICE%ORBIT_OMEGA
-    write(6,*) my_ORBIT_LATTICE%orbit_beta0
-    write(6,*) my_ORBIT_LATTICE%orbit_brho
-    write(6,*) my_ORBIT_LATTICE%orbit_p0c
-    write(6,*) my_ORBIT_LATTICE%orbit_energy
-    write(6,*) my_ORBIT_LATTICE%orbit_kinetic
-    write(6,*) my_ORBIT_LATTICE%orbit_gamma
-    write(6,*) r%start%mass,w1_orbit%mass
+    write(6,*) signature,"ORBIT_L       ", my_ORBIT_LATTICE%ORBIT_L
+    write(6,*) signature,"ORBIT_OMEGA   ", my_ORBIT_LATTICE%ORBIT_OMEGA
+    write(6,*) signature,"orbit_beta0   ", my_ORBIT_LATTICE%orbit_beta0
+    write(6,*) signature,"orbit_brho    ", my_ORBIT_LATTICE%orbit_brho
+    write(6,*) signature,"orbit_p0c     ", my_ORBIT_LATTICE%orbit_p0c
+    write(6,*) signature,"orbit_energy  ", my_ORBIT_LATTICE%orbit_energy
+    write(6,*) signature,"orbit_kinetic ", my_ORBIT_LATTICE%orbit_kinetic
+    write(6,*) signature,"orbit_gamma   ", my_ORBIT_LATTICE%orbit_gamma
+    write(6,*) signature,"mass @start   ", r%start%mass !  ,w1_orbit%mass
+    
     my_ORBIT_LATTICE%state=default
 
     if(allocated(orbitname)) deallocate(orbitname)
+    
+    write(6,*) signature,"END"
+    signature = ""
+    
+    
   END SUBROUTINE ORBIT_MAKE_NODE_LAYOUT_accel
+  !___________________________________________________________________
 
 
   SUBROUTINE update_twiss_for_orbit 
@@ -1577,7 +1707,7 @@ contains
     REAL(DP) BET(2),ALF(2),ETA(2),ETAP(2)
     TYPE(ORBIT_NODE), pointer :: ORBIT_NODES(:)
 
-    
+    signature = 'Sq_orbit_ptc.f90:update_twiss_for_orbit '//char(0)
 
       !  COMPUTE LATTICE FUNCTIONS
     r=>my_ORBIT_LATTICE%parent_layout
@@ -1634,11 +1764,11 @@ contains
        ORBIT_NODES(K)%LATTICE(12)=CLOSED(3)
        ORBIT_NODES(K)%LATTICE(13)=CLOSED(4)
     ENDDO
-    WRITE(6,*) "TWISS PARAMETERS AT THE EXIT"
-    WRITE(6,*) "BETAS ", BET
-    WRITE(6,*) "ALPHAS ",ALF
-    WRITE(6,*) "ETAS ", ETA
-    WRITE(6,*) "ETAPS ", ETAP
+    WRITE(6,*) signature,"TWISS PARAMETERS AT THE EXIT"
+    WRITE(6,*) signature,"BETAS ", BET
+    WRITE(6,*) signature,"ALPHAS ",ALF
+    WRITE(6,*) signature,"ETAS ", ETA
+    WRITE(6,*) signature,"ETAPS ", ETAP
     
     my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS=my_true
  
