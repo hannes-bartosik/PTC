@@ -1,0 +1,149 @@
+$(info Got $$LIBS as follows [${LIBS}])
+
+include ../../conf/make_root_config
+
+$(info Got $$LIBS after make_root_config [${LIBS}])
+
+#Fortran compiler
+FC=ifort
+
+OBJDIR=obj
+
+DIRS  = $(patsubst %/, %, $(filter %/, $(shell ls -F))))
+SRCS  = $(wildcard *.cc)
+SRCS += $(foreach dir, $(DIRS), $(patsubst $(dir)/%.cc, %.cc, $(wildcard $(dir)/*.cc)))
+
+OBJS = $(patsubst %.cc, ./obj/%.o, $(SRCS))
+
+FORT_DIRS  = source interface
+FORT_SRCS  = $(wildcard *.f90)
+FORT_SRCS += $(foreach dir, $(FORT_DIRS), $(patsubst $(dir)/%.f90, %.f90, $(wildcard $(dir)/*.f90)))
+
+FORT_OBJS = $(patsubst %.f90, ./obj/%.o, $(FORT_SRCS))
+
+# Include files can be anywhere, we use only two levels
+UPPER_DIRS = $(filter-out test%, $(patsubst %/, %, $(filter %/, $(shell ls -F ../../src))))
+LOWER_DIRS = $(foreach dir, $(UPPER_DIRS), $(patsubst %/, ../../src/$(dir)/%, $(filter %/, $(shell ls -F ../../src/$(dir)))))
+
+INCLUDES_LOCAL = $(patsubst %, -I../../src/%, $(UPPER_DIRS))
+INCLUDES_LOCAL += $(filter-out %obj, $(patsubst %, -I%, $(LOWER_DIRS)))
+INCLUDES_LOCAL += $(patsubst %, -I./%, $(filter %/, $(shell ls -F ./)))
+INCLUDES_LOCAL += -I./
+
+INC  = $(wildcard *.hh)
+INC += $(wildcard *.h)
+INC += $(foreach dir, $(DIRS), $(wildcard ./$(dir)/*.hh))
+INC += $(foreach dir, $(DIRS), $(wildcard ./$(dir)/*.h))
+
+#-------------------------------------------------------------------------------
+# External library locations
+#-------------------------------------------------------------------------------
+
+
+
+$(info $$PROD_DIR is [${PROD_DIR}])
+$(info $$INTEL_TARGET_ARCH is [${INTEL_TARGET_ARCH}])
+$(info $$ORBIT_ARCH is [${ORBIT_ARCH}])
+
+ifeq ($(FC),ifort)
+    ifeq ($(PROD_DIR),)
+        $(info $$PROD_DIR is empty [${PROD_DIR}])
+        $(error Please source compilervars.sh and export PROD_DIR INTEL_TARGET_ARCH)
+    endif
+  
+  
+    ifeq ($(ORBIT_ARCH),Darwin)
+	LIBS += -L$(PROD_DIR)/lib
+        $(info Darwin $$LIBS is [${LIBS}])
+	LINKFLAGS += -undefined dynamic_lookup
+    else ifeq ($(ORBIT_ARCH),Linux)
+	ifeq ($(INTEL_TARGET_ARCH),)
+            $(info $$INTEL_TARGET_ARCH is empty [${INTEL_TARGET_ARCH}])
+            $(error Please source compilervars.sh and export PROD_DIR INTEL_TARGET_ARCH)
+	endif
+	LIBS += -L$(PROD_DIR)/lib/$(INTEL_TARGET_ARCH) 
+        $(info Linux $$LIBS is [${LIBS}])
+    endif
+    
+    LIBS += -lifcore -lsvml
+    $(info b $$LIBS is [${LIBS}])
+endif
+
+ifeq ($(FC),gfortran)
+  LIBS += -L/usr/lib/gcc/x86_64-redhat-linux/4.4.4 -lgfortran
+endif
+
+FORTFLAGS += -module $(OBJDIR) -I$(OBJDIR)
+
+#-------------------------------------------------------------------------------
+# External 'include' locations
+#-------------------------------------------------------------------------------
+
+INCLUDES +=
+
+#-------------------------------------------------------------------------------
+# Wrappers CC FLAGS
+#-------------------------------------------------------------------------------
+
+WRAPPER_FLAGS = -fno-strict-aliasing
+
+#-------------------------------------------------------------------------------
+# CXXFLAGS
+#-------------------------------------------------------------------------------
+
+CXXFLAGS += -fPIC
+
+#-------------------------------------------------------------------------------
+# Shared library flags
+#-------------------------------------------------------------------------------
+
+SHARED_LIB = -shared
+
+#-------------------------------------------------------------------------------
+# ptc-orbit shared library
+#-------------------------------------------------------------------------------
+
+ptc_orbit_lib = libptc_orbit.so
+
+#-------------------------------------------------------------------------------
+#========rules=========================
+#-------------------------------------------------------------------------------
+
+	
+compile: makeobjdir $(OBJS_WRAP) $(FORT_OBJS) $(OBJS) $(INC)
+	$(CXX) -fPIC $(SHARED_LIB) $(LIBS) $(LINKFLAGS) -o ../../lib/$(ptc_orbit_lib) $(OBJS) $(FORT_OBJS)
+
+makeobjdir:
+	mkdir -p obj
+
+clean:
+	rm -rf ./obj
+	rm -rf ../../lib/$(ptc_orbit_lib)
+	rm -rf ./source/*~
+
+./obj/wrap_%.o : wrap_%.cc $(INC)
+	$(CXX) $(CXXFLAGS) $(WRAPPER_FLAGS) $(INCLUDES_LOCAL) $(INCLUDES) -c $< -o $@;
+
+./obj/wrap_%.o : ./*/wrap_%.cc $(INC)
+	$(CXX) $(CXXFLAGS) $(WRAPPER_FLAGS) $(INCLUDES_LOCAL) $(INCLUDES) -c $< -o $@;
+
+./obj/%.o : %.cc $(INC)
+	$(CXX) $(CXXFLAGS) $(INCLUDES_LOCAL) $(INCLUDES) -c $< -o $@;
+
+./obj/%.o : ./*/%.cc $(INC)
+	$(CXX) $(CXXFLAGS) $(INCLUDES_LOCAL) $(INCLUDES) -c $< -o $@;
+
+./obj/%.o : ./source/%.f90
+	$(FC) $(FORTFLAGS) -c $< -o $@;
+
+./obj/%.o : ./interface/%.f90
+	$(FC) $(FORTFLAGS) -I ./source -c $< -o $@;
+
+
+FC_DIR=source
+
+ifeq ($(FDEP),)
+
+include dependencies.mk
+
+endif
