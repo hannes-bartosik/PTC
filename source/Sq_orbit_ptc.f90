@@ -1028,6 +1028,7 @@ contains
   end SUBROUTINE find_acc_energy
 
   SUBROUTINE set_cavity(tIN,state0,dt)
+    ! Looks for longitudinal fixed point, 
     IMPLICIT NONE
     TYPE(INTEGRATION_NODE), POINTER  :: TIN,T,t0
     TYPE(internal_state), target  :: state0
@@ -1078,6 +1079,7 @@ contains
     call find_energy(a%w2,kinetic=energy0)
 
     if(a%de(n)/=0.0_dp ) then
+    
        if(mdebug/=0) then
           write(mdebug,*) hh,a%de(n)
           tc=el%c4%t
@@ -1090,6 +1092,7 @@ contains
           enddo
           el%c4%t=tc
        endif
+    
        dtc0=1.e38_dp
        do i=1,nit
           tc=el%c4%t
