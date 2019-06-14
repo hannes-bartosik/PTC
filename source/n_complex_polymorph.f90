@@ -26,10 +26,10 @@ module polymorphic_complextaylor
   private cpmulsc,cpscmul,cpaddsc,cpscadd,cpsubsc,cpscsub ,cpdivsc,cpscdiv
   private div,cdivsc,cscdiv,ddivsc,dscdiv,divsc,scdiv,idivsc,iscdiv
   private POW,POWR,POWR8
-  private dexpt,dcost,dsint,dlogt,dsqrtt,abst
+  private dexpt,dcost,dsint,dlogt,dsqrtt,abst,CONJGT,print6
   PRIVATE dimagt,drealt,dcmplxt,GETint,GETORDER,CUTORDER,getchar,GETCHARnd2,GETintnd2
   !
-  private asscp
+  private asscp,make_it_knobc,kill_knobc
   private line
   character(120) line
 
@@ -894,13 +894,18 @@ module polymorphic_complextaylor
      MODULE PROCEDURE polymorpht
   END INTERFACE
 
+  INTERFACE CONJG
+     MODULE PROCEDURE CONJGT
+  END INTERFACE
 
   ! i/o
 
   INTERFACE daprint
      MODULE PROCEDURE printpoly
+     MODULE PROCEDURE print6
   END INTERFACE
   INTERFACE print
+     MODULE PROCEDURE print6
      MODULE PROCEDURE printpoly
   END INTERFACE
 
@@ -922,6 +927,17 @@ module polymorphic_complextaylor
      MODULE PROCEDURE resetpoly
      MODULE PROCEDURE resetpolyn
   END INTERFACE
+
+
+interface make_it_knob
+module procedure make_it_knobc
+end INTERFACE
+
+interface kill_knob
+module procedure kill_knobc
+end INTERFACE
+
+
   ! end Constructors and Destructors
 
 
@@ -937,7 +953,7 @@ contains
 
   FUNCTION polymorpht( S1 )
     implicit none
-    TYPE (double_complex) polymorpht
+    TYPE (complex_8) polymorpht
     TYPE (complextaylor), INTENT (IN) :: S1
     integer localmaster
 
@@ -993,30 +1009,77 @@ contains
     integer,optional ::  NDPT1
     logical(lp),optional :: PACKAGE
     logical(lp) PACKAGE1
-    integer ndptt
+    integer ndptt,i
+ 
+     if(associated(dz_8)) then
+      call kill(dz_8)
+      deallocate(dz_8)
+      nullify(dz_8)
+     endif
+     if(associated(dz_t)) then
+      call kill(dz_t)
+      deallocate(dz_t)
+      nullify(dz_t)
+     endif
+
     package1=.true.
     ndptt=0
     if(present(PACKAGE)) PACKAGE1=PACKAGE
     if(present(ndpt1)) ndptt=ndpt1
-    W_P=>W_I                   ! default output, comment out if necessary
+   ! !w_p=>W_I                   ! default output, comment out if necessary
     call set_da_pointers
     call init_map_p(NO1,ND1,NP1,ndptt,PACKAGE1)
     call set_in_poly(PACKAGE1)
     call set_in_polyp(PACKAGE1)
+
+    allocate(dz_8(nv))
+    call alloc(dz_8)
+    allocate(dz_t(nv))
+    call alloc(dz_t)
+
+    do i=1,nv
+     dz_8(i)=morph(1.0_dp.mono.i)   
+    enddo
+    do i=1,nv
+     dz_t(i)=1.0_dp.mono.i   
+    enddo
+
   end subroutine  init_map_cp
 
   subroutine init_tpsa_cp(NO1,NV1,PACKAGE)
     implicit none
-    integer NO1,NV1
+    integer NO1,NV1,i
     logical(lp),optional :: PACKAGE
     logical(lp) PACKAGE1
+     if(associated(dz_8)) then
+      call kill(dz_8)
+      deallocate(dz_8)
+      nullify(dz_8)
+     endif
+     if(associated(dz_t)) then
+      call kill(dz_t)
+      deallocate(dz_t)
+      nullify(dz_t)
+     endif
     package1=.true.
     if(present(PACKAGE)) PACKAGE1=PACKAGE
-    W_P=>W_I                  ! default output, comment out if necessary
+    !w_p=>W_I                  ! default output, comment out if necessary
     call set_da_pointers
     call init_tpsa_p(NO1,NV1,PACKAGE1)
     call set_in_poly(PACKAGE1)
     call set_in_polyp(PACKAGE1)
+
+    allocate(dz_8(nv))
+    call alloc(dz_8)
+    allocate(dz_t(nv))
+    call alloc(dz_t)
+
+    do i=1,nv
+     dz_8(i)=morph(1.0_dp.mono.i)   
+    enddo
+    do i=1,nv
+     dz_t(i)=1.0_dp.mono.i   
+    enddo
   end subroutine  init_tpsa_cp
 
 
@@ -1037,7 +1100,7 @@ contains
 
   SUBROUTINE  resetpoly(S2)
     implicit none
-    type (double_complex),INTENT(INOUT)::S2
+    type (complex_8),INTENT(INOUT)::S2
 
     if(s2%alloc) call killcomplex(s2%t)
     s2%alloc=f
@@ -1051,7 +1114,7 @@ contains
 
   SUBROUTINE  resetpolyn(S2,K)
     implicit none
-    type (double_complex),INTENT(INOUT),dimension(:)::S2
+    type (complex_8),INTENT(INOUT),dimension(:)::S2
     INTEGER,optional,INTENT(IN)::k
     INTEGER J,i,N
 
@@ -1071,7 +1134,7 @@ contains
 
   SUBROUTINE  resetpoly0(S2)
     implicit none
-    type (double_complex),INTENT(INOUT)::S2
+    type (complex_8),INTENT(INOUT)::S2
 
     if(s2%alloc) call killcomplex(s2%t)
     s2%alloc=f
@@ -1086,7 +1149,7 @@ contains
   !  FUNCTION GETchar( S1, S2 )
   !    implicit none
   !    complex(dp) GETchar
-  !    TYPE (double_complex), INTENT (IN) :: S1
+  !    TYPE (complex_8), INTENT (IN) :: S1
   !    CHARACTER(*)  , INTENT (IN) ::  S2
   !
   !    if(s1%kind==m2) then
@@ -1101,7 +1164,7 @@ contains
   !  FUNCTION GETint( S1, S2 )
   !    implicit none
   !    complex(dp) GETint
-  !    TYPE (double_complex), INTENT (IN) :: S1
+  !    TYPE (complex_8), INTENT (IN) :: S1
   !    integer  , INTENT (IN) ::  S2(:)
   !    !  integer localmaster
   !
@@ -1116,8 +1179,8 @@ contains
   !
   !  FUNCTION GETORDER( S1, S2 )
   !    implicit none
-  !    TYPE (double_complex) GETORDER
-  !    TYPE (double_complex), INTENT (IN) :: S1
+  !    TYPE (complex_8) GETORDER
+  !    TYPE (complex_8), INTENT (IN) :: S1
   !    integer  , INTENT (IN) ::  S2
   !
   !    if(s1%kind==m2) then
@@ -1134,8 +1197,8 @@ contains
   !
   !  FUNCTION CUTORDER( S1, S2 )
   !    implicit none
-  !    TYPE (double_complex) CUTORDER
-  !    TYPE (double_complex), INTENT (IN) :: S1
+  !    TYPE (complex_8) CUTORDER
+  !    TYPE (complex_8), INTENT (IN) :: S1
   !    integer  , INTENT (IN) ::  S2
   !
   !    if(s1%kind==m2) then
@@ -1151,8 +1214,8 @@ contains
 
   FUNCTION GETCHARnd2( S1, S2 )
     implicit none
-    TYPE (double_complex) GETCHARnd2
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) GETCHARnd2
+    TYPE (complex_8), INTENT (IN) :: S1
     CHARACTER(*)  , INTENT (IN) ::  S2
     integer localmaster
     type(complextaylor) t
@@ -1181,8 +1244,8 @@ contains
 
   FUNCTION GETintnd2( S1, S2 )
     implicit none
-    TYPE (double_complex) GETintnd2
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) GETintnd2
+    TYPE (complex_8), INTENT (IN) :: S1
     integer, INTENT (IN) ::  S2(:)
     integer localmaster
     type(complextaylor) t
@@ -1213,7 +1276,7 @@ contains
   FUNCTION GETchar( S1, S2 )
     implicit none
     complex(dp) GETchar
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8), INTENT (IN) :: S1
     CHARACTER(*)  , INTENT (IN) ::  S2
     integer i,j
     !  integer localmaster
@@ -1239,7 +1302,7 @@ contains
   FUNCTION GETint( S1, S2 )
     implicit none
     complex(dp) GETint
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8), INTENT (IN) :: S1
     integer  , INTENT (IN) ::  S2(:)
     integer i
 
@@ -1261,8 +1324,8 @@ contains
 
   FUNCTION GETORDER( S1, S2 )
     implicit none
-    TYPE (double_complex) GETORDER
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) GETORDER
+    TYPE (complex_8), INTENT (IN) :: S1
     integer  , INTENT (IN) ::  S2
     integer localmaster
 
@@ -1284,8 +1347,8 @@ contains
 
   FUNCTION CUTORDER( S1, S2 )
     implicit none
-    TYPE (double_complex) CUTORDER
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) CUTORDER
+    TYPE (complex_8), INTENT (IN) :: S1
     integer  , INTENT (IN) ::  S2
     integer localmaster
 
@@ -1309,8 +1372,8 @@ contains
 
   SUBROUTINE  A_OPT(S1,S2,s3,s4,s5,s6,s7,s8,s9,s10)
     implicit none
-    type (double_complex),INTENT(INout)::S1
-    type (double_complex),optional, INTENT(INout):: S2,s3,s4,s5,s6,s7,s8,s9,s10
+    type (complex_8),INTENT(INout)::S1
+    type (complex_8),optional, INTENT(INout):: S2,s3,s4,s5,s6,s7,s8,s9,s10
     call allocpoly(s1)
     if(present(s2)) call allocpoly(s2)
     if(present(s3)) call allocpoly(s3)
@@ -1325,8 +1388,8 @@ contains
 
   SUBROUTINE  K_OPT(S1,S2,s3,s4,s5,s6,s7,s8,s9,s10)
     implicit none
-    type (double_complex),INTENT(INout)::S1
-    type (double_complex),optional, INTENT(INout):: S2,s3,s4,s5,s6,s7,s8,s9,s10
+    type (complex_8),INTENT(INout)::S1
+    type (complex_8),optional, INTENT(INout):: S2,s3,s4,s5,s6,s7,s8,s9,s10
     call resetpoly0(s1)
     if(present(s2)) call resetpoly0(s2)
     if(present(s3)) call resetpoly0(s3)
@@ -1341,7 +1404,7 @@ contains
 
   SUBROUTINE  resetpolyn0(S2,K)
     implicit none
-    type (double_complex),INTENT(INOUT),dimension(:)::S2
+    type (complex_8),INTENT(INOUT),dimension(:)::S2
     INTEGER,optional,INTENT(IN)::k
     INTEGER J,i,N
 
@@ -1361,7 +1424,7 @@ contains
 
   SUBROUTINE  resetpoly_R(S2,FL)  !   STAYS REAL
     implicit none
-    type (double_complex),INTENT(INOUT)::S2
+    type (complex_8),INTENT(INOUT)::S2
     logical(lp),INTENT(IN)::FL
 
     if(s2%alloc) call killcomplex(s2%t)
@@ -1378,7 +1441,7 @@ contains
 
   SUBROUTINE  resetpoly_RN(S2,FL,K)
     implicit none
-    type (double_complex),INTENT(INOUT),dimension(:)::S2
+    type (complex_8),INTENT(INOUT),dimension(:)::S2
     logical(lp),INTENT(IN)::FL
 
     INTEGER,optional,INTENT(IN)::k
@@ -1403,7 +1466,7 @@ contains
 
   SUBROUTINE  allocpoly(S2)
     implicit none
-    type (double_complex),INTENT(INOUT)::S2
+    type (complex_8),INTENT(INOUT)::S2
 
     !  if(s2%alloc) call killcomplex(s2%t)
     s2%alloc=f
@@ -1411,14 +1474,14 @@ contains
     s2%r=0.0_dp
     s2%i=0
     s2%j=0
-    s2%g=0
+!    s2%g=0
     s2%s=1.0_dp
 
   END SUBROUTINE allocpoly
 
   SUBROUTINE  allocpolyn(S2,K)
     implicit none
-    type (double_complex),INTENT(INOUT),dimension(:)::S2
+    type (complex_8),INTENT(INOUT),dimension(:)::S2
     INTEGER,optional,INTENT(IN)::k
     INTEGER J,i,N
 
@@ -1436,11 +1499,16 @@ contains
 
   END SUBROUTINE allocpolyn
 
-  SUBROUTINE  printpoly(S2,i)
+  SUBROUTINE  printpoly(S2,mf)
     implicit none
-    type (double_complex),INTENT(INOUT)::S2
-    integer i,ipause,mypauses
-
+    type (complex_8),INTENT(INOUT)::S2
+    integer ipause,mypauses
+    integer,optional :: mf
+    integer i
+    character(255) line
+    i=6
+    if(present(mf)) i=mf
+          write(i,*) " printing a complex polymorph (complex_8)"
     if(s2%kind/=0) then
 
        select  case (s2%kind)
@@ -1449,10 +1517,21 @@ contains
        case(m2)
           call printcomplex(S2%t,i)
        case(m3)
-          write(i,*) s2%r
-          if(s2%i>0) then
-             write(i,*) "  +",s2%s,"  (x_",s2%i,"+ i","*x_",s2%j,")"
+
+          if(s2%i>0.and.s2%j>0) then
+             write(line,*) s2%r,"  +",s2%s,"  (x_",s2%i,"+ i","*x_",s2%j,")"
+          elseif(s2%i>0)then
+             write(line,*) s2%r,"  +",s2%s,"  (x_",s2%i,")"
+
+           elseif(s2%j>0)then
+             write(line,*) s2%r,"  +",s2%s,"  ( ","i*x_",s2%j,")"
+
+           else
+            write(line,*) s2%r
           endif
+             call context(line,maj=.false.)
+             write(i,'(a)') adjustr(line(1:len_trim(line)))
+        
        end   select
     else
 
@@ -1463,13 +1542,28 @@ contains
 
   END SUBROUTINE printpoly
 
-
+  SUBROUTINE  print6(S1,mf)
+    implicit none
+    type (complex_8),INTENT(INout)::S1(:)
+    integer,optional :: mf
+    integer        i
+    
+ !   if(size(s1)==6) then
+ !    do i=1,ndd
+ !       call print(s1(i),mf)
+ !    enddo
+ !   else
+     do i=lbound(s1,1),ubound(s1,1)
+        call print(s1(i),mf)
+     enddo
+ !   endif
+  END SUBROUTINE print6
 
   SUBROUTINE EQUAL(S2,S1)
     implicit none
     integer ipause, mypauses
-    type (double_complex),INTENT(inOUT)::S2
-    type (double_complex),INTENT(IN)::S1
+    type (complex_8),INTENT(inOUT)::S2
+    type (complex_8),INTENT(IN)::S1
     !    integer localmaster
 
     if(s1%kind==0) then
@@ -1494,11 +1588,11 @@ contains
              !             master=localmaster
           case(m3)
              s2%r=S1%r ! Knob stays a knob and real stays real 2002.10.9
-             !             w_p=0
-             !             w_p%nc=2
-             !             w_p%fc='((1X,A72,/,1x,a72))'
-             !             w_p%c(1)= " You are putting kind=3 (TPSA) into another kind=3"
-             !             w_p%c(2)= " The left handside is not a knob!"
+             !             !w_p=0
+             !             !w_p%nc=2
+             !             !w_p%fc='((1X,A72,/,1x,a72))'
+             !               write(6,*) " You are putting kind=3 (TPSA) into another kind=3"
+             !               write(6,*) " The left handside is not a knob!"
              !             ! call !write_e(0)
           end select
        elseif(S2%kind>S1%kind ) then
@@ -1568,14 +1662,14 @@ contains
           endif
 
        else
-          w_p=0
-          w_p%nc=5
-          w_p%fc='(4(1X,A72,/),(1X,A72))'
-          write(w_p%c(1),'(A23,I4,A19)') " You are putting kind= ", s1%kind," (TPSA) in a kind=0"
-          w_p%c(2)=  " We do not allow that anymore for safety reasons"
-          w_p%c(3)=  " If you insist on it, modify real_polymorph and complex_polymorph"
-          w_p%c(4)= " at your own insane risk "
-          w_p%c(5)= " Etienne Forest/Frank Schmidt"
+          !w_p=0
+          !w_p%nc=5
+          !w_p%fc='(4(1X,A72,/),(1X,A72))'
+          write(6,'(A23,I4,A19)') " You are putting kind= ", s1%kind," (TPSA) in a kind=0"
+            write(6,*)  " We do not allow that anymore for safety reasons"
+          !w_p%c(3)=  " If you insist on it, modify real_polymorph and complex_polymorph"
+          !w_p%c(4)= " at your own insane risk "
+          !w_p%c(5)= " Etienne Forest/Frank Schmidt"
           ! call !write_e(778)
        endif    ! end of what is s1
 
@@ -1587,7 +1681,7 @@ contains
   SUBROUTINE  EQUALRP(S2,S1)
     implicit none
     integer ipause, mypauses
-    type (double_complex),INTENT(inOUT)::S2
+    type (complex_8),INTENT(inOUT)::S2
     type (REAL_8),INTENT(IN)::S1
     !    integer localmaster
 
@@ -1613,11 +1707,11 @@ contains
              !             master=localmaster
           case(m3)
              s2%r=S1%r ! Knob stays a knob and real stays real 2002.10.9
-             !             w_p=0
-             !             w_p%nc=2
-             !             w_p%fc='((1X,A72,/,1x,a72))'
-             !             w_p%c(1)= " You are putting kind=3 (TPSA) into another kind=3"
-             !             w_p%c(2)= " The left handside is not a knob!"
+             !             !w_p=0
+             !             !w_p%nc=2
+             !             !w_p%fc='((1X,A72,/,1x,a72))'
+             !               write(6,*) " You are putting kind=3 (TPSA) into another kind=3"
+             !               write(6,*) " The left handside is not a knob!"
              !             ! call !write_e(0)
           end select
        elseif(S2%kind>S1%kind ) then
@@ -1685,14 +1779,14 @@ contains
           endif
 
        else
-          w_p=0
-          w_p%nc=5
-          w_p%fc='(4(1X,A72,/),(1X,A72))'
-          write(w_p%c(1),'(A23,I4,A19)') " You are putting kind= ", s1%kind," (TPSA) in a kind=0"
-          w_p%c(2)=  " We do not allow that anymore for safety reasons"
-          w_p%c(3)=  " If you insist on it, modify real_polymorph and complex_polymorph"
-          w_p%c(4)= " at your own insane risk "
-          w_p%c(5)= " Etienne Forest/Frank Schmidt"
+          !w_p=0
+          !w_p%nc=5
+          !w_p%fc='(4(1X,A72,/),(1X,A72))'
+          write(6,'(A23,I4,A19)') " You are putting kind= ", s1%kind," (TPSA) in a kind=0"
+            write(6,*)  " We do not allow that anymore for safety reasons"
+          !w_p%c(3)=  " If you insist on it, modify real_polymorph and complex_polymorph"
+          !w_p%c(4)= " at your own insane risk "
+          !w_p%c(5)= " Etienne Forest/Frank Schmidt"
           ! call !write_e(778)
        endif    ! end of what is s1
 
@@ -1705,7 +1799,7 @@ contains
     implicit none
     integer ipause, mypauses
     type (REAL_8),INTENT(inOUT)::S2
-    type (double_complex),INTENT(IN)::S1
+    type (complex_8),INTENT(IN)::S1
     !    integer localmaster
 
     if(s1%kind==0) then
@@ -1730,11 +1824,11 @@ contains
              !             master=localmaster
           case(m3)
              s2%r=S1%r ! Knob stays a knob and real stays real 2002.10.9
-             !             w_p=0
-             !             w_p%nc=2
-             !             w_p%fc='((1X,A72,/,1x,a72))'
-             !             w_p%c(1)= " You are putting kind=3 (TPSA) into another kind=3"
-             !             w_p%c(2)= " The left handside is not a knob!"
+             !             !w_p=0
+             !             !w_p%nc=2
+             !             !w_p%fc='((1X,A72,/,1x,a72))'
+             !               write(6,*) " You are putting kind=3 (TPSA) into another kind=3"
+             !               write(6,*) " The left handside is not a knob!"
              !             ! call !write_e(0)
           end select
        elseif(S2%kind>S1%kind ) then
@@ -1800,14 +1894,14 @@ contains
           endif
 
        else
-          w_p=0
-          w_p%nc=5
-          w_p%fc='(4(1X,A72,/),(1X,A72))'
-          write(w_p%c(1),'(A23,I4,A19)') " You are putting kind= ", s1%kind," (TPSA) in a kind=0"
-          w_p%c(2)=  " We do not allow that anymore for safety reasons"
-          w_p%c(3)=  " If you insist on it, modify real_polymorph and complex_polymorph"
-          w_p%c(4)= " at your own insane risk "
-          w_p%c(5)= " Etienne Forest/Frank Schmidt"
+          !w_p=0
+          !w_p%nc=5
+          !w_p%fc='(4(1X,A72,/),(1X,A72))'
+          write(6,'(A23,I4,A19)') " You are putting kind= ", s1%kind," (TPSA) in a kind=0"
+            write(6,*)  " We do not allow that anymore for safety reasons"
+          !w_p%c(3)=  " If you insist on it, modify real_polymorph and complex_polymorph"
+          !w_p%c(4)= " at your own insane risk "
+          !w_p%c(5)= " Etienne Forest/Frank Schmidt"
           ! call !write_e(778)
        endif    ! end of what is s1
 
@@ -1819,7 +1913,7 @@ contains
   FUNCTION drealt( S1 )
     implicit none
     TYPE (real_8) drealt
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8), INTENT (IN) :: S1
     integer localmaster
 
     select case(s1%kind)
@@ -1843,13 +1937,13 @@ contains
           drealt%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in drealt "
-       w_p%c(2)= "s1%kind   "
-       w_p=(/s1%kind  /)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in drealt "
+         write(6,*) "s1%kind   "
+       !w_p=(/s1%kind  /)
        ! call !write_e(0)
     end select
 
@@ -1858,7 +1952,7 @@ contains
   FUNCTION dimagt( S1 )
     implicit none
     TYPE (real_8) dimagt
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8), INTENT (IN) :: S1
     integer localmaster
     select case(s1%kind)
     case(m1)
@@ -1881,20 +1975,20 @@ contains
           dimagt%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in dimagt "
-       w_p%c(2)= "s1%kind   "
-       w_p=(/s1%kind  /)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in dimagt "
+         write(6,*) "s1%kind   "
+       !w_p=(/s1%kind  /)
        ! call !write_e(0)
     end select
   END FUNCTION dimagt
 
   FUNCTION dcmplxt( S1,s2 )
     implicit none
-    TYPE (double_complex) dcmplxt
+    TYPE (complex_8) dcmplxt
     TYPE (real_8), INTENT (IN) :: S1,s2
     integer localmaster
     select case(s1%kind+ms*s2%kind)
@@ -1982,21 +2076,22 @@ contains
           endif
        end select
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(2((1X,A72)))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in dcmplxt "
-       w_p%c(2)= "s1%kind ,s2%kind "
-       w_p=(/s1%kind ,s2%kind/)
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(2((1X,A72)))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in dcmplxt "
+         write(6,*) "s1%kind ,s2%kind "
+       !w_p=(/s1%kind ,s2%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION dcmplxt
 
+
   SUBROUTINE  complexEQUAL(S2,S1)
     implicit none
     complex(dp) ,INTENT(inout)::S2
-    type (double_complex),INTENT(IN)::S1
+    type (complex_8),INTENT(IN)::S1
     !    integer localmaster
 
 
@@ -2012,13 +2107,13 @@ contains
     case(m3)
        S2=S1%r
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in complexEQUAL "
-       w_p%c(2)= "s1%kind   "
-       w_p=(/s1%kind  /)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in complexEQUAL "
+         write(6,*) "s1%kind   "
+       !w_p=(/s1%kind  /)
        ! call !write_e(0)
     end select
 
@@ -2027,7 +2122,7 @@ contains
   SUBROUTINE  EQUALcomplext(S2,S1)
     implicit none
     integer ipause, mypauses
-    type (double_complex),INTENT(inOUT)::S2
+    type (complex_8),INTENT(inOUT)::S2
     type (complextaylor),INTENT(IN)::S1
     !    integer localmaster
 
@@ -2055,7 +2150,7 @@ contains
 
   SUBROUTINE  complextEQUAL(S1,S2)
     implicit none
-    type (double_complex),INTENT(in)::S2
+    type (complex_8),INTENT(in)::S2
     type (complextaylor),INTENT(inout)::S1
     !    integer localmaster
 
@@ -2082,13 +2177,13 @@ contains
        endif
        !       master=localmaster
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in complexEQUAL "
-       w_p%c(2)= "s2%kind   "
-       w_p=(/s2%kind  /)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in complexEQUAL "
+         write(6,*) "s2%kind   "
+       !w_p=(/s2%kind  /)
        ! call !write_e(0)
     end select
 
@@ -2097,7 +2192,7 @@ contains
   SUBROUTINE  Dequaldacon(S2,R1)
     implicit none
     integer ipause, mypauses
-    type (double_complex),INTENT(inOUT)::S2
+    type (complex_8),INTENT(inOUT)::S2
     real(dp),INTENT(IN)::R1
 
     IF(S2%KIND==M3) THEN
@@ -2148,7 +2243,7 @@ contains
   SUBROUTINE  equaldacon(S2,R1)
     implicit none
     integer ipause, mypauses
-    type (double_complex),INTENT(inOUT)::S2
+    type (complex_8),INTENT(inOUT)::S2
     real(sp),INTENT(IN)::R1
 
     if(real_warning) call real_stop
@@ -2199,7 +2294,7 @@ contains
   SUBROUTINE  iequaldacon(S2,R1)
     implicit none
     integer ipause, mypauses
-    type (double_complex),INTENT(inOUT)::S2
+    type (complex_8),INTENT(inOUT)::S2
     integer,INTENT(IN)::R1
 
     IF(S2%KIND==M3) THEN
@@ -2250,7 +2345,7 @@ contains
   SUBROUTINE  cequaldacon(S2,R1)
     implicit none
     integer ipause, mypauses
-    type (double_complex),INTENT(inOUT)::S2
+    type (complex_8),INTENT(inOUT)::S2
     complex(dp),INTENT(IN)::R1
 
     IF(S2%KIND==M3) THEN
@@ -2299,8 +2394,8 @@ contains
 
   FUNCTION add( S1, S2 )
     implicit none
-    TYPE (double_complex) add
-    TYPE (double_complex), INTENT (IN) :: S1, S2
+    TYPE (complex_8) add
+    TYPE (complex_8), INTENT (IN) :: S1, S2
     integer localmaster
 
     select case(s1%kind+ms*s2%kind)
@@ -2377,21 +2472,21 @@ contains
           endif
        end select
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(2((1X,A72)))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in add "
-       w_p%c(2)= "s1%kind ,s2%kind "
-       w_p=(/s1%kind ,s2%kind/)
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(2((1X,A72)))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in add "
+         write(6,*) "s1%kind ,s2%kind "
+       !w_p=(/s1%kind ,s2%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION add
 
   FUNCTION unaryADD( S1 )
     implicit none
-    TYPE (double_complex) unaryADD
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) unaryADD
+    TYPE (complex_8), INTENT (IN) :: S1
     integer localmaster
 
     select case(s1%kind)
@@ -2415,21 +2510,21 @@ contains
           unaryADD%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in unaryADD "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in unaryADD "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION unaryADD
 
   FUNCTION daddsc( S1, S2 )
     implicit none
-    TYPE (double_complex) daddsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) daddsc
+    TYPE (complex_8), INTENT (IN) :: S1
     real(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -2454,21 +2549,21 @@ contains
           daddsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in daddsc "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in daddsc "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION daddsc
 
   FUNCTION caddsc( S1, S2 )
     implicit none
-    TYPE (double_complex) caddsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) caddsc
+    TYPE (complex_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -2493,21 +2588,21 @@ contains
           caddsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in caddsc "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in caddsc "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION caddsc
 
   FUNCTION dscadd( S2, S1 )
     implicit none
-    TYPE (double_complex) dscadd
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) dscadd
+    TYPE (complex_8), INTENT (IN) :: S1
     real(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -2532,21 +2627,21 @@ contains
           dscadd%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in dscadd "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in dscadd "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION dscadd
 
   FUNCTION cscadd( S2, S1 )
     implicit none
-    TYPE (double_complex) cscadd
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) cscadd
+    TYPE (complex_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -2571,21 +2666,21 @@ contains
           cscadd%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in cscadd "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in cscadd "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cscadd
 
   FUNCTION addsc( S1, S2 )
     implicit none
-    TYPE (double_complex) addsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) addsc
+    TYPE (complex_8), INTENT (IN) :: S1
     real(sp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -2611,21 +2706,21 @@ contains
           addsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in addsc "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in addsc "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION addsc
 
   FUNCTION scadd( S2, S1  )
     implicit none
-    TYPE (double_complex) scadd
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) scadd
+    TYPE (complex_8), INTENT (IN) :: S1
     real(sp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -2651,21 +2746,21 @@ contains
           scadd%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in scadd "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in scadd "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION scadd
 
   FUNCTION iaddsc( S1, S2 )
     implicit none
-    TYPE (double_complex) iaddsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) iaddsc
+    TYPE (complex_8), INTENT (IN) :: S1
     integer , INTENT (IN) :: S2
     integer localmaster
 
@@ -2690,21 +2785,21 @@ contains
           iaddsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in iaddsc "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in iaddsc "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION iaddsc
 
   FUNCTION iscadd( S2, S1 )
     implicit none
-    TYPE (double_complex) iscadd
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) iscadd
+    TYPE (complex_8), INTENT (IN) :: S1
     integer, INTENT (IN) :: S2
     integer localmaster
 
@@ -2729,21 +2824,21 @@ contains
           iscadd%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in iscadd "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in iscadd "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION iscadd
 
   FUNCTION subs( S1, S2 )
     implicit none
-    TYPE (double_complex) subs
-    TYPE (double_complex), INTENT (IN) :: S1, S2
+    TYPE (complex_8) subs
+    TYPE (complex_8), INTENT (IN) :: S1, S2
     integer localmaster
 
     select case(s1%kind+ms*s2%kind)
@@ -2820,21 +2915,21 @@ contains
           endif
        end select
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(2((1X,A72)))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in subs "
-       w_p%c(2)= "s1%kind ,s2%kind "
-       w_p=(/s1%kind ,s2%kind/)
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(2((1X,A72)))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in subs "
+         write(6,*) "s1%kind ,s2%kind "
+       !w_p=(/s1%kind ,s2%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION subs
 
   FUNCTION unarySUB( S1 )
     implicit none
-    TYPE (double_complex) unarySUB
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) unarySUB
+    TYPE (complex_8), INTENT (IN) :: S1
     integer localmaster
 
     select case(s1%kind)
@@ -2858,21 +2953,21 @@ contains
           unarySUB%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in unarySUB "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in unarySUB "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION unarySUB
 
   FUNCTION dsubsc( S1, S2 )
     implicit none
-    TYPE (double_complex) dsubsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) dsubsc
+    TYPE (complex_8), INTENT (IN) :: S1
     real(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -2897,21 +2992,21 @@ contains
           dsubsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in dsubsc "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in dsubsc "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION dsubsc
 
   FUNCTION dscsub( S2, S1 )
     implicit none
-    TYPE (double_complex) dscsub
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) dscsub
+    TYPE (complex_8), INTENT (IN) :: S1
     real(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -2936,21 +3031,21 @@ contains
           dscsub%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in dscsub "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in dscsub "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION dscsub
 
   FUNCTION csubsc( S1, S2 )
     implicit none
-    TYPE (double_complex) csubsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) csubsc
+    TYPE (complex_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -2975,21 +3070,21 @@ contains
           csubsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in csubsc "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in csubsc "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION csubsc
 
   FUNCTION cscsub( S2, S1 )
     implicit none
-    TYPE (double_complex) cscsub
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) cscsub
+    TYPE (complex_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -3014,21 +3109,21 @@ contains
           cscsub%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in cscsub "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in cscsub "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cscsub
 
   FUNCTION subsc( S1, S2 )
     implicit none
-    TYPE (double_complex) subsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) subsc
+    TYPE (complex_8), INTENT (IN) :: S1
     real(sp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -3054,21 +3149,21 @@ contains
           subsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in subsc "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in subsc "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION subsc
 
   FUNCTION scsub( S2, S1 )
     implicit none
-    TYPE (double_complex) scsub
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) scsub
+    TYPE (complex_8), INTENT (IN) :: S1
     real(sp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -3094,21 +3189,21 @@ contains
           scsub%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in scsub "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in scsub "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION scsub
 
   FUNCTION isubsc( S1, S2 )
     implicit none
-    TYPE (double_complex) isubsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) isubsc
+    TYPE (complex_8), INTENT (IN) :: S1
     integer , INTENT (IN) :: S2
     integer localmaster
 
@@ -3133,21 +3228,21 @@ contains
           isubsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in isubsc "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in isubsc "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION isubsc
 
   FUNCTION iscsub( S2, S1 )
     implicit none
-    TYPE (double_complex) iscsub
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) iscsub
+    TYPE (complex_8), INTENT (IN) :: S1
     integer , INTENT (IN) :: S2
     integer localmaster
 
@@ -3172,21 +3267,21 @@ contains
           iscsub%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in iscsub "
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in iscsub "
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION iscsub
 
   FUNCTION mul( S1, S2 )
     implicit none
-    TYPE (double_complex) mul
-    TYPE (double_complex), INTENT (IN) :: S1, S2
+    TYPE (complex_8) mul
+    TYPE (complex_8), INTENT (IN) :: S1, S2
     integer localmaster
 
     select case(s1%kind+ms*s2%kind)
@@ -3264,22 +3359,22 @@ contains
           endif
        end select
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(2((1X,A72)))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in mul "
-       w_p%c(2)= "s1%kind ,s2%kind "
-       w_p=(/s1%kind ,s2%kind/)
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(2((1X,A72)))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in mul "
+         write(6,*) "s1%kind ,s2%kind "
+       !w_p=(/s1%kind ,s2%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION mul
 
   FUNCTION pmul( S1, S2 )
     implicit none
-    TYPE (double_complex) pmul
+    TYPE (complex_8) pmul
     TYPE (real_8), INTENT (IN) :: S1
-    TYPE (double_complex), INTENT (IN) :: S2
+    TYPE (complex_8), INTENT (IN) :: S2
     integer localmaster
 
     select case(s1%kind+ms*s2%kind)
@@ -3356,22 +3451,22 @@ contains
           endif
        end select
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(2((1X,A72)))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in pmul "
-       w_p%c(2)= "s1%kind ,s2%kind "
-       w_p=(/s1%kind ,s2%kind/)
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(2((1X,A72)))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in pmul "
+         write(6,*) "s1%kind ,s2%kind "
+       !w_p=(/s1%kind ,s2%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION pmul
 
   FUNCTION mulp( S1, S2 )
     implicit none
-    TYPE (double_complex) mulp
+    TYPE (complex_8) mulp
     TYPE (real_8), INTENT (IN) :: S2
-    TYPE (double_complex), INTENT (IN) ::  S1
+    TYPE (complex_8), INTENT (IN) ::  S1
     integer localmaster
 
     select case(s1%kind+ms*s2%kind)
@@ -3448,22 +3543,22 @@ contains
           endif
        end select
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(2((1X,A72)))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in mulp "
-       w_p%c(2)= "s1%kind ,s2%kind "
-       w_p=(/s1%kind ,s2%kind/)
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(2((1X,A72)))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in mulp "
+         write(6,*) "s1%kind ,s2%kind "
+       !w_p=(/s1%kind ,s2%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION mulp
 
   FUNCTION padd( S1, S2 )
     implicit none
-    TYPE (double_complex) padd
+    TYPE (complex_8) padd
     TYPE (real_8), INTENT (IN) :: S1
-    TYPE (double_complex), INTENT (IN) :: S2
+    TYPE (complex_8), INTENT (IN) :: S2
     integer localmaster
 
     select case(s1%kind+ms*s2%kind)
@@ -3540,22 +3635,22 @@ contains
           endif
        end select
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(2((1X,A72)))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in padd "
-       w_p%c(2)= "s1%kind ,s2%kind "
-       w_p=(/s1%kind ,s2%kind/)
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(2((1X,A72)))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in padd "
+         write(6,*) "s1%kind ,s2%kind "
+       !w_p=(/s1%kind ,s2%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION padd
 
   FUNCTION addp( S2, S1 )
     implicit none
-    TYPE (double_complex) addp
+    TYPE (complex_8) addp
     TYPE (real_8), INTENT (IN) :: S1
-    TYPE (double_complex), INTENT (IN) :: S2
+    TYPE (complex_8), INTENT (IN) :: S2
     integer localmaster
 
     select case(s1%kind+ms*s2%kind)
@@ -3632,22 +3727,22 @@ contains
           endif
        end select
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(2((1X,A72)))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in addp "
-       w_p%c(2)= "s1%kind ,s2%kind "
-       w_p=(/s1%kind ,s2%kind/)
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(2((1X,A72)))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in addp "
+         write(6,*) "s1%kind ,s2%kind "
+       !w_p=(/s1%kind ,s2%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION addp
 
   FUNCTION psub( S1, S2 )
     implicit none
-    TYPE (double_complex) psub
+    TYPE (complex_8) psub
     TYPE (real_8), INTENT (IN) :: S1
-    TYPE (double_complex), INTENT (IN) :: S2
+    TYPE (complex_8), INTENT (IN) :: S2
     integer localmaster
 
     select case(s1%kind+ms*s2%kind)
@@ -3724,22 +3819,22 @@ contains
           endif
        end select
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(2((1X,A72)))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in psub "
-       w_p%c(2)= "s1%kind ,s2%kind "
-       w_p=(/s1%kind ,s2%kind/)
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(2((1X,A72)))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in psub "
+         write(6,*) "s1%kind ,s2%kind "
+       !w_p=(/s1%kind ,s2%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION psub
 
   FUNCTION subp(S2 , S1 )
     implicit none
-    TYPE (double_complex) subp
+    TYPE (complex_8) subp
     TYPE (real_8), INTENT (IN) :: S1
-    TYPE (double_complex), INTENT (IN) :: S2
+    TYPE (complex_8), INTENT (IN) :: S2
     integer localmaster
 
     select case(s1%kind+ms*s2%kind)
@@ -3816,22 +3911,22 @@ contains
           endif
        end select
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(2((1X,A72)))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in subp "
-       w_p%c(2)= "s1%kind ,s2%kind "
-       w_p=(/s1%kind ,s2%kind/)
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(2((1X,A72)))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in subp "
+         write(6,*) "s1%kind ,s2%kind "
+       !w_p=(/s1%kind ,s2%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION subp
 
   FUNCTION pdiv( S1, S2 )
     implicit none
-    TYPE (double_complex) pdiv
+    TYPE (complex_8) pdiv
     TYPE (real_8), INTENT (IN) :: S1
-    TYPE (double_complex), INTENT (IN) :: S2
+    TYPE (complex_8), INTENT (IN) :: S2
     integer localmaster
 
     select case(s1%kind+ms*s2%kind)
@@ -3908,22 +4003,22 @@ contains
           endif
        end select
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(2((1X,A72)))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in pdiv "
-       w_p%c(2)= "s1%kind ,s2%kind "
-       w_p=(/s1%kind ,s2%kind/)
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(2((1X,A72)))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in pdiv "
+         write(6,*) "s1%kind ,s2%kind "
+       !w_p=(/s1%kind ,s2%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION pdiv
 
   FUNCTION divp(S2 , S1 )
     implicit none
-    TYPE (double_complex) divp
+    TYPE (complex_8) divp
     TYPE (real_8), INTENT (IN) :: S1
-    TYPE (double_complex), INTENT (IN) :: S2
+    TYPE (complex_8), INTENT (IN) :: S2
     integer localmaster
 
     select case(s1%kind+ms*s2%kind)
@@ -4000,13 +4095,13 @@ contains
           endif
        end select
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(2((1X,A72)))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in divp "
-       w_p%c(2)= "s1%kind ,s2%kind "
-       w_p=(/s1%kind ,s2%kind/)
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(2((1X,A72)))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in divp "
+         write(6,*) "s1%kind ,s2%kind "
+       !w_p=(/s1%kind ,s2%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION divp
@@ -4014,8 +4109,8 @@ contains
 
   FUNCTION cmulsc( S1, S2 )
     implicit none
-    TYPE (double_complex) cmulsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) cmulsc
+    TYPE (complex_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -4040,21 +4135,21 @@ contains
           cmulsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in cmulsc"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in cmulsc"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cmulsc
 
   FUNCTION cscmul( S2, S1 )
     implicit none
-    TYPE (double_complex) cscmul
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) cscmul
+    TYPE (complex_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -4079,20 +4174,20 @@ contains
           cscmul%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in cscmul"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in cscmul"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cscmul
 
   FUNCTION cpmulsc( S1, S2 )
     implicit none
-    TYPE (double_complex) cpmulsc
+    TYPE (complex_8) cpmulsc
     TYPE (real_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
@@ -4118,20 +4213,20 @@ contains
           cpmulsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in cpmulsc"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in cpmulsc"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cpmulsc
 
   FUNCTION cpscmul(S2 , S1 )
     implicit none
-    TYPE (double_complex) cpscmul
+    TYPE (complex_8) cpscmul
     TYPE (real_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
@@ -4157,20 +4252,21 @@ contains
           cpscmul%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in cpscmul"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in cpscmul"
+         write(6,*) "s1%kind ",s1%kind
+         read(5,*) localmaster
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cpscmul
 
   FUNCTION cpaddsc( S1, S2 )
     implicit none
-    TYPE (double_complex) cpaddsc
+    TYPE (complex_8) cpaddsc
     TYPE (real_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
@@ -4196,20 +4292,20 @@ contains
           cpaddsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in cpaddsc"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in cpaddsc"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cpaddsc
 
   FUNCTION cpscadd( S2  ,S1)
     implicit none
-    TYPE (double_complex) cpscadd
+    TYPE (complex_8) cpscadd
     TYPE (real_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
@@ -4235,20 +4331,20 @@ contains
           cpscadd%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in cpscadd"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in cpscadd"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cpscadd
 
   FUNCTION cpsubsc( S1, S2 )
     implicit none
-    TYPE (double_complex) cpsubsc
+    TYPE (complex_8) cpsubsc
     TYPE (real_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
@@ -4274,20 +4370,20 @@ contains
           cpsubsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in cpsubsc"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in cpsubsc"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cpsubsc
 
   FUNCTION cpscsub( S2  ,S1)
     implicit none
-    TYPE (double_complex) cpscsub
+    TYPE (complex_8) cpscsub
     TYPE (real_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
@@ -4313,20 +4409,20 @@ contains
           cpscsub%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in cpscsub"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in cpscsub"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cpscsub
 
   FUNCTION cpdivsc( S1, S2 )
     implicit none
-    TYPE (double_complex) cpdivsc
+    TYPE (complex_8) cpdivsc
     TYPE (real_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
@@ -4352,20 +4448,20 @@ contains
           cpdivsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in cpdivsc"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in cpdivsc"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cpdivsc
 
   FUNCTION cpscdiv( S2  ,S1)
     implicit none
-    TYPE (double_complex) cpscdiv
+    TYPE (complex_8) cpscdiv
     TYPE (real_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
@@ -4391,21 +4487,21 @@ contains
           cpscdiv%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in cpscdiv"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in cpscdiv"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cpscdiv
 
   FUNCTION dmulsc( S1, S2 )
     implicit none
-    TYPE (double_complex) dmulsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) dmulsc
+    TYPE (complex_8), INTENT (IN) :: S1
     real(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -4430,21 +4526,21 @@ contains
           dmulsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in dmulsc"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in dmulsc"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION dmulsc
 
   FUNCTION dscmul( S2, S1 )
     implicit none
-    TYPE (double_complex) dscmul
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) dscmul
+    TYPE (complex_8), INTENT (IN) :: S1
     real(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -4469,21 +4565,21 @@ contains
           dscmul%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in dscmul"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in dscmul"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION dscmul
 
   FUNCTION mulsc( S1, S2 )
     implicit none
-    TYPE (double_complex) mulsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) mulsc
+    TYPE (complex_8), INTENT (IN) :: S1
     real(sp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -4509,21 +4605,21 @@ contains
           mulsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in mulsc"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in mulsc"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION mulsc
 
   FUNCTION scmul( S2, S1 )
     implicit none
-    TYPE (double_complex) scmul
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) scmul
+    TYPE (complex_8), INTENT (IN) :: S1
     real(sp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -4549,21 +4645,21 @@ contains
           scmul%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in scmul"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in scmul"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION scmul
 
   FUNCTION imulsc( S1, S2 )
     implicit none
-    TYPE (double_complex) imulsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) imulsc
+    TYPE (complex_8), INTENT (IN) :: S1
     integer , INTENT (IN) :: S2
     integer localmaster
 
@@ -4572,10 +4668,15 @@ contains
        imulsc%r=s1%r*REAL(s2,kind=DP)
        imulsc%kind=1
     case(m2)
-       localmaster=master
-       call ass(imulsc)
-       imulsc%t= s1%t*REAL(s2,kind=DP)
-       master=localmaster
+       if(s2/=0) then
+        localmaster=master
+        call ass(imulsc)
+        imulsc%t= s1%t*REAL(s2,kind=DP)
+        master=localmaster
+       else
+        imulsc%r=0.0_dp
+        imulsc%kind=1
+       endif
     case(m3)
        if(knob) then
           localmaster=master
@@ -4588,21 +4689,21 @@ contains
           imulsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in imulsc"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in imulsc"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION imulsc
 
   FUNCTION iscmul( S2, S1 )
     implicit none
-    TYPE (double_complex) iscmul
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) iscmul
+    TYPE (complex_8), INTENT (IN) :: S1
     integer , INTENT (IN) :: S2
     integer localmaster
 
@@ -4611,10 +4712,15 @@ contains
        iscmul%r=s1%r*REAL(s2,kind=DP)
        iscmul%kind=1
     case(m2)
-       localmaster=master
-       call ass(iscmul)
-       iscmul%t= s1%t*REAL(s2,kind=DP)
-       master=localmaster
+       if(s2/=0) then
+        localmaster=master
+        call ass(iscmul)
+        iscmul%t= s1%t*REAL(s2,kind=DP)
+        master=localmaster
+       else
+        iscmul%r=0.0_dp
+        iscmul%     kind=1
+       endif
     case(m3)
        if(knob) then
           localmaster=master
@@ -4627,21 +4733,21 @@ contains
           iscmul%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in iscmul"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in iscmul"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION iscmul
 
   FUNCTION div( S1, S2 )
     implicit none
-    TYPE (double_complex) div
-    TYPE (double_complex), INTENT (IN) :: S1, S2
+    TYPE (complex_8) div
+    TYPE (complex_8), INTENT (IN) :: S1, S2
     integer localmaster
 
     select case(s1%kind+ms*s2%kind)
@@ -4718,21 +4824,21 @@ contains
           endif
        end select
     case default
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(2((1X,A72)))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in div "
-       w_p%c(2)= "s1%kind ,s2%kind "
-       w_p=(/s1%kind ,s2%kind/)
+       !w_p=0
+       !w_p%nc=1
+       !w_p%fc='(2((1X,A72)))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in div "
+         write(6,*) "s1%kind ,s2%kind "
+       !w_p=(/s1%kind ,s2%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION div
 
   FUNCTION ddivsc( S1, S2 )
     implicit none
-    TYPE (double_complex) ddivsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) ddivsc
+    TYPE (complex_8), INTENT (IN) :: S1
     real(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -4757,21 +4863,21 @@ contains
           ddivsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in ddivsc"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in ddivsc"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION ddivsc
 
   FUNCTION dscdiv( S2, S1 )
     implicit none
-    TYPE (double_complex) dscdiv
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) dscdiv
+    TYPE (complex_8), INTENT (IN) :: S1
     real(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -4796,21 +4902,21 @@ contains
           dscdiv%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in dscdiv"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in dscdiv"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION dscdiv
 
   FUNCTION cdivsc( S1, S2 )
     implicit none
-    TYPE (double_complex) cdivsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) cdivsc
+    TYPE (complex_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -4835,21 +4941,21 @@ contains
           cdivsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in cdivsc"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in cdivsc"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cdivsc
 
   FUNCTION cscdiv( S2, S1 )
     implicit none
-    TYPE (double_complex) cscdiv
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) cscdiv
+    TYPE (complex_8), INTENT (IN) :: S1
     complex(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -4874,21 +4980,21 @@ contains
           cscdiv%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in "
-       w_p%c(2)= "s1%kind cscdiv"
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in "
+         write(6,*) "s1%kind cscdiv"
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION cscdiv
 
   FUNCTION divsc( S1, S2 )
     implicit none
-    TYPE (double_complex) divsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) divsc
+    TYPE (complex_8), INTENT (IN) :: S1
     real(sp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -4914,21 +5020,21 @@ contains
           divsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in "
-       w_p%c(2)= "s1%kind divsc"
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in "
+         write(6,*) "s1%kind divsc"
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION divsc
 
   FUNCTION scdiv( S2, S1 )
     implicit none
-    TYPE (double_complex) scdiv
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) scdiv
+    TYPE (complex_8), INTENT (IN) :: S1
     real(sp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -4954,21 +5060,21 @@ contains
           scdiv%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in "
-       w_p%c(2)= "s1%kind scdiv"
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in "
+         write(6,*) "s1%kind scdiv"
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION scdiv
 
   FUNCTION idivsc( S1, S2 )
     implicit none
-    TYPE (double_complex) idivsc
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) idivsc
+    TYPE (complex_8), INTENT (IN) :: S1
     integer , INTENT (IN) :: S2
     integer localmaster
 
@@ -4993,21 +5099,21 @@ contains
           idivsc%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in idivsc"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in idivsc"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION idivsc
 
   FUNCTION iscdiv( S2, S1 )
     implicit none
-    TYPE (double_complex) iscdiv
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) iscdiv
+    TYPE (complex_8), INTENT (IN) :: S1
     integer , INTENT (IN) :: S2
     integer localmaster
 
@@ -5032,21 +5138,21 @@ contains
           iscdiv%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in iscdiv"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in iscdiv"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION iscdiv
 
   FUNCTION POW( S1, S2 )
     implicit none
-    TYPE (double_complex) POW
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) POW
+    TYPE (complex_8), INTENT (IN) :: S1
     integer , INTENT (IN) :: S2
     integer localmaster
 
@@ -5071,21 +5177,21 @@ contains
           POW%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in POW"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in POW"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION POW
 
   FUNCTION POWR( S1, S2 )
     implicit none
-    TYPE (double_complex) POWR
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) POWR
+    TYPE (complex_8), INTENT (IN) :: S1
     REAL(SP) , INTENT (IN) :: S2
     integer localmaster
 
@@ -5111,21 +5217,21 @@ contains
           POWR%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in POWR"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in POWR"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION POWR
 
   FUNCTION POWR8( S1, S2 )
     implicit none
-    TYPE (double_complex) POWR8
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) POWR8
+    TYPE (complex_8), INTENT (IN) :: S1
     real(dp) , INTENT (IN) :: S2
     integer localmaster
 
@@ -5150,21 +5256,21 @@ contains
           POWR8%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in POWR8"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in POWR8"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION POWR8
 
   FUNCTION dexpt( S1 )
     implicit none
-    TYPE (double_complex) dexpt
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) dexpt
+    TYPE (complex_8), INTENT (IN) :: S1
     integer localmaster
 
     select case(s1%kind)
@@ -5188,21 +5294,59 @@ contains
           dexpt%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in dexpt"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in dexpt"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION dexpt
 
+  FUNCTION CONJGT( S1 )
+    implicit none
+    TYPE (complex_8) CONJGT
+    TYPE (complex_8), INTENT (IN) :: S1
+    integer localmaster
+
+    select case(s1%kind)
+    case(m1)
+       CONJGT%r=CONJG(s1%r)
+       CONJGT%kind=1
+    case(m2)
+       localmaster=master
+       call ass(CONJGT)
+       CONJGT%t= CONJG(s1%t)
+       master=localmaster
+    case(m3)
+       if(knob) then
+          localmaster=master
+          call ass(CONJGT)
+          call varck1(s1)
+          CONJGT%t= CONJG(varc1)
+          master=localmaster
+       else
+          CONJGT%r=CONJG(s1%r)
+          CONJGT%kind=1
+       endif
+    case default
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in CONJGT"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
+       ! call !write_e(0)
+    end select
+  END FUNCTION CONJGT
+
   FUNCTION dcost( S1 )
     implicit none
-    TYPE (double_complex) dcost
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) dcost
+    TYPE (complex_8), INTENT (IN) :: S1
     integer localmaster
 
     select case(s1%kind)
@@ -5226,21 +5370,21 @@ contains
           dcost%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in dcost"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in dcost"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION dcost
 
   FUNCTION dsint( S1 )
     implicit none
-    TYPE (double_complex) dsint
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) dsint
+    TYPE (complex_8), INTENT (IN) :: S1
     integer localmaster
 
     select case(s1%kind)
@@ -5264,13 +5408,13 @@ contains
           dsint%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in "
-       w_p%c(2)= "s1%kind dsint"
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in "
+         write(6,*) "s1%kind dsint"
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION dsint
@@ -5278,8 +5422,8 @@ contains
 
   FUNCTION dlogt( S1 )
     implicit none
-    TYPE (double_complex) dlogt
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) dlogt
+    TYPE (complex_8), INTENT (IN) :: S1
     integer localmaster
 
     select case(s1%kind)
@@ -5303,21 +5447,21 @@ contains
           dlogt%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in dlogt"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in dlogt"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION dlogt
 
   FUNCTION dsqrtt( S1 )
     implicit none
-    TYPE (double_complex) dsqrtt
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8) dsqrtt
+    TYPE (complex_8), INTENT (IN) :: S1
     integer localmaster
 
     select case(s1%kind)
@@ -5341,13 +5485,13 @@ contains
           dsqrtt%kind=1
        endif
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in dsqrtt"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in dsqrtt"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION dsqrtt
@@ -5355,7 +5499,7 @@ contains
   FUNCTION abst( S1 )
     implicit none
     real(dp) abst
-    TYPE (double_complex), INTENT (IN) :: S1
+    TYPE (complex_8), INTENT (IN) :: S1
 
 
 
@@ -5365,13 +5509,13 @@ contains
     case(m2)
        abst=SQRT(REAL(s1%t.sub.'0',kind=DP)**2+aimag(s1%t.sub.'0')**2)
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(1((1X,i4)))'
-       w_p%c(1)= " trouble in abst"
-       w_p%c(2)= "s1%kind "
-       w_p=(/s1%kind/)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(1((1X,i4)))'
+         write(6,*) " trouble in abst"
+         write(6,*) "s1%kind "
+       !w_p=(/s1%kind/)
        ! call !write_e(0)
     end select
   END FUNCTION abst
@@ -5379,7 +5523,7 @@ contains
 
   subroutine asscp(s1)
     implicit none
-    TYPE (double_complex) s1
+    TYPE (complex_8) s1
     integer ipause,mypauses
 
     select case(master)
@@ -5418,56 +5562,76 @@ contains
 
   !  end subroutine asscp0
 
+  subroutine make_it_knobc(k,i,j,s)
+    implicit none
+    TYPE (complex_8), intent(inout) :: k
+    complex(dp), optional :: s
+    integer, intent(in) :: i,j
+    if(i==0.and.j==0) return
+    k%s=1.0_dp
+    if(present(s)) k%s=s
+    k%i=i
+    k%j=j
+    k%kind=3
+  end subroutine make_it_knobc
 
+  subroutine kill_knobc(k)
+    implicit none
+    TYPE (complex_8), intent(inout) :: k
+    k%s=1.0_dp
+    k%i=0
+    k%j=0
+    k%kind=1
+  end subroutine kill_knobc
 
   SUBROUTINE  varck1(S2)
     implicit none
-    type (double_complex)  S2
+    type (complex_8)  S2
 
     if(knob) then
-       if(nb_==0) then
+    !   if(nb_==0) then
           varc1=(/S2%R,S2%S/).var.(/s2%i+npara_fpp,s2%j+npara_fpp/)
-       elseif(s2%nb==nb_) then
-          varc1=(/S2%R,S2%S/).var.(/s2%i+npara_fpp-s2%g+1,s2%j+npara_fpp-s2%g+1/)
-       else
-          varc1=S2%R
-       endif
+     !  elseif(s2%nb==nb_) then
+     !     varc1=(/S2%R,S2%S/).var.(/s2%i+npara_fpp-s2%g+1,s2%j+npara_fpp-s2%g+1/)
+     !  else
+      !    varc1=S2%R
+     !  endif
     else ! Not a knob
        stop 3330   ! buggy never used
-       varc1=(/S2%R,S2%S/).var.(/0,0/)
+    !   varc1=(/S2%R,S2%S/).var.(/0,0/)
     endif
 
   end SUBROUTINE  varck1
 
   SUBROUTINE  varck2(S2)
     implicit none
-    type (double_complex)  S2
+    type (complex_8)  S2
 
 
     if(knob) then
-       if(nb_==0) then
+   !    if(nb_==0) then
           varc2=(/S2%R,S2%S/).var.(/s2%i+npara_fpp,s2%j+npara_fpp/)
-       elseif(s2%nb==nb_) then
-          varc2=(/S2%R,S2%S/).var.(/s2%i+npara_fpp-s2%g+1,s2%j+npara_fpp-s2%g+1/)
-       else
-          varc2=S2%R
-       endif
+    !   elseif(s2%nb==nb_) then
+    !      varc2=(/S2%R,S2%S/).var.(/s2%i+npara_fpp-s2%g+1,s2%j+npara_fpp-s2%g+1/)
+    !   else
+    !      varc2=S2%R
+    !   endif
     else ! Not a knob
        stop 3331   ! buggy never used
-       varc2=(/S2%R,S2%S/).var.(/0,0/)
+    !   varc2=(/S2%R,S2%S/).var.(/0,0/)
     endif
 
   end SUBROUTINE  varck2
 
   ! remove small numbers
 
-  SUBROUTINE  clean_double_complex(S1,S2,prec)
+  SUBROUTINE  clean_complex_8(S1,S2,prec)
     implicit none
-    type (double_complex),INTENT(INOUT)::S2
-    type (double_complex), intent(INOUT):: s1
+    type (complex_8),INTENT(INOUT)::S2
+    type (complex_8), intent(INOUT):: s1
     real(dp) prec
-    integer i
-    type(double_complex) t
+ 
+    type(complex_8) t
 
     call alloc(t)
     t=s1
@@ -5481,20 +5645,20 @@ contains
        Write(6,*) " cannot clean a knob "
        stop 601
     case default
-       w_p=0
-       w_p%nc=2
-       w_p%fc='((1X,A72,/,1x,a72))'
-       w_p%fi='(2((1X,i4)))'
-       w_p%c(1)= " trouble in clean_double_complex "
-       w_p%c(2)= "s1%kind   "
-       w_p=(/s1%kind  /)
+       !w_p=0
+       !w_p%nc=2
+       !w_p%fc='((1X,A72,/,1x,a72))'
+       !w_p%fi='(2((1X,i4)))'
+         write(6,*) " trouble in clean_complex_8 "
+         write(6,*) "s1%kind   "
+       !w_p=(/s1%kind  /)
        ! call !write_e(0)
     end select
     s2=t
     call kill(t)
 
 
-  END SUBROUTINE clean_double_complex
+  END SUBROUTINE clean_complex_8
 
 
 

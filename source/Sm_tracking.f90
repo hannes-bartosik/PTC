@@ -211,7 +211,11 @@ contains
     DO  WHILE(.not.ASSOCIATED(C,c2))
 
        CALL TRACK(C,X,K)
-       if(.not.check_stable) exit
+
+       if(.not.check_stable) then
+         write(messagelost,*) "Error in tracking ",c%mag%name," ", messagelost(:len_trim(messagelost))
+         exit
+       endif  
 
        C=>C%NEXT
     ENDDO
@@ -257,9 +261,14 @@ contains
     DO  WHILE(.not.ASSOCIATED(C,c2))
 
        CALL TRACK(C,X,K)
-       if(.not.check_stable) exit
+
+       if(.not.check_stable) then
+         write(messagelost,*) "Error in tracking ",c%mag%name," ", messagelost(:len_trim(messagelost))
+         exit
+       endif  
 
        C=>C%NEXT
+
     ENDDO
 
     if(associated(last).and.check_stable) then
@@ -305,7 +314,10 @@ contains
        CALL TRACK(C,X,K,X_IN=X_IN)  !,C%CHARGE
        !       CALL TRACK(C,X,K,R%CHARGE,X_IN)
 
-       if(.not.check_stable) exit
+       if(.not.check_stable) then
+         write(messagelost,*) "Error in tracking ",c%mag%name," ", messagelost(:len_trim(messagelost))
+         exit
+       endif  
 
        C=>C%NEXT
        J=J+1
@@ -363,7 +375,10 @@ contains
     DO  WHILE(J<I22.AND.ASSOCIATED(C))
        CALL TRACK(C,X,K)  !,C%CHARGE
        !       CALL TRACK(C,X,K,R%CHARGE)
-       if(.not.check_stable) exit
+       if(.not.check_stable) then
+         write(messagelost,*) "Error in tracking ",c%mag%name," ", messagelost(:len_trim(messagelost))
+         exit
+       endif  
 
        C=>C%NEXT
        J=J+1
@@ -423,34 +438,7 @@ contains
     C%MAG%P%CHARGE=>c%CHARGE
     ! DIRECTIONAL VARIABLE
     C%MAG%P%DIR=>C%DIR
-    ! if(present(charge)) then
-    !    C%MAG%P%CHARGE=>CHARGE
-    ! endif
-    !  C%MAG=K
 
-    !    if(c_%x_prime) then
-    !       P0=>C%MAG%P%P0C
-    !       B0=>C%MAG%P%BETA0
-    !       IF(C%MAG%P%exact)THEN
-    !          IF(k%TIME)THEN
-    !             xp=x(2)/root(one+two*X(5)/B0+X(5)**2-x(2)**2-x(4)**2)
-    !             x(4)=x(4)/root(one+two*X(5)/B0+X(5)**2-x(2)**2-x(4)**2)
-    !             x(2)=xp
-    !          else
-    !             xp=x(2)/root((one+x(5))**2-x(2)**2-x(4)**2)
-    !             x(4)=x(4)/root((one+x(5))**2-x(2)**2-x(4)**2)
-    !             x(2)=xp
-    !          endif
-    !       else
-    !          IF(k%TIME)THEN
-    !             x(2)=x(2)/root(one+two*X(5)/B0+X(5)**2)
-    !             x(4)=x(4)/root(one+two*X(5)/B0+X(5)**2)
-    !          else
-    !             x(2)=x(2)/(one+x(5))
-    !             x(4)=x(4)/(one+x(5))
-    !          endif
-    !       endif
-    !    endif
 
 
     IF(PRESENT(X_IN)) then
@@ -470,12 +458,12 @@ contains
        X_IN%POS(1)=X_IN%nst
     endif
 
-    IF(PATCHE/=0.AND.PATCHE/=2) THEN
+    IF(PATCHE/=0.AND.PATCHE/=2.AND.PATCHE/=5) THEN
        NULLIFY(P0);NULLIFY(B0);
        CN=>C%PREVIOUS
-       IF(ASSOCIATED(CN)) THEN ! ASSOCIATED
+       IF(ASSOCIATED(CN).and.PATCHE/=4) THEN ! ASSOCIATED
           !          IF(.NOT.CN%PATCH%ENERGY) THEN     ! No need to patch IF PATCHED BEFORE
-          IF(CN%PATCH%ENERGY==0) THEN     ! No need to patch IF PATCHED BEFORE
+          IF(CN%PATCH%ENERGY==0.or.CN%PATCH%ENERGY==1.or.CN%PATCH%ENERGY==4) THEN     ! No need to patch IF PATCHED BEFORE
              P0=>CN%MAG%P%P0C
              B0=>CN%BETA0
 
@@ -489,6 +477,19 @@ contains
                 X(5)=(1.0_dp+X(5))*P0/C%MAG%P%P0C-1.0_dp
              ENDIF
           ENDIF ! No need to patch
+       else  ! ASSOCIATED
+             P0=>C%PATCH%P0b
+             B0=>C%PATCH%B0b
+
+             X(2)=X(2)*P0/C%MAG%P%P0C
+             X(4)=X(4)*P0/C%MAG%P%P0C
+             IF(k%TIME.or.recirculator_cheat)THEN
+                X(5)=root(1.0_dp+2.0_dp*X(5)/B0+X(5)**2)  !X(5) = 1+DP/P0C_OLD
+                X(5)=X(5)*P0/C%MAG%P%P0C-1.0_dp !X(5) = DP/P0C_NEW
+                X(5)=(2.0_dp*X(5)+X(5)**2)/(root(1.0_dp/C%MAG%P%BETA0**2+2.0_dp*X(5)+X(5)**2)+1.0_dp/C%MAG%P%BETA0)
+             ELSE
+                X(5)=(1.0_dp+X(5))*P0/C%MAG%P%P0C-1.0_dp
+             ENDIF           
        ENDIF ! ASSOCIATED
 
     ENDIF
@@ -502,14 +503,14 @@ contains
     IF(PRESENT(X_IN)) CALL XMID(X_IN,X,-4)
     IF(PATCHT/=0.AND.PATCHT/=2.AND.(K%TOTALPATH==0)) THEN
       if(K%time) then
-       X(6)=X(6)-C%PATCH%a_T/c%beta0
+       X(6)=X(6)-C%PATCH%a_T  !/c%beta0
       else
-       X(6)=X(6)-C%PATCH%a_T
+       X(6)=X(6)-C%PATCH%a_L
       endif
     ENDIF
     IF(PRESENT(X_IN)) CALL XMID(X_IN,X,-3)
 
-    CALL DTILTD(C%DIR,C%MAG%P%TILTD,1,X)
+    CALL DTILTD(C%MAG%P%TILTD,1,X)
     IF(PRESENT(X_IN)) CALL XMID(X_IN,X,-2)
     ! The magnet frame of reference is located here implicitely before misalignments
 
@@ -524,10 +525,7 @@ contains
     endif
 
     CALL TRACK(C%MAG,X,K,X_IN)
-    !    if(abs(x(1))+abs(x(3))>absolute_aperture.or.(.not.CHECK_MADX_APERTURE)) then ! new 2010
-    !       if(CHECK_MADX_APERTURE) c_%message="exceed absolute_aperture in TRACK_FIBRE_R"
-    !       CHECK_STABLE=.false.
-    !    else   ! new 2010
+ 
 
     IF(PRESENT(X_IN)) then
        CALL XMID(X_IN,X,X_IN%nst+1)
@@ -539,14 +537,14 @@ contains
     ENDIF
     IF(PRESENT(X_IN)) CALL XMID(X_IN,X,X_IN%nst+1)
     ! The magnet frame of reference is located here implicitely before misalignments
-    CALL DTILTD(C%DIR,C%MAG%P%TILTD,2,X)
+    CALL DTILTD(C%MAG%P%TILTD,2,X)
     IF(PRESENT(X_IN)) CALL XMID(X_IN,X,X_IN%nst+1)
 
     IF(PATCHT/=0.AND.PATCHT/=1.AND.(K%TOTALPATH==0)) THEN
       if(K%time) then
-       X(6)=X(6)-C%PATCH%b_T/c%beta0
+       X(6)=X(6)-C%PATCH%b_T   !/c%beta0
       else
-       X(6)=X(6)-C%PATCH%b_T
+       X(6)=X(6)-C%PATCH%b_L
       endif
     ENDIF
     IF(PRESENT(X_IN)) CALL XMID(X_IN,X,X_IN%nst+1)
@@ -559,10 +557,11 @@ contains
 
     ! The CHART frame of reference is located here implicitely
 
-    IF(PATCHE/=0.AND.PATCHE/=1) THEN
+    IF(PATCHE/=0.AND.PATCHE/=1.AND.PATCHE/=4) THEN
        NULLIFY(P0);NULLIFY(B0);
        CN=>C%NEXT
-       IF(.NOT.ASSOCIATED(CN)) CN=>C
+       IF(ASSOCIATED(CN).and.PATCHE/=5) THEN ! ASSOCIATED       
+!       IF(.NOT.ASSOCIATED(CN)) CN=>C
        P0=>CN%MAG%P%P0C
        B0=>CN%BETA0
        X(2)=X(2)*C%MAG%P%P0C/P0
@@ -574,8 +573,22 @@ contains
        ELSE
           X(5)=(1.0_dp+X(5))*C%MAG%P%P0C/P0-1.0_dp
        ENDIF
-    ENDIF
+    else
+             P0=>C%PATCH%P0b ! 8/31/2016
+             B0=>C%PATCH%B0b ! 8/31/2016
 
+             X(2)=X(2)*C%MAG%P%P0C/P0 ! 8/31/2016
+             X(4)=X(4)*C%MAG%P%P0C/P0 ! 8/31/2016
+       IF(k%TIME.or.recirculator_cheat)THEN ! 8/31/2016
+          X(5)=root(1.0_dp+2.0_dp*X(5)/C%MAG%P%BETA0+X(5)**2)  !X(5) = 1+DP/P0C_OLD ! 8/31/2016
+          X(5)=X(5)*C%MAG%P%P0C/P0-1.0_dp !X(5) = DP/P0C_NEW ! 8/31/2016
+          X(5)=(2.0_dp*X(5)+X(5)**2)/(root(1.0_dp/B0**2+2.0_dp*X(5)+X(5)**2)+1.0_dp/B0) ! 8/31/2016
+       ELSE
+          X(5)=(1.0_dp+X(5))*C%MAG%P%P0C/P0-1.0_dp ! 8/31/2016
+       ENDIF        
+    ENDIF
+    endif ! associated
+    
     IF(PRESENT(X_IN)) then
        CALL XMID(X_IN,X,X_IN%nst+1)
        X_IN%POS(4)=X_IN%nst
@@ -592,8 +605,8 @@ contains
 
     !    endif ! new 2010
 
-    if(abs(x(1))+abs(x(3))>absolute_aperture) then   !.or.(.not.CHECK_MADX_APERTURE)) then
-       messageLOST="Sm_tracking.f90 TRACK_FIBRE_R : exceed absolute_aperture in TRACK_FIBRE_R"
+    if(abs(x(1))+abs(x(3))>absolute_aperture.or.abs(x(6))>t_aperture) then   !.or.(.not.CHECK_MADX_APERTURE)) then
+       messageLOST="exceed absolute_aperture in TRACK_FIBRE_R"
        xlost=x
        CHECK_STABLE=.false.
     endif
@@ -633,12 +646,12 @@ contains
     ! NEW STUFF WITH KIND=3: KNOB OF FPP IS SET TO TRUE IF NECESSARY
     IF(K%PARA_IN ) KNOB=.TRUE.
     PATCHT=C%PATCH%TIME ;PATCHE=C%PATCH%ENERGY ;PATCHG=C%PATCH%PATCH;
-    IF(PATCHE/=0.AND.PATCHE/=2) THEN
+    IF(PATCHE/=0.AND.PATCHE/=2.AND.PATCHE/=5) THEN
        NULLIFY(P0);NULLIFY(B0);
        CN=>C%PREVIOUS
-       IF(ASSOCIATED(CN)) THEN ! ASSOCIATED
+       IF(ASSOCIATED(CN).and.PATCHE/=4) THEN ! ASSOCIATED
           !          IF(.NOT.CN%PATCH%ENERGY) THEN     ! NO NEED TO PATCH IF PATCHED BEFORE
-          IF(CN%PATCH%ENERGY==0) THEN     ! NO NEED TO PATCH IF PATCHED BEFORE
+          IF(CN%PATCH%ENERGY==0.or.CN%PATCH%ENERGY==1.or.CN%PATCH%ENERGY==4) THEN     ! NO NEED TO PATCH IF PATCHED BEFORE
              P0=>CN%MAGP%P%P0C
              B0=>CN%BETA0
 
@@ -652,7 +665,20 @@ contains
                 X(5)=(1.0_dp+X(5))*P0/C%MAGP%P%P0C-1.0_dp
              ENDIF
           ENDIF ! NO NEED TO PATCH
-       ENDIF ! ASSOCIATED
+       else ! ASSOCIATED
+             P0=>C%PATCH%P0b
+             B0=>C%PATCH%B0b
+
+             X(2)=X(2)*P0/C%MAGP%P%P0C
+             X(4)=X(4)*P0/C%MAGP%P%P0C
+             IF(k%TIME.or.recirculator_cheat)THEN
+                X(5)=SQRT(1.0_dp+2.0_dp*X(5)/B0+X(5)**2)  !X(5) = 1+DP/P0C_OLD
+                X(5)=X(5)*P0/C%MAGP%P%P0C-1.0_dp !X(5) = DP/P0C_NEW
+                X(5)=(2.0_dp*X(5)+X(5)**2)/(SQRT(1.0_dp/C%MAGP%P%BETA0**2+2.0_dp*X(5)+X(5)**2)+1.0_dp/C%MAGP%P%BETA0)
+             ELSE
+                X(5)=(1.0_dp+X(5))*P0/C%MAGP%P%P0C-1.0_dp
+             ENDIF           
+      ENDIF ! ASSOCIATED
 
     ENDIF
     !    IF(PRESENT(X_IN)) CALL XMID(X_IN,X,-5)
@@ -667,14 +693,14 @@ contains
     ! TIME PATCH
     IF(PATCHT/=0.AND.PATCHT/=2.AND.(K%TOTALPATH==0)) THEN
       if(K%time) then
-       X(6)=X(6)-C%PATCH%a_T/c%beta0
+       X(6)=X(6)-C%PATCH%a_T    !/c%beta0
       else
-       X(6)=X(6)-C%PATCH%a_T
+       X(6)=X(6)-C%PATCH%a_L
       endif
     ENDIF
     !    IF(PRESENT(X_IN)) CALL XMID(X_IN,X,-3)
 
-    CALL DTILTD(C%DIR,C%MAGP%P%TILTD,1,X)
+    CALL DTILTD(C%MAGP%P%TILTD,1,X)
     !    IF(PRESENT(X_IN)) CALL XMID(X_IN,X,-2)
     ! MISALIGNMENTS AT THE ENTRANCE
     IF(C%MAGP%MIS) THEN
@@ -696,16 +722,16 @@ contains
     ENDIF
     !    IF(PRESENT(X_IN)) CALL XMID(X_IN,X,X_IN%nst+1)
 
-    CALL DTILTD(C%DIR,C%MAGP%P%TILTD,2,X)
+    CALL DTILTD(C%MAGP%P%TILTD,2,X)
     !    IF(PRESENT(X_IN)) CALL XMID(X_IN,X,X_IN%nst+1)
 
     !EXIT PATCH
     ! TIME PATCH
     IF(PATCHT/=0.AND.PATCHT/=1.AND.(K%TOTALPATH==0)) THEN
       if(K%time) then
-       X(6)=X(6)-C%PATCH%b_T/c%beta0
+       X(6)=X(6)-C%PATCH%b_T   !/c%beta0
       else
-       X(6)=X(6)-C%PATCH%b_T
+       X(6)=X(6)-C%PATCH%b_L
       endif
     ENDIF
     !    IF(PRESENT(X_IN)) CALL XMID(X_IN,X,X_IN%nst+1)
@@ -718,10 +744,11 @@ contains
     !    IF(PRESENT(X_IN)) CALL XMID(X_IN,X,X_IN%nst+1)
 
     ! ENERGY PATCH
-    IF(PATCHE/=0.AND.PATCHE/=1) THEN
+    IF(PATCHE/=0.AND.PATCHE/=1.AND.PATCHE/=4) THEN
        NULLIFY(P0);NULLIFY(B0);
        CN=>C%NEXT
-       IF(.NOT.ASSOCIATED(CN)) CN=>C
+!       IF(.NOT.ASSOCIATED(CN)) CN=>C
+       IF(ASSOCIATED(CN).and.PATCHE/=5) THEN ! ASSOCIATED        
        P0=>CN%MAGP%P%P0C
        B0=>CN%BETA0
        X(2)=X(2)*C%MAGP%P%P0C/P0
@@ -733,7 +760,23 @@ contains
        ELSE
           X(5)=(1.0_dp+X(5))*C%MAGP%P%P0C/P0-1.0_dp
        ENDIF
-    ENDIF
+    
+       else ! ASSOCIATED
+             P0=>C%PATCH%P0b ! 8/31/2016
+             B0=>C%PATCH%B0b ! 8/31/2016
+
+             X(2)=X(2)*C%MAG%P%P0C/P0 ! 8/31/2016
+             X(4)=X(4)*C%MAG%P%P0C/P0 ! 8/31/2016
+       IF(k%TIME.or.recirculator_cheat)THEN ! 8/31/2016
+          X(5)=sqrt(1.0_dp+2.0_dp*X(5)/C%MAG%P%BETA0+X(5)**2)  !X(5) = 1+DP/P0C_OLD ! 8/31/2016
+          X(5)=X(5)*C%MAG%P%P0C/P0-1.0_dp !X(5) = DP/P0C_NEW ! 8/31/2016
+          X(5)=(2.0_dp*X(5)+X(5)**2)/(sqrt(1.0_dp/B0**2+2.0_dp*X(5)+X(5)**2)+1.0_dp/B0) ! 8/31/2016
+       ELSE
+          X(5)=(1.0_dp+X(5))*C%MAG%P%P0C/P0-1.0_dp ! 8/31/2016
+       ENDIF        
+      
+      ENDIF ! ASSOCIATED  
+ENDIF  
     !   endif ! new 2010
 
 
@@ -743,11 +786,10 @@ contains
     ! END NEW STUFF WITH KIND=3
 
     ! new 2010
-    if(abs(x(1))+abs(x(3))>absolute_aperture) then   !.or.(.not.CHECK_MADX_APERTURE)) then
-       messageLOST="Sm_tracking.f90 TRACK_FIBRE_P : exceed absolute_aperture in TRACK_FIBRE_P"
+    if(abs(x(1))+abs(x(3))>absolute_aperture.or.abs(x(6))>t_aperture) then   !.or.(.not.CHECK_MADX_APERTURE)) then
+       messageLOST="exceed absolute_aperture in TRACK_FIBRE_P"
        xlost=x
        CHECK_STABLE=.false.
-      
     endif
     if(.not.check_stable ) lost_fibre=>c
 

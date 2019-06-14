@@ -6,8 +6,12 @@ MODULE TPSA
   !use newda
   use definition
   use file_handler
+    use precision_constants
   IMPLICIT NONE
   public
+
+
+  private factorial, poly_eval
   integer,private::ndel ,nd2par,nd2part,nd2partt
   integer,private,dimension(lnv)::jfil,jfilt
 
@@ -19,18 +23,20 @@ MODULE TPSA
   private unaryADD,add,daddsc,dscadd,addsc,scadd,iaddsc,iscadd 
   private unarySUB,subs,dsubsc,dscsub,subsc,scsub,isubsc,iscsub
   private allocda,KILLda,A_OPT,K_opt
-  private dexpt,dcost,dsint,dsqrtt,dtant,datanht,dtanht
+  private dexpt,dcost,dsint,dsqrtt,dtant,datanht,dtanht,c_exp_quaternion
   PRIVATE GETCHARnd2,GETintnd2,dputchar,dputint, filter,check_j,dsinHt,dCOSHt
-  private GETintnd2t
-  PRIVATE DEQUAL,REQUAL,varf,varf001  !,CHARINT
+  private GETintnd2t,print_for_bmad_parse,cdivq,cmulq,csubq,caddq
+  PRIVATE DEQUAL,REQUAL,varf,varf001,dputint0  !,CHARINT
   !  PUBLIC VAR,ASS
   private pbbra,full_absT,asstaylor,getcharnd2s,GETintnd2s,GETintk
-  private shiftda,shift000
+  private shiftda,shift000,cunaryADDq,cunarySUBq,cinvq,cabsq,cabsq2
   !PRIVATE null_0,ALLOC_U,FILL_N,REFILL_N
   !  public, alloc_uni, null_uni, fill_uni, refill_uni
-
+  private rcmulq,cmulqr,ccmulq,cmulqc
   private fill_uni_r ! new sagan
-
+! quaternion
+   private subq,unarysubq,addq,unaryADDq,absq,absq2,mulq,divq,EQUALq,EQUALqr,EQUALqi,powq,printq ,invq
+   private EQUALcq,cEQUALqr,cEQUALqi,cPOWq,EQUALq_cq,EQUALcq_q
   private NO,ND,ND2,NP,NDPT,NV
   integer NP,NO,ND,ND2,NDPT,NV
   integer, TARGET :: NSPIN=0
@@ -41,14 +47,48 @@ MODULE TPSA
 
   PRIVATE null_it,Set_Up,de_Set_Up,LINE_L,RING_L,kill_DALEVEL,dealloc_DASCRATCH,set_up_level
   private insert_da,append_da,GETINTegrate
-
-
+INTEGER, private, PARAMETER :: I4B = SELECTED_INT_KIND(9)
+!INTEGER, private, PARAMETER :: DP = KIND(1.0D0)
+ 
+logical:: switch_bessel=.true.
+private norm_bessel_Ir,nbit,nbittr,nbitrt,etienne_bessel_Ir,etienne_bessel_It,etienne_bessel_Itr,etienne_bessel_Irt
+private nbitreal,nbittaylor,nbittaylorrt,nbittaylortr
   type(dalevel) scratchda(ndumt)   !scratch levels of DA using linked list
+  real(dp), pointer :: tn0(:)=>null()
+  
+ INTERFACE nbi
+     MODULE PROCEDURE nbitreal
+     MODULE PROCEDURE nbittaylor
+     MODULE PROCEDURE nbittaylorrt
+     MODULE PROCEDURE nbittaylortr
+  END INTERFACE
+
+ INTERFACE nbi_etienne
+     MODULE PROCEDURE etienne_bessel_Itr
+     MODULE PROCEDURE etienne_bessel_Irt
+     MODULE PROCEDURE etienne_bessel_Ir
+     MODULE PROCEDURE etienne_bessel_It
+  END INTERFACE
 
 
+
+ INTERFACE nbi_david
+     MODULE PROCEDURE norm_bessel_Ir
+     MODULE PROCEDURE nbit
+     MODULE PROCEDURE nbittr
+     MODULE PROCEDURE nbitrt
+  END INTERFACE
 
   INTERFACE assignment (=)
      MODULE PROCEDURE EQUAL
+     MODULE PROCEDURE EQUALq
+     MODULE PROCEDURE EQUALcq
+     MODULE PROCEDURE EQUALq_cq
+     MODULE PROCEDURE EQUALcq_q
+     MODULE PROCEDURE EQUALqi
+     MODULE PROCEDURE EQUALqr
+     MODULE PROCEDURE cEQUALqr
+     MODULE PROCEDURE cEQUALqi
      !     MODULE PROCEDURE DAABSEQUAL  ! remove 2002.10.17
      !     MODULE PROCEDURE AABSEQUAL   ! remove 2002.10.17
      MODULE PROCEDURE DEQUAL  ! added 2002.10.17    ! check2002.10.17
@@ -64,103 +104,37 @@ MODULE TPSA
      MODULE PROCEDURE refill_uni
   end  INTERFACE
 
+  INTERFACE clean
+     MODULE PROCEDURE clean_taylor
+     MODULE PROCEDURE clean_pbfield
+     MODULE PROCEDURE clean_pbresonance
+     MODULE PROCEDURE clean_damap
+     MODULE PROCEDURE clean_vecfield
+     MODULE PROCEDURE clean_vecresonance
+     MODULE PROCEDURE clean_onelieexponent
+     MODULE PROCEDURE clean_complextaylor
+     MODULE PROCEDURE clean_gmap
+  END INTERFACE
+
+  INTERFACE print_for_bmad_parser
+     MODULE PROCEDURE print_for_bmad_parse
+  END INTERFACE
 
 
   INTERFACE print
      MODULE PROCEDURE printunitaylor
+     MODULE PROCEDURE printq
+     MODULE PROCEDURE cprintq
   END INTERFACE
 
 
-
-
-  !@    <table border="4" cellspacing="1" bordercolor="#000000" id="AutoNumber2" width="400" height="135">
-  !@      <tr>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">+</font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@         <font face="Times New Roman" size="1">Taylor</font></span></td>
-  !@         <td width="77" height="20" align="center">
-  !@         <span style="text-transform: uppercase">
-  !@         <font face="Times New Roman" size="1">
-  !@         Real(dp)</font></span></td>
-  !@         <td width="78" height="20" align="center">
-  !@         <span style="text-transform: uppercase">
-  !@         <font face="Times New Roman" size="1">Real(sp)</font></span></td>
-  !@         <td width="56" height="20" align="center">
-  !@         <span style="text-transform: uppercase">
-  !@         <font face="Times New Roman" size="1">Integer</font></span></td>
-  !@       </tr>
-  !@       <tr>
-  !@         <td width="77" height="20" align="center">
-  !@         <span style="text-transform: uppercase">
-  !@         <font face="Times New Roman" size="1">Taylor</font></span></td>
-  !@         <td width="77" height="20" align="center">
-  !@         <span style="text-transform: uppercase; font-weight:700">
-  !@         <font face="Times New Roman" size="1">
-  !@         <a href="i_tpsa.htm#ADD" style="text-decoration: none">add</a></font></span></td>
-  !@         <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase; font-weight:700">
-  !@        <font face="Times New Roman" size="1">
-  !@        <a href="i_tpsa.htm#DADDSC" style="text-decoration: none">daddsc</a></font></span></td>
-  !@        <td width="78" height="20" align="center"><b>
-  !@        <font size="1" face="Times New Roman">
-  !@        <a href="i_tpsa.htm#ADDSC" style="text-decoration: none">ADDSC</a></font></b></td>
-  !@        <td width="56" height="20" align="center"><b>
-  !@        <font size="1" face="Times New Roman">
-  !@        <a href="i_tpsa.htm#IADDSC" style="text-decoration: none">
-  !@        IADDSC</a></font></b></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        Real(dp)</font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase; font-weight:700">
-  !@        <font face="Times New Roman" size="1">
-  !@        <a href="i_tpsa.htm#DSCADD" style="text-decoration: none">dscadd</a></font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="78" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="56" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Real(sp)</font></span></td>
-  !@        <td width="77" height="20" align="center"><b>
-  !@        <font size="1" face="Times New Roman">
-  !@        <a href="i_tpsa.htm#SCADD" style="text-decoration: none">SCADD</a></font></b></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="78" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="56" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Integer</font></span></td>
-  !@        <td width="77" height="20" align="center"><b>
-  !@        <font size="1" face="Times New Roman">
-  !@        <a href="i_tpsa.htm#ISCADD" style="text-decoration: none">
-  !@        ISCADD</a></font></b></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="78" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="56" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@      </tr>
-  !@     </table>
   INTERFACE OPERATOR (+)
      MODULE PROCEDURE unaryADD  !@2 This is a unary operation
      MODULE PROCEDURE add
+     MODULE PROCEDURE unaryADDq  !@2 This is a unary operation
+     MODULE PROCEDURE cunaryADDq
+     MODULE PROCEDURE addq
+     MODULE PROCEDURE caddq
      MODULE PROCEDURE daddsc
      MODULE PROCEDURE dscadd
      MODULE PROCEDURE addsc
@@ -170,96 +144,13 @@ MODULE TPSA
   END INTERFACE
 
 
-
-
-  !@    <table border="4" cellspacing="1" bordercolor="#000000" id="AutoNumber1" width="400" height="135">
-  !@      <tr>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">-</font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Taylor</font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        Real(dp)</font></span></td>
-  !@        <td width="78" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Real(sp)</font></span></td>
-  !@        <td width="56" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Integer</font></span></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Taylor</font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        <a href="i_tpsa.htm#SUBS" style="text-decoration: none; font-weight: 700">SUBS</a></font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        <a href="i_tpsa.htm#DSUBSC" style="text-decoration: none; font-weight: 700">dSUBsc</a></font></span></td>
-  !@        <td width="78" height="20" align="center">
-  !@        <font size="1" face="Times New Roman">
-  !@        <a href="i_tpsa.htm#SUBSC" style="text-decoration: none; font-weight: 700">SUBSC</a></font></td>
-  !@        <td width="56" height="20" align="center">
-  !@        <font size="1" face="Times New Roman">
-  !@        <a href="i_tpsa.htm#ISUBSC" style="text-decoration: none; font-weight: 700">ISUBSC</a></font></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        Real(dp)</font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        <a href="i_tpsa.htm#DSCSUB" style="text-decoration: none; font-weight: 700">dscSUB</a></font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="78" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="56" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Real(sp)</font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <font size="1" face="Times New Roman">
-  !@        <a href="i_tpsa.htm#SCSUB" style="text-decoration: none; font-weight: 700">
-  !@        SCSUB</a></font></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="78" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="56" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Integer</font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <font size="1" face="Times New Roman">
-  !@        <a href="i_tpsa.htm#ISCSUB" style="text-decoration: none; font-weight: 700">
-  !@        ISCSUB</a></font></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="78" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="56" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@      </tr>
-  !@     </table>
   INTERFACE OPERATOR (-)
      MODULE PROCEDURE unarySUB
      MODULE PROCEDURE subs
+     MODULE PROCEDURE unarySUBq
+     MODULE PROCEDURE cunarySUBq
+     MODULE PROCEDURE subq
+     MODULE PROCEDURE csubq
      MODULE PROCEDURE dsubsc
      MODULE PROCEDURE dscsub
      MODULE PROCEDURE subsc
@@ -268,189 +159,28 @@ MODULE TPSA
      MODULE PROCEDURE iscsub
   END INTERFACE
 
-
-
-  !@    <table border="4" cellspacing="1" bordercolor="#000000" id="AutoNumber1" width="400" height="134">
-  !@      <tr>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">*</font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Taylor</font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        Real(dp)</font></span></td>
-  !@        <td width="78" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Real(sp)</font></span></td>
-  !@        <td width="56" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Integer</font></span></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Taylor</font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        <a href="i_tpsa.htm#MUL" style="text-decoration: none; font-weight:700">MUL</a></font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        <a href="i_tpsa.htm#DMULSC" style="text-decoration: none; font-weight:700">dMULsc</a></font></span></td>
-  !@        <td width="78" height="20" align="center">
-  !@        <font size="1" face="Times New Roman">
-  !@        <a href="i_tpsa.htm#MULSC" style="text-decoration: none; font-weight:700">MULSC</a></font></td>
-  !@        <td width="56" height="20" align="center">
-  !@        <font size="1" face="Times New Roman">
-  !@        <a href="i_tpsa.htm#IMULSC" style="text-decoration: none; font-weight:700">IMULSC</a></font></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="77" height="19" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        Real(dp)</font></span></td>
-  !@        <td width="77" height="19" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        <a href="i_tpsa.htm#DSCMUL" style="text-decoration: none; font-weight:700">dscMUL</a></font></span></td>
-  !@        <td width="77" height="19" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="78" height="19" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="56" height="19" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Real(sp)</font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <font size="1" face="Times New Roman">
-  !@        <a href="i_tpsa.htm#SCMUL" style="text-decoration: none; font-weight:700">
-  !@        SCMUL</a></font></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="78" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="56" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="77" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Integer</font></span></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <font size="1" face="Times New Roman">
-  !@        <a href="i_tpsa.htm#ISCMUL" style="text-decoration: none; font-weight:700">
-  !@        ISCMUL</a></font></td>
-  !@        <td width="77" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="78" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="56" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@      </tr>
-  !@     </table>
-
   INTERFACE OPERATOR (*)
      MODULE PROCEDURE mul
+     MODULE PROCEDURE mulq
+     MODULE PROCEDURE cmulq
      MODULE PROCEDURE dmulsc
      MODULE PROCEDURE dscmul
      MODULE PROCEDURE mulsc
      MODULE PROCEDURE scmul
      MODULE PROCEDURE imulsc
      MODULE PROCEDURE iscmul
+     MODULE PROCEDURE rcmulq 
+     MODULE PROCEDURE cmulqr 
+     MODULE PROCEDURE ccmulq 
+     MODULE PROCEDURE cmulqc
   END INTERFACE
 
-  !@    <table border="4" cellspacing="1" bordercolor="#000000" id="AutoNumber1" width="400" height="135">
-  !@      <tr>
-  !@        <td width="0" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">/</font></span></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Taylor</font></span></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        Real(dp)</font></span></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Real(sp)</font></span></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Integer</font></span></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="0" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Taylor</font></span></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        <a href="i_tpsa.htm#DIV" style="text-decoration: none; font-weight: 700">div</a></font></span></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        <a href="i_tpsa.htm#DDIVSC" style="text-decoration: none; font-weight: 700">dDIVsc</a></font></span></td>
-  !@        <td width="0" height="20" align="center"><font size="1">
-  !@        <a href="i_tpsa.htm#DIVSC" style="text-decoration: none; font-weight: 700">DIVSC</a></font></td>
-  !@        <td width="0" height="20" align="center"><font size="1">
-  !@        <a href="i_tpsa.htm#IDIVSC" style="text-decoration: none; font-weight: 700">
-  !@        IDIVSC</a></font></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="0" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        Real(dp)</font></span></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">
-  !@        <a href="i_tpsa.htm#DSCDIV" style="text-decoration: none; font-weight: 700">dscDIV</a></font></span></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="0" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Real(sp)</font></span></td>
-  !@        <td width="0" height="20" align="center"><font size="1">
-  !@        <a href="i_tpsa.htm#SCDIV" style="text-decoration: none; font-weight: 700">
-  !@        SCDIV</a></font></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@      </tr>
-  !@      <tr>
-  !@        <td width="0" height="20" align="center">
-  !@        <span style="text-transform: uppercase">
-  !@        <font face="Times New Roman" size="1">Integer</font></span></td>
-  !@        <td width="0" height="20" align="center"><font size="1">
-  !@        <a href="i_tpsa.htm#ISCDIV" style="text-decoration: none; font-weight: 700">
-  !@        ISCDIV</a></font></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@        <td width="0" height="20" align="center">
-  !@        <font size="2" face="Times New Roman"><b>F90</b></font></td>
-  !@      </tr>
-  !@    </table>
+
 
   INTERFACE OPERATOR (/)
      MODULE PROCEDURE div
+     MODULE PROCEDURE divq
+     MODULE PROCEDURE cdivq
      MODULE PROCEDURE ddivsc
      MODULE PROCEDURE dscdiv
      MODULE PROCEDURE divsc
@@ -462,6 +192,8 @@ MODULE TPSA
 
   INTERFACE OPERATOR (**)
      MODULE PROCEDURE POW
+     MODULE PROCEDURE POWq
+     MODULE PROCEDURE cPOWq
      MODULE PROCEDURE POWR
      MODULE PROCEDURE POWR8
   END INTERFACE
@@ -485,7 +217,7 @@ MODULE TPSA
   END INTERFACE
 
   INTERFACE OPERATOR (.i.)
-     MODULE PROCEDURE GETINTegrate    !@1 takes derivatives
+     MODULE PROCEDURE GETINTegrate    !@1 takes anti-derivatives
   END INTERFACE
 
 
@@ -527,14 +259,25 @@ MODULE TPSA
 
   INTERFACE abs
      MODULE PROCEDURE DAABSEQUAL  ! remove 2002.10.17
+     MODULE PROCEDURE absq 
+     MODULE PROCEDURE cabsq  
   END INTERFACE
+
+
+  INTERFACE abs_square
+     MODULE PROCEDURE absq2
+     MODULE PROCEDURE cabsq2
+  END INTERFACE
+
   INTERFACE dabs
      MODULE PROCEDURE DAABSEQUAL  ! remove 2002.10.17
   END INTERFACE
 
   INTERFACE exp
      MODULE PROCEDURE dexpt
+     MODULE PROCEDURE c_exp_quaternion
   END INTERFACE
+
   INTERFACE dexp
      MODULE PROCEDURE dexpt
   END INTERFACE
@@ -597,6 +340,8 @@ MODULE TPSA
   INTERFACE clog
      MODULE PROCEDURE dlogt
   END INTERFACE
+
+
 
   INTERFACE sqrt
      MODULE PROCEDURE dsqrtt
@@ -759,13 +504,293 @@ CONTAINS
   end subroutine count_taylor
 
 
+
+
+  FUNCTION unaryADDq( S1 )
+    implicit none
+    TYPE (quaternion) unaryADDq
+    TYPE (quaternion), INTENT (IN) :: S1
+ 
+
+ 
+
+
+    unaryADDq=s1
+
+  END FUNCTION unaryADDq
+
+  FUNCTION unarySUBq( S1 )
+    implicit none
+    TYPE (quaternion) unarySUBq
+    TYPE (quaternion), INTENT (IN) :: S1
+ 
+
+         unarySUBq%x= -s1%x
+
+  END FUNCTION unarySUBq
+
+
+  FUNCTION invq( S1 )
+    implicit none
+    TYPE (quaternion) invq
+    TYPE (quaternion), INTENT (IN) :: S1
+    real(dp) norm
+     integer i
+  
+              invq=s1
+              do i=1,3
+                invq%x(i)=-invq%x(i)
+              enddo
+                norm=abs_square(invq)
+              do i=0,3
+                invq%x(i)=invq%x(i)/norm
+              enddo
+      
+  END FUNCTION invq
+
+
+  FUNCTION absq( S1 )
+    implicit none
+    real(dp) absq
+    TYPE (quaternion), INTENT (IN) :: S1
+    integer i
+
+ 
+   
+     absq=sqrt(abs_square(s1))
+  END FUNCTION absq
+
+
+  FUNCTION absq2( S1 )
+    implicit none
+    real(dp) absq2
+    TYPE (quaternion), INTENT (IN) :: S1
+    integer i
+
+  
+           absq2=0
+       do i=0,3
+         absq2 = s1%x(i)**2+absq2
+       enddo
+  END FUNCTION absq2
+
+
+! complex quaternion
+
+  FUNCTION cunaryADDq( S1 )
+    implicit none
+    TYPE (complex_quaternion) cunaryADDq
+    TYPE (complex_quaternion), INTENT (IN) :: S1
+ 
+
+ 
+
+    cunaryADDq=s1
+
+  END FUNCTION cunaryADDq
+
+  FUNCTION cunarySUBq( S1 )
+    implicit none
+    TYPE (complex_quaternion) cunarySUBq
+    TYPE (complex_quaternion), INTENT (IN) :: S1
+ 
+
+         cunarySUBq%x= -s1%x
+
+  END FUNCTION cunarySUBq
+
+
+  FUNCTION cinvq( S1 )
+    implicit none
+    TYPE (complex_quaternion) cinvq
+    TYPE (complex_quaternion), INTENT (IN) :: S1
+    real(dp) norm
+     integer i
+ 
+              cinvq=s1
+              do i=1,3
+                cinvq%x(i)=-cinvq%x(i)
+              enddo
+                norm=abs_square(cinvq)
+              do i=0,3
+                cinvq%x(i)=cinvq%x(i)/norm
+              enddo
+      
+  END FUNCTION cinvq
+
+
+  FUNCTION cabsq( S1 )
+    implicit none
+    real(dp) cabsq
+    TYPE (complex_quaternion), INTENT (IN) :: S1
+    integer i
+
+ 
+   
+     cabsq=sqrt(abs_square(s1))
+  END FUNCTION cabsq
+
+
+  FUNCTION cabsq2( S1 )
+    implicit none
+    complex(dp) cabsq2
+    TYPE (complex_quaternion), INTENT (IN) :: S1
+    integer i
+
+  
+           cabsq2=0
+       do i=0,3
+         cabsq2 = abs(s1%x(i))**2+cabsq2
+       enddo
+  END FUNCTION cabsq2
+
+
+ subroutine log_complex_quaternion(qn0,logqn0,epso) 
+!#restricted: normal
+!# This routine takes the log assuming no orbital map
+!# 
+  implicit none
+
+  type(complex_quaternion), intent (inout) :: qn0,logqn0
+  type(complex_quaternion)  q1,qs,dr
+  complex(dp) s
+  real(dp) sn,normb,norma,eps
+  real(dp), optional :: epso
+  complex(dp) cn
+  logical diff
+  integer i,k
+ 
+  eps=1.d-3
+  if(present(epso)) eps=epso
+  sn=sqrt(qn0%x(1)**2+qn0%x(2)**2+qn0%x(3)**2)
+
+if(sn>eps) then 
+  q1=qn0
+  q1%x(0)=0.0_dp
+  qs=0.0_dp
+  s=sqrt(q1%x(1)**2+q1%x(2)**2+q1%x(3)**2)
+  qs%x(0)=1.0_dp/s
+  logqn0=q1*qs   ! q1=n
+  s= sqrt(1.0_dp-s**2) + i_* s
+  s=-i_*log(s)
+
+  logqn0%x(0)=0.0_dp
+  do i=1,3
+   logqn0%x(i)=s*logqn0%x(i)
+  enddo
+goto 1
+else
+  diff=.false.
+!write(6,*) "small quaternion "
+
+ q1=qn0
+ q1%x(0)=q1%x(0)-1.0_dp
+ logqn0=0.0_dp
+ qs=q1
+normb=1.d38
+ do i=1,100
+  cn=-(-1.0_dp)**i/i
+dr=logqn0
+  logqn0=logqn0+cn*qs
+dr=dr-logqn0
+  qs=qs*q1
+  
+! call c_full_norm_quaternion(dr,k,norma)
+norma=abs(dr)
+    if(diff) then
+      if(normb>=norma) goto 1
+      normb=norma
+    else
+     if(norma<1.d-10) then
+      diff=.true.
+      normb=norma
+     endif
+    endif
+ enddo
+endif
+
+write(6,*) " no convergence  in  log_quaternion"
+
+1 continue
+ 
+
+ end  subroutine log_complex_quaternion
+
+  function c_exp_quaternion(h_axis,ds) ! spin routine
+    implicit none
+    TYPE(complex_quaternion) c_exp_quaternion
+    TYPE(complex_quaternion),optional, INTENT(INout) :: DS
+    TYPE(complex_quaternion), INTENT(IN) :: h_axis
+    integer  nmax
+    integer i,localmaster,k
+    TYPE(complex_quaternion) dh,dhn,dr,dst
+    real(dp) eps,norm1,norm2
+    complex(dp) c
+    logical check
+
+  
+
+
+    check=.true.
+    eps=1.d-5
+    nmax=1000
+
+     c_exp_quaternion=1.0_dp
+  
+    dh=h_axis
+ 
+
+    dhn=1.0_dp
+    c=1.0_dp
+    norm1=mybig
+    do i=1,nmax
+       dhn=dhn*dh
+       c=1.0_dp/i
+       dhn=c*dhn
+
+       dr=c_exp_quaternion
+
+       c_exp_quaternion=c_exp_quaternion+dhn 
+
+       dr=c_exp_quaternion+(-1.0_dp,0.0_dp)*dr
+
+       norm2=abs(dr)
+
+
+       if(check) then
+          if(norm2<eps.and.i>10) then
+             check=.false.
+          endif
+       else
+          if(norm2>=norm1) exit
+       endif
+       norm1=norm2
+    enddo
+
+    if(i>nmax-10) then
+       write(6,*) "no convergence in c_exp_quaternion, enter 0 to stop "
+       read(5,*) norm1
+       if(norm1==0)  stop 1066
+    endif
+    if(present(ds)) c_exp_quaternion=c_exp_quaternion*ds
+
+
+  end   function c_exp_quaternion
+
+
+
+!!!!!!!!!!!!!!!!!!!!!
+
   FUNCTION unaryADD( S1 )
     implicit none
     TYPE (TAYLOR) unaryADD
     TYPE (TAYLOR), INTENT (IN) :: S1
     integer localmaster
 
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+     unaryADD%i=0
+     RETURN
+    endif
 
     localmaster=master
 
@@ -784,7 +809,10 @@ CONTAINS
     TYPE (TAYLOR), INTENT (IN) :: S1
     integer localmaster
 
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+     unarysub%i=0
+     RETURN
+    endif
     localmaster=master
 
     call ass(unarySUB)
@@ -795,6 +823,7 @@ CONTAINS
     master=localmaster
 
   END FUNCTION unarySUB
+
 
   SUBROUTINE  maketree(S1,s2)
     implicit none
@@ -815,11 +844,10 @@ CONTAINS
 
     !    IF(first_time) THEN
     IF(last_tpsa==0) THEN
-       w_p=0
-       w_p%nc=1
-       w_p=(/" No TPSA package ever initialized "/)
-       w_p%fc='(1((1X,A72),/))'
-       ! call !write_e(111)
+ 
+       write(6,*) " No TPSA package ever initialized " 
+ 
+ 
     ENDIF
     !    if(old) then
     s1%i=0
@@ -935,6 +963,112 @@ CONTAINS
     !   endif
   END SUBROUTINE EQUAL
 
+  SUBROUTINE  EQUALq(S2,S1)
+    implicit none
+    type (quaternion),INTENT(inOUT)::S2
+    type (quaternion),INTENT(IN)::S1
+    integer i
+ 
+    
+    do i=0,3
+    s2%x(i)=s1%x(i)
+    enddo
+
+  end SUBROUTINE  EQUALq
+
+
+  SUBROUTINE  EQUALcq(S2,S1)
+    implicit none
+    type (complex_quaternion),INTENT(inOUT)::S2
+    type (complex_quaternion),INTENT(IN)::S1
+    integer i
+ 
+    
+    do i=0,3
+    s2%x(i)=s1%x(i)
+    enddo
+
+  end SUBROUTINE  EQUALcq
+
+
+  SUBROUTINE  EQUALcq_q(S2,S1)
+    implicit none
+    type (complex_quaternion),INTENT(inOUT)::S2
+    type (quaternion),INTENT(IN)::S1
+    integer i
+     
+    do i=0,3
+    s2%x(i)=s1%x(i)
+    enddo
+
+  end SUBROUTINE  EQUALcq_q
+
+  SUBROUTINE  EQUALq_cq(S2,S1)
+    implicit none
+    type (quaternion),INTENT(inOUT)::S2
+    type (complex_quaternion),INTENT(IN)::S1
+    integer i
+ 
+    
+    do i=0,3
+    s2%x(i)=s1%x(i)
+    enddo
+
+  end SUBROUTINE  EQUALq_cq
+
+  SUBROUTINE  EQUALqr(S2,S1)
+    implicit none
+    type (quaternion),INTENT(inOUT)::S2
+    real(dp),INTENT(IN)::S1
+    integer i
+ 
+
+    do i=0,3
+    s2%x(i)=0
+    enddo
+    s2%x(0)=s1
+  end SUBROUTINE  EQUALqr
+
+
+  SUBROUTINE  cEQUALqr(S2,S1)
+    implicit none
+    type (complex_quaternion),INTENT(inOUT)::S2
+    real(dp),INTENT(IN)::S1
+    integer i
+ 
+
+    do i=0,3
+    s2%x(i)=0
+    enddo
+    s2%x(0)=s1
+  end SUBROUTINE  cEQUALqr
+
+  SUBROUTINE  EQUALqi(S2,S1)
+    implicit none
+    type (quaternion),INTENT(inOUT)::S2
+    integer,INTENT(IN)::S1
+    integer i
+ 
+
+    do i=0,3
+    s2%x(i)=0
+    enddo
+    s2%x(s1)=1
+  end SUBROUTINE  EQUALqi
+
+
+  SUBROUTINE  cEQUALqi(S2,S1)
+    implicit none
+    type (complex_quaternion),INTENT(inOUT)::S2
+    integer,INTENT(IN)::S1
+    integer i
+
+    do i=0,3
+    s2%x(i)=0
+    enddo
+    s2%x(s1)=1
+  end SUBROUTINE  cEQUALqi
+
   SUBROUTINE  DEQUAL(R1,S2)
     implicit none
     type (TAYLOR),INTENT(IN)::S2
@@ -962,6 +1096,7 @@ CONTAINS
     implicit none
     type (TAYLOR),INTENT(IN)::S2
     real(dp) DAABSEQUAL
+    DAABSEQUAL=0
     IF(.NOT.C_%STABLE_DA) RETURN
 
 
@@ -1027,7 +1162,10 @@ CONTAINS
     TYPE (taylor) dexpt
     TYPE (taylor), INTENT (IN) :: S1
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+     dexpt%i=0 
+     RETURN
+    endif
     localmaster=master
 
     !    call check(s1)
@@ -1048,7 +1186,7 @@ CONTAINS
     implicit none
     real(dp) FULL_ABST
     TYPE (taylor), INTENT (IN) :: S1
-
+    FULL_ABST=0
     IF(.NOT.C_%STABLE_DA) RETURN
     !    call check(s1)
 
@@ -1068,7 +1206,11 @@ CONTAINS
     TYPE (taylor) dtant
     TYPE (taylor), INTENT (IN) :: S1
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+
+    IF(.NOT.C_%STABLE_DA) then
+      dtant%i=0
+     RETURN
+    endif
     localmaster=master
 
     !    call check(s1)
@@ -1095,7 +1237,10 @@ CONTAINS
     TYPE (taylor) datanht
     TYPE (taylor), INTENT (IN) :: S1
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+      datanht%i=0
+     RETURN
+    endif
     localmaster=master
 
     !    call check(s1)
@@ -1112,7 +1257,10 @@ CONTAINS
     TYPE (taylor) dcost
     TYPE (taylor), INTENT (IN) :: S1
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+      dcost%i=0
+     RETURN
+    endif
     localmaster=master
 
 
@@ -1136,7 +1284,10 @@ CONTAINS
     TYPE (taylor) dsint
     TYPE (taylor), INTENT (IN) :: S1
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+      dsint%i=0
+     RETURN
+    endif
     localmaster=master
 
 
@@ -1158,7 +1309,10 @@ CONTAINS
     TYPE (taylor) dsinHt
     TYPE (taylor), INTENT (IN) :: S1
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+      dsinHt%i=0
+     RETURN
+    endif
     localmaster=master
 
 
@@ -1179,7 +1333,10 @@ CONTAINS
     TYPE (taylor) DCOSHT
     TYPE (taylor), INTENT (IN) :: S1
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+      DCOSHT%i=0
+     RETURN
+    endif
     localmaster=master
 
 
@@ -1201,7 +1358,10 @@ CONTAINS
     TYPE (taylor) dtanht
     TYPE (taylor), INTENT (IN) :: S1
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+      dtanht%i=0
+     RETURN
+    endif
     localmaster=master
 
 
@@ -1223,7 +1383,10 @@ CONTAINS
     TYPE (taylor) dlogt
     TYPE (taylor), INTENT (IN) :: S1
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+      dlogt%i=0
+     RETURN
+    endif
     localmaster=master
 
 
@@ -1245,7 +1408,10 @@ CONTAINS
     TYPE (taylor) dsqrtt
     TYPE (taylor), INTENT (IN) :: S1
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+      dsqrtt%i=0
+     RETURN
+    endif
     localmaster=master
 
 
@@ -1268,7 +1434,10 @@ CONTAINS
     TYPE (taylor) mul
     TYPE (taylor), INTENT (IN) :: S1, S2
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+      mul%i=0
+     RETURN
+    endif
     localmaster=master
 
 
@@ -1293,7 +1462,10 @@ CONTAINS
     TYPE (taylor), INTENT (IN) :: S1, S2
     integer localmaster
     integer i
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+      pbbra%i=0
+     RETURN
+    endif
     localmaster=master
 
 
@@ -1323,7 +1495,10 @@ CONTAINS
     TYPE (taylor), INTENT (IN) :: S1
     INTEGER, INTENT (IN) ::  S2
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+      GETORDER%i=0
+     RETURN
+    endif
     localmaster=master
 
 
@@ -1350,7 +1525,10 @@ CONTAINS
     TYPE (taylor), INTENT (IN) :: S1
     INTEGER, INTENT (IN) ::  S2
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       CUTORDER%i=0
+      RETURN
+    endif
     localmaster=master
 
     !    call check(s1)
@@ -1383,7 +1561,11 @@ CONTAINS
     CHARACTER (LEN = LNV)  resul
     integer j(lnv),i
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       dputchar%i=0
+      RETURN
+    endif
+
     localmaster=master
 
 
@@ -1405,6 +1587,7 @@ CONTAINS
           if(j(i)>0) then
              dputchar=0.0_dp
              !             call var(dputchar,zero,0)
+    master=localmaster
              return
           endif
        endif
@@ -1426,7 +1609,10 @@ CONTAINS
     integer  , INTENT (IN) ::  S2(:)
     integer j(lnv),i
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       dputint%i=0
+      RETURN
+    endif
     localmaster=master
 
 
@@ -1449,6 +1635,7 @@ CONTAINS
           if(j(i)>0) then
              !             call var(dputint,zero,0)
              dputint=0.0_dp
+    master=localmaster
              return
           endif
        endif
@@ -1469,7 +1656,10 @@ CONTAINS
     integer  , INTENT (IN) ::  S2
     integer j(lnv)
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       dputint0%i=0
+      RETURN
+    endif
     localmaster=master
 
 
@@ -1478,6 +1668,7 @@ CONTAINS
     j=0
     if(s2>nv) then
        dputint0=S1
+    master=localmaster
        return
     endif
 
@@ -1500,7 +1691,11 @@ CONTAINS
     CHARACTER(*)  , INTENT (IN) ::  S2
 
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       GETCHARnd2s%i=0
+      RETURN
+    endif
+
     localmaster=master
 
 
@@ -1522,7 +1717,10 @@ CONTAINS
     integer  , INTENT (IN) ::  S2(:)
 
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       GETintnd2s%i=0
+      RETURN
+    endif
     localmaster=master
 
 
@@ -1545,7 +1743,10 @@ CONTAINS
     integer  , INTENT (IN) ::  S2
 
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       GETintk%i=0
+      RETURN
+    endif
     localmaster=master
 
 
@@ -1570,6 +1771,8 @@ CONTAINS
     CHARACTER(*)  , INTENT (IN) ::  S2
     CHARACTER (LEN = LNV)  resul
     integer j(lnv),i,c
+
+    getchar=0
     IF(.NOT.C_%STABLE_DA) RETURN
 
  
@@ -1617,6 +1820,8 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     integer , INTENT (IN) ::  S2(:)
     integer j(lnv),i,c
+
+     getint=0
     IF(.NOT.C_%STABLE_DA) RETURN
 
  
@@ -1656,7 +1861,11 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     INTEGER, INTENT (IN) ::  S2
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+
+    IF(.NOT.C_%STABLE_DA) then
+       GETdiff%i=0
+      RETURN
+    endif
     localmaster=master
 
 
@@ -1683,7 +1892,10 @@ endif
     type(taylor) t,x
     real(dp) value
     integer, allocatable :: jc(:)
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       GETINTegrate%i=0
+      RETURN
+    endif
     localmaster=master
 
     allocate(jc(c_%nv))
@@ -1717,7 +1929,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     INTEGER, INTENT (IN) ::  S2
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       GETdatra%i=0
+      RETURN
+    endif
     localmaster=master
 
 
@@ -1735,6 +1950,50 @@ endif
 
   END FUNCTION GETdatra
 
+
+  FUNCTION POWq( S1, R2 )
+    implicit none
+    TYPE (quaternion) POWq,temp
+    TYPE (quaternion), INTENT (IN) :: S1
+    INTEGER, INTENT (IN) :: R2
+    INTEGER I,R22
+    integer localmaster
+ 
+    temp=1.0_dp
+
+    R22=IABS(R2)
+    DO I=1,R22
+       temp=temp*s1
+    ENDDO
+    IF(R2.LT.0) THEN
+       temp=invq(temp)
+    ENDIF
+     powq=temp
+ 
+  END FUNCTION POWq
+
+
+  FUNCTION cPOWq( S1, R2 )
+    implicit none
+    TYPE (complex_quaternion) cPOWq,temp
+    TYPE (complex_quaternion), INTENT (IN) :: S1
+    INTEGER, INTENT (IN) :: R2
+    INTEGER I,R22
+    integer localmaster
+ 
+    temp=1.0_dp
+
+    R22=IABS(R2)
+    DO I=1,R22
+       temp=temp*s1
+    ENDDO
+    IF(R2.LT.0) THEN
+       temp=cinvq(temp)
+    ENDIF
+     cpowq=temp
+ 
+  END FUNCTION cPOWq
+
   FUNCTION POW( S1, R2 )
     implicit none
     TYPE (taylor) POW
@@ -1742,7 +2001,10 @@ endif
     INTEGER, INTENT (IN) :: R2
     INTEGER I,R22
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       POW%i=0
+      RETURN
+    endif
     localmaster=master
 
 
@@ -1770,7 +2032,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(dp), INTENT (IN) :: R2
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       POWR8%i=0
+      RETURN
+    endif
     localmaster=master
 
 
@@ -1796,7 +2061,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     REAL(SP), INTENT (IN) :: R2
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       POWR%i=0
+      RETURN
+    endif
     localmaster=master
 
 
@@ -1825,7 +2093,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(dp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       dmulsc%i=0
+      RETURN
+    endif
     localmaster=master
 
 
@@ -1848,7 +2119,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(sp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       mulsc%i=0
+      RETURN
+    endif
     localmaster=master
 
 
@@ -1871,7 +2145,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     integer, INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       imulsc%i=0
+      RETURN
+    endif
     localmaster=master
 
 
@@ -1895,7 +2172,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(dp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       dscmul%i=0
+      RETURN
+    endif     
     localmaster=master
 
 
@@ -1919,7 +2199,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(sp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       scmul%i=0
+      RETURN
+    endif     
     localmaster=master
 
 
@@ -1945,7 +2228,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     integer, INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       iscmul%i=0
+      RETURN
+    endif  
     localmaster=master
 
 
@@ -1968,7 +2254,10 @@ endif
     TYPE (taylor) div
     TYPE (taylor), INTENT (IN) :: S1, S2
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       div%i=0
+      RETURN
+    endif  
     localmaster=master
 
 
@@ -1993,7 +2282,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(dp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       dscdiv%i=0
+      RETURN
+    endif  
     localmaster=master
 
 
@@ -2017,7 +2309,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(sp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       scdiv%i=0
+      RETURN
+    endif  
     localmaster=master
 
 
@@ -2042,7 +2337,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     integer, INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       iscdiv%i=0
+      RETURN
+    endif  
     localmaster=master
 
 
@@ -2066,7 +2364,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(dp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       ddivsc%i=0
+      RETURN
+    endif  
     localmaster=master
 
 
@@ -2090,7 +2391,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(sp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       divsc%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2115,7 +2419,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     integer, INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       idivsc%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2139,7 +2446,10 @@ endif
     TYPE (taylor) add
     TYPE (taylor), INTENT (IN) :: S1, S2
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       add%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2161,13 +2471,174 @@ endif
 
   END FUNCTION add
 
+
+  FUNCTION addq( S1, S2 )
+    implicit none
+    TYPE (quaternion) addq
+    TYPE (quaternion), INTENT (IN) :: S1, S2
+
+ 
+       addq%x=s1%x+s2%x
+  END FUNCTION addq
+
+
+  FUNCTION subq( S1, S2 )
+    implicit none
+    TYPE (quaternion) subq
+    TYPE (quaternion), INTENT (IN) :: S1, S2
+ 
+          subq%x=s1%x-s2%x
+
+  END FUNCTION subq
+
+  FUNCTION mulq( S1, S2 )
+    implicit none
+    TYPE (quaternion) mulq
+    TYPE (quaternion), INTENT (IN) :: S1, S2
+    integer i
+
+  
+          mulq=0.0_dp
+
+          mulq%x(0)=s1%x(0)*s2%x(0)-s1%x(1)*s2%x(1)-s1%x(2)*s2%x(2)-s1%x(3)*s2%x(3)
+
+         mulq%x(1)=  s1%x(2)*s2%x(3)-s1%x(3)*s2%x(2)
+         mulq%x(2)=  s1%x(3)*s2%x(1)-s1%x(1)*s2%x(3)
+         mulq%x(3)=  s1%x(1)*s2%x(2)-s1%x(2)*s2%x(1)
+
+        do i=1,3
+         mulq%x(i)= mulq%x(i) + s1%x(0)*s2%x(i)+ s1%x(i)*s2%x(0)
+        enddo
+
+  END FUNCTION mulq
+
+  FUNCTION divq( S1, S2 )
+    implicit none
+    TYPE (quaternion) divq
+    TYPE (quaternion), INTENT (IN) :: S1, S2
+
+ 
+        
+       divq=s1*invq(s2)
+
+  END FUNCTION divq
+
+!!!! complex_quaternion
+
+
+  FUNCTION caddq( S1, S2 )
+    implicit none
+    TYPE (complex_quaternion) caddq
+    TYPE (complex_quaternion), INTENT (IN) :: S1, S2
+
+   
+       caddq%x=s1%x+s2%x
+  END FUNCTION caddq
+
+
+  FUNCTION csubq( S1, S2 )
+    implicit none
+    TYPE (complex_quaternion) csubq
+    TYPE (complex_quaternion), INTENT (IN) :: S1, S2
+
+  
+          csubq%x=s1%x-s2%x
+
+  END FUNCTION csubq
+
+  FUNCTION cmulq( S1, S2 )
+    implicit none
+    TYPE (complex_quaternion) cmulq
+    TYPE (complex_quaternion), INTENT (IN) :: S1, S2
+    integer i
+
+   
+          cmulq=0.0_dp
+
+          cmulq%x(0)=s1%x(0)*s2%x(0)-s1%x(1)*s2%x(1)-s1%x(2)*s2%x(2)-s1%x(3)*s2%x(3)
+
+         cmulq%x(1)=  s1%x(2)*s2%x(3)-s1%x(3)*s2%x(2)
+         cmulq%x(2)=  s1%x(3)*s2%x(1)-s1%x(1)*s2%x(3)
+         cmulq%x(3)=  s1%x(1)*s2%x(2)-s1%x(2)*s2%x(1)
+
+        do i=1,3
+         cmulq%x(i)= cmulq%x(i) + s1%x(0)*s2%x(i)+ s1%x(i)*s2%x(0)
+        enddo
+
+  END FUNCTION cmulq
+
+  FUNCTION cmulqc( S1, c )
+    implicit none
+    TYPE (complex_quaternion) cmulqc
+    TYPE (complex_quaternion), INTENT (IN) :: S1
+    complex(dp), INTENT (IN) :: c
+    integer i
+ 
+
+          cmulqc%x= s1%x*c
+
+  END FUNCTION cmulqc
+
+  FUNCTION ccmulq( c,s1 )
+    implicit none
+    TYPE (complex_quaternion) ccmulq
+    TYPE (complex_quaternion), INTENT (IN) :: S1
+    complex(dp), INTENT (IN) :: c
+    integer i
+ 
+          ccmulq%x= s1%x*c
+
+  END FUNCTION ccmulq
+
+  FUNCTION cmulqr( S1, c )
+    implicit none
+    TYPE (complex_quaternion) cmulqr
+    TYPE (complex_quaternion), INTENT (IN) :: S1
+    real(dp), INTENT (IN) :: c
+    integer i
+  
+
+          cmulqr%x= s1%x*c
+
+  END FUNCTION cmulqr
+
+  FUNCTION rcmulq( c,s1 )
+    implicit none
+    TYPE (complex_quaternion) rcmulq
+    TYPE (complex_quaternion), INTENT (IN) :: S1
+    real(dp), INTENT (IN) :: c
+    integer i
+
+  
+
+          rcmulq%x= s1%x*c
+
+  END FUNCTION rcmulq
+
+
+  FUNCTION cdivq( S1, S2 )
+    implicit none
+    TYPE (complex_quaternion) cdivq
+    TYPE (complex_quaternion), INTENT (IN) :: S1, S2
+
+  
+        
+       cdivq=s1*cinvq(s2)
+
+  END FUNCTION cdivq
+
+!!!!!  
+
   FUNCTION daddsc( S1, sc )
     implicit none
     TYPE (taylor) daddsc
     TYPE (taylor), INTENT (IN) :: S1
     real(dp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       daddsc%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2190,7 +2661,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(sp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       addsc%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2215,7 +2689,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     integer, INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       iaddsc%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2238,7 +2715,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(dp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       dscadd%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2261,7 +2741,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(sp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       scadd%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2286,7 +2769,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     integer, INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       iscadd%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2309,7 +2795,10 @@ endif
     TYPE (taylor) subs
     TYPE (taylor), INTENT (IN) :: S1, S2
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       subs%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2335,7 +2824,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(dp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       dsubsc%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2360,7 +2852,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(sp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       subsc%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2384,7 +2879,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     integer, INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       isubsc%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2407,7 +2905,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(dp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       dscsub%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2430,7 +2931,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     real(sp), INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       scsub%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2454,7 +2958,10 @@ endif
     TYPE (taylor), INTENT (IN) :: S1
     integer, INTENT (IN) :: sc
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       iscsub%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2482,7 +2989,10 @@ endif
     real(dp), INTENT (IN) :: S1
     integer  , INTENT (IN) ::  S2
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       varf%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2500,7 +3010,10 @@ endif
     real(dp), INTENT (IN) :: S1(2)
     integer  , INTENT (IN) ::  S2
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       varf001%i=0
+      RETURN
+    endif 
     localmaster=master
 
 
@@ -2511,6 +3024,7 @@ endif
     master=localmaster
 
   END FUNCTION varf001
+
 
 
 
@@ -2698,8 +3212,10 @@ endif
     CHARACTER (LEN = LNV)  resul
     integer i,k
     integer localmaster
-
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       GETCHARnd2%i=0
+      RETURN
+    endif 
     localmaster=master
 
     ndel=0
@@ -2731,11 +3247,9 @@ endif
     !do i=nd2+ndel+1,nv
     do i=nd2par+1,nv
        if(jfil(i)/=0) then
-          w_p=0
-          w_p%nc=1
-          w_p%fc='(1((1X,A72),/))'
-          w_p%c(1)=" error in getchar for .para. "
-          ! call !write_e(0)
+ 
+         write(6,*) " error in getchar for .para. "
+ 
           stop
        endif
     enddo
@@ -2763,7 +3277,10 @@ endif
     integer , INTENT (IN) ::  S2(:)
     integer i,k
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       GETintnd2%i=0
+      RETURN
+    endif 
     localmaster=master
 
     !    call check(s1)
@@ -2793,10 +3310,8 @@ endif
     !do i=nd2+ndel+1,nv
     do i=nd2par+1,nv
        if(jfil(i)/=0) then
-          w_p=0
-          w_p%nc=1
-          w_p%fc='(1((1X,A72),/))'
-          w_p%c(1)=" error in GETintnd2 for .para. "
+
+          write(6,*) " error in GETintnd2 for .para. "
           ! call !write_e(0)
           stop
        endif
@@ -2826,7 +3341,10 @@ endif
     integer s2(lnv)
     integer i
     integer localmaster
-    IF(.NOT.C_%STABLE_DA) RETURN
+    IF(.NOT.C_%STABLE_DA) then
+       GETintnd2t%i=0
+      RETURN
+    endif 
     localmaster=master
 
     !    call check(s1)
@@ -2857,10 +3375,8 @@ endif
     !do i=nd2+ndel+1,nv
     do i=nd2partt+1,nv
        if(jfilt(i)/=0) then
-          w_p=0
-          w_p%nc=1
-          w_p%fc='(1((1X,A72),/))'
-          w_p%c(1)=" error in GETintnd2t for .part_taylor. "
+ 
+            write(6,*) " error in GETintnd2t for .part_taylor. "
           ! call !write_e(0)
           stop
        endif
@@ -2919,21 +3435,13 @@ endif
     select case (master)
     case(1:ndumt)
        if(iass0user(master)>scratchda(master)%n.or.scratchda(master)%n>newscheme_max) then
-          w_p=0
-          w_p%nc=1
-          w_p%fc='(1((1X,A72),/))'
-          w_p%fi='(3((1X,i4)))'
-          w_p%c(1)= "iass0user(master),scratchda(master)%n,newscheme_max"
-          w_p=(/iass0user(master),scratchda(master)%n,newscheme_max/)
-          ! call !write_e
           call ndum_warning_user
        endif
        iass0user(master)=0
     case(ndumt+1:)
-       w_p=0
-       w_p%nc=1
-       w_p=(/"Should not be here"/)
-       w_p%fc='(1((1X,A72),/))'
+ 
+         write(6,*) "Should not be here in check_snake" 
+  
        ! call !write_e(101)
     end select
     master=master-1
@@ -2990,7 +3498,11 @@ endif
     integer check_j
     INTEGER,INTENT(in),dimension(:)::j
     integer i,no
-    IF(.NOT.C_%STABLE_DA) RETURN
+
+    IF(.NOT.C_%STABLE_DA) then
+      check_j=0
+     RETURN
+    endif
 
     check_j=0
 
@@ -2998,7 +3510,7 @@ endif
     do i=1,size(j)
        no=j(i)+no
     enddo
-
+ 
     if(no>c_%no) then
        check_j=no
        return
@@ -3044,39 +3556,173 @@ endif
 
   !  i/o routines
 
-  SUBROUTINE  pri(S1,MFILE,DEPS)
+  SUBROUTINE  printq(S1,MFILE,PREC)
     implicit none
-    INTEGER,INTENT(IN)::MFILE
-    REAL(DP),OPTIONAL,INTENT(IN)::DEPS
-    type (TAYLOR),INTENT(IN)::S1
-    REAL(DP) PREC,depst
+    INTEGER,OPTIONAL,INTENT(IN)::MFILE
+    type (quaternion),INTENT(IN)::S1
+    REAL(DP),OPTIONAL,INTENT(IN)::PREC
+    INTEGER I,mfi
+     mfi=6
+     if(present(mfile)) mfi=mfile
+      write(mfi,*) " real quaternion "
+    DO I=0,3
+      write(mfi,*) s1%x(i)
+    ENDDO
+  END SUBROUTINE printq
 
-    IF(PRESENT(DEPS)) THEN
-       PREC=-1.0_dp
-       depst=deps
-       CALL taylor_eps(PREC)
+
+  SUBROUTINE  cprintq(S1,MFILE,PREC,pr)
+    implicit none
+    INTEGER,OPTIONAL,INTENT(IN)::MFILE
+    type (complex_quaternion),INTENT(IN)::S1
+    REAL(DP),OPTIONAL,INTENT(IN)::PREC
+    logical,OPTIONAL,INTENT(INout)::pr
+    real(dp) norm
+    INTEGER I,mfi
+     mfi=6
+     if(present(mfile)) mfi=mfile
+     if(present(prec) ) then
+     norm=0
+      do i=0,3
+       norm=norm+abs(s1%x(i))
+      enddo
+     if(norm>prec) then
+     if(present(pr))pr=.true.
+     if(mfi/=0) then
+     write(mfi,*) " complex_quaternion "
+       DO I=0,3
+         write(mfi,*) s1%x(i)
+       ENDDO
+      endif
+      else
+            if(present(pr))pr=.false.
+      endif
+     else 
+
+      write(mfi,*) " complex_quaternion "
+    DO I=0,3
+      write(mfi,*) s1%x(i)
+    ENDDO
+   endif
+  END SUBROUTINE cprintq
+
+  SUBROUTINE  print_for_bmad_parse(S1,MFILE,prec,ind)
+    implicit none
+        INTEGER,OPTIONAL,INTENT(IN)::MFILE
+    REAL(DP),OPTIONAL,INTENT(IN)::prec
+    integer ,OPTIONAL,INTENT(IN)::ind
+    type (TAYLOR),INTENT(IN)::S1
+
+     bmadparser=1
+    call pri(S1,MFILE,prec,ind)
+     bmadparser=0
+  
+  end SUBROUTINE  print_for_bmad_parse
+
+  SUBROUTINE  pri(S1,MFILE,prec,ind)
+    implicit none
+        INTEGER,OPTIONAL,INTENT(IN)::MFILE
+    REAL(DP),OPTIONAL,INTENT(IN)::prec
+    integer ,OPTIONAL,INTENT(IN)::ind
+    type (TAYLOR),INTENT(IN)::S1
+    REAL(DP) PREC1,depst,value
+    integer i,j,it,n,indo,k,kt,kl,mfi
+    integer, allocatable :: jc(:)
+    character(255) line,line0
+    mfi=6
+    if(present(mfile)) mfi=mfile
+    IF(PRESENT(prec)) THEN
+       PREC1=-1.0_dp
+       depst=prec
+       CALL taylor_eps(PREC1)
        CALL taylor_eps(depst)
     ENDIF
 
+ if(bmadparser>0) then
+    IF(PRESENT(ind)) THEN
+     indo=ind
+    else
+     indo=0
+    endif
+
+    kt=0
+    allocate(jc(c_%nv))
+     call taylor_cycle(s1,size=n)
+    do i=1,n
+       call taylor_cycle(s1,ii=i,value=value,j=jc)
+
+       it=0
+       do j=c_%nd2+1,c_%nv
+          it=jc(i)+it
+       enddo
+       if(it==0.and.abs(value)>depst) then
+        kt=kt+1 
+       endif
+
+    enddo
+
+    deallocate(jc)
+
+    allocate(jc(c_%nv))
+    kl=0
+     call taylor_cycle(s1,size=n)
+    do i=1,n
+       call taylor_cycle(s1,ii=i,value=value,j=jc)
+
+       it=0
+       do j=c_%nd2+1,c_%nv
+          it=jc(i)+it
+       enddo
+       if(it==0.and.abs(value)>depst) then
+        kl=kl+1
+        write(line,*) "{",indo,":",value,","  
+        call context(line)
+        do j=1,c_%nd2
+         write(line(len_trim(line)+1:255),*)jc(j),"&"
+         call context(line)
+        enddo
+        if(kl==kt.and.indo==c_%nd2) then
+          write(line(len_trim(line)+1:255),*)"}"
+        else
+          write(line(len_trim(line)+1:255),*)"},"
+        endif
+         call context(line)
+         k=0
+         line0=' '
+         do j=1,len_trim(line)
+          if(line(j:j)/=' ') then
+           !line(j:j)=' '
+           !else
+          k=k+1
+           line0(k:k)=line(j:j)
+          endif
+         enddo
+         do j=1,len_trim(line0)
+          if(line0(j:j)=='&') line0(j:j)=' '
+         enddo
+        write(mfi,*) line0(1:len_trim(line0))
+       endif
+
+    enddo
+
+    deallocate(jc)
+
+
+   else
+   
+
+
+
     ! if(old) then
     if(print77) then
-       CALL DAPRI77(s1%i,MFILE)
+       CALL DAPRI77(s1%i,mfi)
     else
-       CALL DAPRI(s1%i,MFILE)
+       CALL DAPRI(s1%i,mfi)
     endif
-    !    else
-    !       if(newprint) then
-    !          CALL newDAPRI(s1%j,MFILE)
-    !       else
-    !          if(print77) then
-    !             CALL oldDAPRI77(s1%j,MFILE)
-    !          else
-    !             CALL oldDAPRI(s1%j,MFILE)
-    !          endif
-    !       endif
-    !    endif
+
     !
-    IF(PRESENT(DEPS))  CALL taylor_eps(PREC)
+endif
+    IF(PRESENT(prec))  CALL taylor_eps(PREC1)
 
   END SUBROUTINE pri
 
@@ -3220,10 +3866,8 @@ endif
     S1=0.0_dp
 
     IF(.not.ASSOCIATED(S2%N)) THEN
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1((1X,A72),/))'
-       w_p%c(1)=" ERROR IN REFILL_N: UNIVERSAL_TAYLOR DOES NOT EXIST"
+ 
+         write(6,*) " ERROR IN REFILL_N: UNIVERSAL_TAYLOR DOES NOT EXIST"
        ! call !write_e(123)
     ENDIF
     J=0
@@ -3293,13 +3937,11 @@ endif
   subroutine crap1(STRING)
     implicit none
     CHARACTER(*) STRING
-
-    w_p=0
-    w_p%nc=2
-    w_p%fc='((1X,A72,/),(1X,A72))'
-    w_p%c(1)= "ERROR IN :"
-    w_p%c(2)= STRING
-    ! call !write_e(3478)
+ 
+ 
+      write(6,*) "ERROR IN :"
+      write(6,*) STRING
+ 
 
   end subroutine crap1
 
@@ -3307,8 +3949,7 @@ endif
     implicit none
     integer i(1),j
 
-    w_p=0
-    w_p%nc=3
+ 
     write(6,*) " You are using a kind(1.0_dp) "
     write(6,*)" set real_warning to false to permit this "
     write(6,*)" write 1 to continue or -1 for a crash "
@@ -3324,17 +3965,10 @@ endif
     integer ipause,II(0:1)
 
 
-    w_p=0
-    w_p%nc=3
-    w_p%fc='(3((1X,A72),/))'
-    w_p%c(1)=  " *****************************************************************"
-    w_p%c(2)=  " *  Should never be here in New Linked List Scheme               *"
-    w_p%c(3)=  " *****************************************************************"
-    w_p=0
-    w_p%nc=1
-    w_p%fc='(1(1X,A72),/))'
-    w_p%c(1)= " do you want a crash? "
-    ! call !write_e
+ 
+ 
+      write(6,*)  " *  Should never be here in New Linked List Scheme               *"
+ 
     call read(ipause)
     ii(2000*ipause)=0
 
@@ -3518,9 +4152,7 @@ endif
     integer i
     if(associated(scratchda(1)%n)) then
        do i=1,ndumt
-          w_p=0
-          w_p%nc=1
-          w_p%fc='(1((1X,A72)))'
+
           write(6,'(a6,1x,i4,a5,1x,i4,1x,a7)') "Level ",i, " has ",scratchda(i)%n, "Taylors"
           !          write(w_p%c(1),'(a6,1x,i4,a5,1x,i4,1x,a7)') "Level ",i, " has ",scratchda(i)%n, "Taylors"
           !          ! call !write_e
@@ -3580,11 +4212,7 @@ endif
        master=master+1
     case(ndumt)
        write(6,*) " cannot indent anymore ",ndumt
-       w_p=0
-       w_p%nc=1
-       w_p=(/" cannot indent anymore "/)
-       w_p%fc='(1((1X,A72),/))'
-       ! call !write_e(100)
+
        master=sqrt(-dble(master))
     end select
     !    write(26,*) "   taylor ",master
@@ -3627,7 +4255,7 @@ endif
     type (TAYLOR),INTENT(INOUT)::S2
     type (TAYLOR), intent(INOUT):: s1
     real(dp) prec
-    INTEGER ipresent,k,n,I,illa
+    INTEGER ipresent,n,I,illa
     real(dp) value
     INTEGER, allocatable :: j(:)
     type (TAYLOR) t
@@ -3706,7 +4334,7 @@ endif
     type (vecresonance),INTENT(INOUT)::S2
     type (vecresonance), intent(INOUT):: s1
     real(dp) prec
-    integer i
+
 
 
        call clean_vecfield(s1%cos,s2%cos,prec)
@@ -3716,12 +4344,14 @@ endif
 
   END SUBROUTINE clean_vecresonance
 
+
+
   SUBROUTINE  clean_onelieexponent(S1,S2,prec)
     implicit none
     type (onelieexponent),INTENT(INOUT)::S2
     type (onelieexponent), intent(INOUT):: s1
     real(dp) prec
-    integer i
+
 
 
        call clean_vecfield(s1%vector,s2%vector,prec)
@@ -3740,8 +4370,8 @@ endif
     type (complextaylor), intent(INOUT):: s1
     real(dp) prec
 
-    call clean_taylor(S1%r,S1%r,prec)
-    call clean_taylor(S1%i,S1%i,prec)
+    call clean_taylor(S1%r,S2%r,prec)
+    call clean_taylor(S1%i,S2%i,prec)
 
 
   END SUBROUTINE clean_complextaylor
@@ -3759,7 +4389,700 @@ endif
 
   END SUBROUTINE clean_gmap
 
+function etienne_bessel_Ir(n, x, y,km) result (value)
+
+implicit none
+
+real(dp) x, y, value,dvalo
+real(dp) r2, rr2, denom, r2k, r, scale, dval,eps
+integer, optional :: km
+integer n, k,km0
+integer, parameter :: nk_max = 1000
+logical done
+!
+eps=1.e-8_dp
+done=.false.
+r2 = x**2 + y**2
+km0=15
+if(present(km)) km0=km
+scale = 1.0_dp/2**n !/ (2**n * factorial(n))
   
 
+do k=1,n
+scale=scale/k
+enddo
+
+ 
+
+! Close to origin case.
+! Crossover point is hurestically derived for n <= 30
+
+!if (r2 < 2.28 * (n+7)) then
+  value = 1
+
+  rr2 = r2 / 4
+  denom = 1.0_dp
+  r2k = 1
+  dvalo=1.d38
+  do k = 1, nk_max
+    r2k = r2k * rr2
+    denom = denom * k * (n + k)
+    dval = r2k / denom 
+    value = value + dval
+    dvalo=dval
+  if(done) then
+     if(dvalo>=dval) exit
+    else
+    if (k>km0.and.dval < eps * value) then
+      done=.true.
+    endif
+  endif
+    if (k == nk_max) then
+      print *, 'Internal error in norm_bessel_I: No convergence!'
+      stop
+    endif
+  enddo
+if(present(km)) write(6,*) k
+  value = scale * value
+
+
+end function etienne_bessel_Ir
+
+
+function etienne_bessel_It(n, x, y,km) result (value)
+
+implicit none
+
+type(taylor) x, y
+type(taylor)   r2, rr2, denom, r2k, r, scale, dval, value,dvalo
+real(dp) eps
+integer, optional :: km
+integer n, k,km0
+integer, parameter :: nk_max = 1000
+logical done
+    integer localmaster
+    IF(.NOT.C_%STABLE_DA) then
+      value%i=0
+     RETURN
+    endif
+    localmaster=master
+
+
+    !    call check(s1)
+    call ass(value)
+call alloc(r2, rr2, denom, r2k, r, scale, dval,dvalo)
+eps=1.e-8_dp
+done=.false.
+r2 = x**2 + y**2
+km0=15
+if(present(km)) km0=km
+scale = 1.0_dp/2**n !/ (2**n * factorial(n))
+  
+
+do k=1,n
+scale=scale/k
+enddo
+
+ 
+
+! Close to origin case.
+! Crossover point is hurestically derived for n <= 30
+
+!if (r2 < 2.28 * (n+7)) then
+  value = 1
+
+  rr2 = r2 / 4
+  denom = 1.0_dp
+  r2k = 1
+  dvalo=1.d38
+  do k = 1, nk_max
+    r2k = r2k * rr2
+    denom = denom * k * (n + k)
+    dval = r2k / denom 
+    value = value + dval
+    dvalo=dval
+  if(done) then
+     if(full_abs(dvalo)>=full_abs(dval)) exit
+    else
+    if (k>km0.and.full_abs(dval) < eps * full_abs(value)) then
+      done=.true.
+    endif
+  endif
+    if (k == nk_max) then
+      print *, 'Internal error in norm_bessel_I: No convergence!'
+      stop
+    endif
+  enddo
+if(present(km)) write(6,*) k
+
+  value = scale * value
+call kill(r2, rr2, denom, r2k, r, scale, dval,dvalo)
+
+    master=localmaster
+end function etienne_bessel_It
+
+
+function etienne_bessel_Itr(n, x, y,km) result (value)
+
+implicit none
+
+type(taylor) x 
+type(taylor)   r2, rr2, denom, r2k, r, scale, dval, value,dvalo
+real(dp) eps,y
+integer, optional :: km
+integer n, k,km0
+integer, parameter :: nk_max = 1000
+logical done
+    integer localmaster
+    IF(.NOT.C_%STABLE_DA) then
+      value%i=0
+     RETURN
+    endif
+    localmaster=master
+
+
+    !    call check(s1)
+    call ass(value)
+call alloc(r2, rr2, denom, r2k, r, scale, dval,dvalo)
+eps=1.e-8_dp
+done=.false.
+r2 = x**2 + y**2
+km0=15
+if(present(km)) km0=km
+scale = 1.0_dp/2**n !/ (2**n * factorial(n))
+  
+
+do k=1,n
+scale=scale/k
+enddo
+
+ 
+
+! Close to origin case.
+! Crossover point is hurestically derived for n <= 30
+
+!if (r2 < 2.28 * (n+7)) then
+  value = 1
+
+  rr2 = r2 / 4
+  denom = 1.0_dp
+  r2k = 1
+  dvalo=1.d38
+  do k = 1, nk_max
+    r2k = r2k * rr2
+    denom = denom * k * (n + k)
+    dval = r2k / denom 
+    value = value + dval
+    dvalo=dval
+  if(done) then
+     if(full_abs(dvalo)>=full_abs(dval)) exit
+    else
+    if (k>km0.and.full_abs(dval) < eps * full_abs(value)) then
+      done=.true.
+    endif
+  endif
+    if (k == nk_max) then
+      print *, 'Internal error in norm_bessel_I: No convergence!'
+      stop
+    endif
+  enddo
+if(present(km)) write(6,*) k
+
+  value = scale * value
+call kill(r2, rr2, denom, r2k, r, scale, dval,dvalo)
+
+    master=localmaster
+end function etienne_bessel_Itr
+
+
+function etienne_bessel_Irt(n, x, y,km) result (value)
+
+implicit none
+
+type(taylor)  y
+type(taylor)   r2, rr2, denom, r2k, r, scale, dval, value,dvalo
+real(dp) x,eps
+integer, optional :: km
+integer n, k,km0
+integer, parameter :: nk_max = 1000
+logical done
+    integer localmaster
+    IF(.NOT.C_%STABLE_DA) then
+      value%i=0
+     RETURN
+    endif
+    localmaster=master
+
+
+    !    call check(s1)
+    call ass(value)
+call alloc(r2, rr2, denom, r2k, r, scale, dval,dvalo)
+eps=1.e-8_dp
+done=.false.
+r2 = x**2 + y**2
+km0=15
+if(present(km)) km0=km
+scale = 1.0_dp/2**n !/ (2**n * factorial(n))
+  
+
+do k=1,n
+scale=scale/k
+enddo
+
+ 
+
+! Close to origin case.
+! Crossover point is hurestically derived for n <= 30
+
+!if (r2 < 2.28 * (n+7)) then
+  value = 1
+
+  rr2 = r2 / 4
+  denom = 1.0_dp
+  r2k = 1
+  dvalo=1.d38
+  do k = 1, nk_max
+    r2k = r2k * rr2
+    denom = denom * k * (n + k)
+    dval = r2k / denom 
+    value = value + dval
+    dvalo=dval
+  if(done) then
+     if(full_abs(dvalo)>=full_abs(dval)) exit
+    else
+    if (k>km0.and.full_abs(dval) < eps * full_abs(value)) then
+      done=.true.
+    endif
+  endif
+    if (k == nk_max) then
+      print *, 'Internal error in norm_bessel_I: No convergence!'
+      stop
+    endif
+  enddo
+if(present(km)) write(6,*) k
+
+  value = scale * value
+call kill(r2, rr2, denom, r2k, r, scale, dval,dvalo)
+
+    master=localmaster
+end function etienne_bessel_Irt
+
+  !!! bessel   !!!!!!!!!!  2017
+
+!-------------------------------------------------------------------
+!-------------------------------------------------------------------
+!-------------------------------------------------------------------
+!+
+! Function norm_bessel_I(n, x, y) result (value)
+!
+! Routine to return the normalized bessel function defined to be 
+!   I_n(r) / r^n
+! where I_n is the standard modified Bessel function of the first kind of order n and
+!   r^2 = x^2 + y^2
+!
+! Input:
+!   n     -- integer: Bessel order.
+!   x, y  -- real(dp): Values to evaluate at.
+!
+! Output:
+!   value -- real(rp): Normalized Bessel value.
+!-
+
+function norm_bessel_Ir(n, x, y) result (value)
+
+implicit none
+
+real(dp) x, y, value
+real(dp) r2, rr2, denom, r2k, r, scale, dval
+
+integer n, k
+integer, parameter :: nk_max = 100
+
+!
+
+r2 = x**2 + y**2
+
+scale = 1.0_dp / (2**n * factorial(n))
+
+if (r2 == 0) then
+  value = scale
+  return
+endif
+
+if (n > 30) then
+  print *, 'Error in norm_bessel_I: Bessel order greater than 30: ', n
+  stop
+endif
+
+! Close to origin case.
+! Crossover point is hurestically derived for n <= 30
+
+if (r2 < 2.28 * (n+7)) then
+  value = 1
+
+  rr2 = r2 / 4
+  denom = 1.0_dp
+  r2k = 1
+
+  do k = 1, nk_max
+    r2k = r2k * rr2
+    denom = denom * k * (n + k)
+    dval = r2k / denom 
+    value = value + dval
+    if (dval < 1d-16 * value) exit
+    if (k == nk_max) then
+      print *, 'Internal error in norm_bessel_I: No convergence!'
+      stop
+    endif
+  enddo
+
+  value = scale * value
+endif
+
+! Far from origin case
+
+r = sqrt(r2)
+
+select case (n)
+case (0)
+  value = bessel_i0(r)
+
+case (1)
+  value = bessel_i1(r) / r
+
+case default
+  value = bessel_I(n,r) / r**n
+end select
+
+end function norm_bessel_Ir
+
+!-------------------------------------------------------------------
+!-------------------------------------------------------------------
+!-------------------------------------------------------------------
+
+
+function factorial(n) result (fact)
+
+implicit none
+
+real(8), parameter :: twopi=6.283185307179586476925286766559005768394_8
+real(8) fact, lnn
+real(8), parameter :: f(0:30) = [ &
+      1.000000000000D+00, 1.000000000000D+00, 2.000000000000D+00, 6.000000000000D+00, &
+      2.400000000000D+01, 1.200000000000D+02, 7.200000000000D+02, 5.040000000000D+03, &
+      4.032000000000D+04, 3.628800000000D+05, 3.628800000000D+06, 3.991680000000D+07, &
+      4.790016000000D+08, 6.227020800000D+09, 8.717829120000D+10, 1.307674368000D+12, &
+      2.092278988800D+13, 3.556874280960D+14, 6.402373705728D+15, 1.216451004088D+17, &
+      2.432902008177D+18, 5.109094217171D+19, 1.124000727778D+21, 2.585201673888D+22, &
+      6.204484017332D+23, 1.551121004333D+25, 4.032914611266D+26, 1.088886945042D+28, &
+      3.048883446117D+29, 8.841761993740D+30, 2.652528598122D+32]
+
+integer n, i
+
+! Use Sterling's formula if n is very large
+
+if (n > ubound(f, 1)) then
+  if (n > 170) stop
+  fact = exp(n * log(real(n, 8)) - n + log(twopi * n) / 2)
+
+else
+  fact = f(n)
+endif
+
+end function
+
+!-------------------------------------------------------------------
+!-------------------------------------------------------------------
+!-------------------------------------------------------------------
+
+	FUNCTION bessel_I0(x)
+	IMPLICIT NONE
+	REAL(dp), INTENT(IN) :: x
+	REAL(dp) :: bessel_I0
+	REAL(dp) :: ax
+	REAL(DP), DIMENSION(7) :: p = (/1.0_dp,3.5156229_dp,&
+		3.0899424_dp,1.2067492_dp,0.2659732_dp,0.360768e-1_dp,&
+		0.45813e-2_dp/)
+	REAL(DP), DIMENSION(9) :: q = (/0.39894228_dp,0.1328592e-1_dp,&
+		0.225319e-2_dp,-0.157565e-2_dp,0.916281e-2_dp,&
+		-0.2057706e-1_dp,0.2635537e-1_dp,-0.1647633e-1_dp,&
+		0.392377e-2_dp/)
+	ax=abs(x)
+	if (ax < 3.75) then
+		bessel_I0=poly_eval(real((x/3.75_dp)**2,dp),p)
+	else
+		bessel_I0=(exp(ax)/sqrt(ax))*poly_eval(real(3.75_dp/ax,dp),q)
+	end if
+	END FUNCTION bessel_I0
+
+!-------------------------------------------------------------------
+!-------------------------------------------------------------------
+!-------------------------------------------------------------------
+
+	FUNCTION bessel_I1(x)
+	IMPLICIT NONE
+	REAL(dp), INTENT(IN) :: x
+	REAL(dp) :: bessel_I1
+	REAL(dp) :: ax
+	REAL(DP), DIMENSION(7) :: p = (/0.5_dp,0.87890594_dp,&
+		0.51498869_dp,0.15084934_dp,0.2658733e-1_dp,&
+		0.301532e-2_dp,0.32411e-3_dp/)
+	REAL(DP), DIMENSION(9) :: q = (/0.39894228_dp,-0.3988024e-1_dp,&
+		-0.362018e-2_dp,0.163801e-2_dp,-0.1031555e-1_dp,&
+		0.2282967e-1_dp,-0.2895312e-1_dp,0.1787654e-1_dp,&
+		-0.420059e-2_dp/)
+	ax=abs(x)
+	if (ax < 3.75) then
+		bessel_I1=ax*poly_eval(real((x/3.75_dp)**2,dp),p)
+	else
+		bessel_I1=(exp(ax)/sqrt(ax))*poly_eval(real(3.75_dp/ax,dp),q)
+	end if
+	if (x < 0.0) bessel_I1=-bessel_I1
+	END FUNCTION bessel_I1
+
+!-------------------------------------------------------------------
+!-------------------------------------------------------------------
+!-------------------------------------------------------------------
+
+	FUNCTION bessel_I(n,x)
+	IMPLICIT NONE
+	INTEGER, INTENT(IN) :: n
+	REAL(dp), INTENT(IN) :: x
+	REAL(dp) :: bessel_I
+	INTEGER, PARAMETER :: IACC=40,IEXP=maxexponent(x)/2
+	INTEGER :: j,m
+	REAL(dp) :: bi,bim,bip,tox
+	if (n < 2) stop
+	bessel_I=0.0
+	if (x*x <= 8.0_dp*tiny(x)) RETURN
+	tox=2.0_dp/abs(x)
+	bip=0.0
+	bi=1.0
+	m=2*((n+int(sqrt(real(IACC*n,dp)))))
+	do j=m,1,-1
+		bim=bip+j*tox*bi
+		bip=bi
+		bi=bim
+		if (exponent(bi) > IEXP) then
+			bessel_I=scale(bessel_I,-IEXP)
+			bi=scale(bi,-IEXP)
+			bip=scale(bip,-IEXP)
+		end if
+		if (j == n) bessel_I=bip
+	end do
+	bessel_I=bessel_I*bessel_I0(x)/bi
+	if (x < 0.0 .and. mod(n,2) == 1) bessel_I=-bessel_I
+	END FUNCTION bessel_I
+
+!-------------------------------------------------------------------
+!-------------------------------------------------------------------
+!-------------------------------------------------------------------
+
+	FUNCTION poly_eval(x,coeffs)
+	REAL(dp), INTENT(IN) :: x
+	REAL(dp), DIMENSION(:), INTENT(IN) :: coeffs
+	REAL(dp) :: poly_eval
+	REAL(dp) :: pow
+	REAL(dp), DIMENSION(:), ALLOCATABLE :: vec
+	INTEGER :: i,n,nn
+	INTEGER, PARAMETER :: NPAR_POLY=8
+	n=size(coeffs)
+	if (n <= 0) then
+		poly_eval=0.0_dp
+	else if (n < NPAR_POLY) then
+		poly_eval=coeffs(n)
+		do i=n-1,1,-1
+			poly_eval=x*poly_eval+coeffs(i)
+		end do
+	else
+		allocate(vec(n+1))
+		pow=x
+		vec(1:n)=coeffs
+		do
+			vec(n+1)=0.0_dp
+			nn=ishft(n+1,-1)
+			vec(1:nn)=vec(1:n:2)+pow*vec(2:n+1:2)
+			if (nn == 1) exit
+			pow=pow*pow
+			n=nn
+		end do
+		poly_eval=vec(1)
+		deallocate(vec)
+	end if
+	END FUNCTION poly_eval
+
+  FUNCTION nbittaylortr( n,x,y )
+    implicit none
+    TYPE (taylor) nbittaylortr
+    TYPE (taylor), INTENT (IN) :: x
+    real(dp) y 
+    integer, INTENT (IN) :: n
+    integer localmaster
+    IF(.NOT.C_%STABLE_DA) then
+      nbittaylortr%i=0
+     RETURN
+    endif
+    localmaster=master
+    call ass(nbittaylortr)
+    if(switch_bessel) then
+
+     nbittaylortr=nbi_etienne(n,x,y)
+    else
+
+     nbittaylortr=nbi_david(n,x,y)
+
+    endif
+    master=localmaster
+    END FUNCTION nbittaylortr
+
+  FUNCTION nbittaylorrt( n,x,y )
+    implicit none
+    TYPE (taylor) nbittaylorrt
+    TYPE (taylor), INTENT (IN) :: y
+    real(dp) x
+    integer, INTENT (IN) :: n
+    integer localmaster
+    IF(.NOT.C_%STABLE_DA) then
+      nbittaylorrt%i=0
+     RETURN
+    endif
+    localmaster=master
+    call ass(nbittaylorrt)
+    if(switch_bessel) then
+
+     nbittaylorrt=nbi_etienne(n,x,y)
+    else
+
+     nbittaylorrt=nbi_david(n,x,y)
+
+    endif
+    master=localmaster
+
+    END FUNCTION nbittaylorrt
+
+  FUNCTION nbittaylor( n,x,y )
+    implicit none
+    TYPE (taylor) nbittaylor
+    TYPE (taylor), INTENT (IN) :: x,y 
+    integer, INTENT (IN) :: n
+    integer localmaster
+    IF(.NOT.C_%STABLE_DA) then
+      nbittaylor%i=0
+     RETURN
+    endif
+    localmaster=master
+    call ass(nbittaylor)
+    if(switch_bessel) then
+
+     nbittaylor=nbi_etienne(n,x,y)
+    else
+
+     nbittaylor=nbi_david(n,x,y)
+
+    endif
+    master=localmaster
+    END FUNCTION nbittaylor
+
+  FUNCTION nbitreal( n,x,y )
+    implicit none
+    real(dp) nbitreal
+    real(dp),  INTENT (IN) :: x,y 
+    integer, INTENT (IN) :: n
+
+    if(switch_bessel) then
+
+     nbitreal=nbi_etienne(n,x,y)
+    else
+
+     nbitreal=nbi_david(n,x,y)
+
+    endif
+ 
+    END FUNCTION nbitreal
+
+  FUNCTION nbit( n,x,y )
+    implicit none
+    TYPE (taylor) nbit
+    TYPE (taylor), INTENT (IN) :: x,y 
+    integer, INTENT (IN) :: n
+    integer localmaster,i
+    TYPE (taylor) t,dx,tn
+    real(dp) x0,y0,fac,div
+    IF(.NOT.C_%STABLE_DA) then
+      nbit%i=0
+     RETURN
+    endif
+    localmaster=master
+    
+    call ass(nbit)
+    call alloc(dx,tn)
+
+     x0=x
+     y0=y
+     dx=x**2+y**2-(x0**2+y0**2)
+     tn=1.0_dp
+     nbit=nbi_david(n,x0,y0)
+     fac=1.0_dp
+     do i=1,no
+      tn=tn*dx
+      fac=fac/i/2.0_dp
+      div=nbi_david(n+i,x0,y0)*fac 
+      nbit=nbit+tn*div
+     enddo
+
+    call kill(dx,tn)
+    master=localmaster
+
+  END FUNCTION nbit
+
+FUNCTION nbitrt( n,xx,y )
+    implicit none
+    TYPE (taylor) nbitrt
+    TYPE (taylor), INTENT (IN) :: y 
+    real(dp), INTENT (IN) :: xx
+    integer, INTENT (IN) :: n
+    integer localmaster,i
+    TYPE (taylor) x
+
+    IF(.NOT.C_%STABLE_DA) then
+      nbitrt%i=0
+     RETURN
+    endif
+    localmaster=master
+    
+    call ass(nbitrt)
+    call alloc(x)
+      x=xx
+      nbitrt=nbit( n,x,y )
+
+    call kill(x)
+    master=localmaster
+
+  END FUNCTION nbitrt
+
+FUNCTION nbittr( n,x,yy )
+    implicit none
+    TYPE (taylor) nbittr
+    TYPE (taylor), INTENT (IN) :: x
+    real(dp), INTENT (IN) :: yy
+    integer, INTENT (IN) :: n
+    integer localmaster,i
+    TYPE (taylor) y
+
+    IF(.NOT.C_%STABLE_DA) then
+      nbittr%i=0
+     RETURN
+    endif
+    localmaster=master
+    
+    call ass(nbittr)
+    call alloc(y)
+      y=yy
+      nbittr=nbit( n,x,y )
+
+    call kill(y)
+    master=localmaster
+
+  END FUNCTION nbittr
 
 END MODULE  tpsa

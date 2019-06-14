@@ -58,39 +58,35 @@ contains
     endif
   end subroutine alloc_all
 
-  subroutine alloc_
-    implicit none
-    integer i
-    allocate(cc(lst))
-    allocate(i_1(lst));allocate(i_2(lst));
-    allocate(ie1(lea));allocate(ie2(lea));allocate(ieo(lea));
-    allocate(ia1(0:lia));allocate(ia2(0:lia));
-    allocate(idano(lda));allocate(idanv(lda));allocate(idapo(lda));
-    allocate(idalm(lda));allocate(idall(lda));
-    allocate(daname(lda));
-    allocate(allvec(lda));
-    do i=1,lst
-       cc(I)=0.0_dp  ! ADDED BY ETIENNE
-       i_1(i)=0
-       i_2(i)=0
-    enddo
-    do i=1,lea
-       ie1(i)=0
-       ie2(i)=0
-       ieo(i)=0
-    enddo
-    do i=0,lia
-       ia1(i)=0
-       ia2(i)=0
-    enddo
-    do i=1,lda
-       idano(i)=0
-       idanv(i)=0
-       idapo(i)=0
-       idalm(i)=0
-       idall(i)=0
-    enddo
-  end subroutine alloc_
+subroutine alloc_
+implicit none
+allocate(cc(lst))
+allocate(i_1(lst));allocate(i_2(lst));
+allocate(ie1(lea));allocate(ie2(lea));allocate(ieo(lea));
+allocate(ia1(0:lia));allocate(ia2(0:lia));
+allocate(idano(lda));allocate(idanv(lda));allocate(idapo(lda));
+allocate(idalm(lda));allocate(idall(lda));
+allocate(daname(lda));
+allocate(allvec(lda));
+
+cc=0.0_dp ! ADDED BY ETIENNE
+i_1=0
+i_2=0
+ie1=0
+ie2=0
+ieo=0
+ia1=0
+ia2=0
+idano=0
+idanv=0
+idapo=0
+idalm=0
+idall=0
+
+end subroutine alloc_
+
+
+
 
 
   subroutine dealloc_all
@@ -263,23 +259,6 @@ contains
        size=size+REAL(lst,kind=DP)*(8.0_dp/1024.0_dp**2+2.0_dp*4.0_dp/1024.0_dp**2)
     endif
     if(size>total_da_size.or.printdainfo) then
-       w_p=0
-       w_p%nc=13
-       w_p%fc='(12(1X,A72,/),(1X,A72))'
-       write(w_p%c(1),'(a10,1x,i4,1x,i4)') " no,nv  = ",no,nv
-       write(w_p%c(2),'(a10,1x,i8)') "    LEA = ",lea
-       write(w_p%c(3),'(a24,1x,i8)') " ldamin (with nd2=6)  = ",ldamin
-       write(w_p%c(4),'(a8,1x,i8)') " lia  = ",lia
-       write(w_p%c(5),'(a8,1x,i8)') " lda  = ",lda
-       write(w_p%c(6),'(a8,1x,i8)') " lst  = ",lst
-       write(w_p%c(7),'(a14,1x,i8)') " ndamaxi    = ",ndamaxi
-       write(w_p%c(8),'(a18,1x,g21.14)') " size in Mbytes = ",size
-       write(w_p%c(9),'(a25,1x,g21.14)') " Total_da_size Allowed = ",Total_da_size
-       w_p%c(10)=" "
-       w_p%c(11)="************************************"
-       w_p%c(12)="* Execution Continues Nevertheless *"
-       w_p%c(13)="************************************"
-       ! call !write_e(1000)
        call kanalnummer(mf)
        open(unit=mf,file='too_big_da.txt')
        write(mf,*) "no,nv  = ",no,nv

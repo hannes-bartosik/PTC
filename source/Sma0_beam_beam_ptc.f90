@@ -379,6 +379,14 @@ contains
           rk = fk * sqrt(pi) / r
           xr = xs / r   !
           yr = ys / r   !
+          
+          if( (xr.sub.'0') < 0) then
+            xr = -xr
+          endif
+          if( (yr.sub.'0') < 0) then
+            yr = -yr
+          endif
+          
           call ccperrf(xr, yr, crx, cry)
           if (tk .gt. explim) then
              phix = rk * cry
@@ -408,6 +416,13 @@ contains
           !       ys = x(3) - ym
           xr = xs / r !abs
           yr = ys / r !abs
+          if( (xr.sub.'0') < 0) then
+            xr = -xr
+          endif
+          if( (yr.sub.'0') < 0) then
+            yr = -yr
+          endif
+
           call ccperrf(yr, xr, cry, crx)
           !       tk = (xs * xs / sx2 + ys * ys / sy2) / two
           if (tk .gt. explim) then
@@ -453,7 +468,7 @@ contains
     !   wx, wy    (double)    real + imag function result                  *
     !----------------------------------------------------------------------*
     TYPE(REAL_8),INTENT(INOUT):: xx,yy,wx,wy
-    TYPE(double_complex) z,zt,w
+    TYPE(complex_8) z,zt,w
     complex(dp) z0,w0,w1,wt0
     real(dp) xx0, yy0, wx0, wy0
     integer i

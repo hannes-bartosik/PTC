@@ -43,7 +43,6 @@ module lielib_yang_berz
   logical :: frankheader=.true.
   logical :: new_ndpt = .true.
   integer,private :: nt_pos,npt_pos
-  logical :: perform_flip = .true.
   integer time_plane
   real(dp), private :: stmem(ndim)
   logical(lp) :: courant_snyder=.true.
@@ -62,7 +61,6 @@ contains
     integer i,nd1,ndc1,ndpt1,no1,nv1      !,nis
     real(dp),dimension(ndim)::ang,ra,st
     integer, optional :: time_pos
-    integer ipause,mypauses
     logical, optional :: da_init
     logical dai
     dai=.true.
@@ -123,11 +121,6 @@ contains
              nt_pos=npt_pos-1
           else
              nt_pos=npt_pos+1
-          endif
-          if(nt_pos==nd2.or.nt_pos==nd2-1) then
-             perform_flip=.false.
-          else
-             perform_flip=.true.
           endif
           if(npt_pos<3.or.npt_pos>nd2) then
              line=' LETHAL ERROR IN LIEINIT'
@@ -671,16 +664,9 @@ contains
     integer,dimension(2)::b,c
     integer,dimension(4)::t
     real(dp),external::f1,f2
-    logical doflip
+
     if(.not.c_%stable_da) return
-    if(perform_flip.and.new_ndpt.and.ndpt/=0) then
-       perform_flip=.false.
-       call flip_i(b(1),b(1),1)
-       call flip_i(b(2),b(2),1)
-       doflip=.true.
-    else
-       doflip=.false.
-    endif
+
 
 
     call etall(t,4)
@@ -693,13 +679,7 @@ contains
     call dasub(t(1),t(4),c(1))
     call daadd(t(2),t(3),c(2))
     call dadal(t,4)
-    if(doflip) then
-       call flip_i(b(1),b(1),-1)
-       call flip_i(b(2),b(2),-1)
-       if(c(1)/=b(1).and.c(1)/=b(2)) call flip_i(c(1),c(1),-1)
-       if(c(2)/=b(1).and.c(2)/=b(2).and.c(2)/=c(1)) call flip_i(c(2),c(2),-1)
-       perform_flip=.true.
-    endif
+
     return
   end subroutine comcfu
 
@@ -1307,10 +1287,9 @@ contains
           ! call daprid(t,1,1,20)
           if(xn.lt.epsone) then
              if(lielib_print(3)==1) then
-                w_p=0
-                w_p%nc=1
-                write(w_p%c(1),'(a14,g21.14)') " xn quadratic ",xn
-                w_p%fc='(1((1X,A72)))'
+
+                write(6,'(a14,g21.14)') " xn quadratic ",xn
+
                 ! CALL !WRITE_a
              endif
              call daflod(t,t,w)
@@ -1339,11 +1318,7 @@ contains
           enddo
           xn=xnorm/xnorm1
           if(xn.ge.epsone.and.(lielib_print(3)==1)) then
-             w_p=0
-             w_p%nc=1
-             write(w_p%c(1),'(a11,g21.14)') " xn linear ",xn
-             w_p%fc='(1((1X,A72)))'
-             !CALL !WRITE_a
+             write(6,'(a11,g21.14)') " xn linear ",xn
           endif
           if(xn.lt.eps.or.more) then
              more=.true.
@@ -1365,10 +1340,7 @@ contains
     endif
     if(lielib_print(3)==1) WRITE(6,*) " K ", K,epsone
     if(lielib_print(3)==1) then
-       w_p=0
-       w_p%nc=1
-       write(w_p%c(1),'(a11,i4)') " iteration " , k
-       w_p%fc='(1((1X,A72)))'
+       write(6,'(a11,i4)') " iteration " , k
     endif
     !  if(lielib_print(3)==1) CALL WRITE_a
     call dadal(x,nd2)
@@ -1529,15 +1501,7 @@ contains
     integer,dimension(ndim2)::a1i,a2i
     integer,dimension(:)::x,a1,a2,ft,xy,h
     real(dp),dimension(ndim)::angle,rad,st,p
-    logical doflip
     if(.not.c_%stable_da) return
-    if(perform_flip.and.new_ndpt.and.ndpt/=0) then
-       perform_flip=.false.
-       call flip(x,x)
-       doflip=.true.
-    else
-       doflip=.false.
-    endif
 
     call etallnom(a1i,nd2) !  ,'A1I       ')
     call etallnom(a2i,nd2) !  ,'A2I       ')
@@ -1567,28 +1531,8 @@ contains
     enddo
     stmem=st
     if(ndc.eq.1) p(nd)=angle(nd)
-    if(lielib_print(4)==1) then
-       w_p=1
-       w_p%nc=1
-       w_p%nr=2
-       w_p%c(1)='tune    '
-       do ij=1,nd
-          w_p%r(ij)=p(ij)
-       enddo
-       w_p%fc='((1X,A8))'
-       w_p%fr='(3(1x,g21.14))'
-       !CALL !WRITE_a
-       w_p=1
-       w_p%nc=1
-       w_p%nr=2
-       w_p%c(1)='damping '
-       do ij=1,nd
-          w_p%r(ij)=rad(ij)
-       enddo
-       w_p%fc='((1X,A8))'
-       w_p%fr='(3(1x,g21.14))'
-       !CALL !WRITE_a
-    endif
+
+
     do ij=1,nd       !  -ndc    Frank
        ps(ij)=p(ij)
        rads(ij)=rad(ij)
@@ -1613,15 +1557,7 @@ contains
     call taked(a2i,1,a1i)
     call etcct(xy,a1i,xy)
 
-    if(doflip) then
-       call flip(x,x)
-       call flip(a2,a2)
-       call flip(a1,a1)
-       call flip(xy,xy)
-       call flipflo(ft,ft,-1)
-       call flipflo(h,h,-1)
-       perform_flip=.true.
-    endif
+
     call dadal(a2i,nd2)
     call dadal(a1i,nd2)
     return
@@ -1636,7 +1572,7 @@ contains
 
   subroutine flip(xy,xyf)
     implicit none
-    integer i,nord
+
     integer,dimension(:):: xy,xyf
     integer,dimension(ndim2)::x,xi
     if(.not.c_%stable_da) return
@@ -1699,7 +1635,7 @@ contains
 
   subroutine flip_resonance(xy,xyf,i)
     implicit none
-    integer i,NRES,j
+    integer i,j
     integer,dimension(:,:):: xy,xyf
     integer,dimension(NDIM,NRESO) ::x
     if(.not.c_%stable_da) return
@@ -1768,7 +1704,7 @@ contains
 
   subroutine flip_i(xy,xyf,i)
     implicit none
-    integer i,nord
+    integer i
     integer  xy,xyf
     integer,dimension(ndim2)::x,xi
     if(.not.c_%stable_da) return
@@ -1813,7 +1749,6 @@ contains
     integer,dimension(:)::xy,a1,a1i
     integer,dimension(ndim2)::x,w,v,rel
     real(dp) xic
-    logical doflip
     if(.not.c_%stable_da) return
 
 
@@ -1826,13 +1761,7 @@ contains
 
     ! COMPUTATION OF A1 AND A1I USING DAINV
 
-    if(perform_flip.and.new_ndpt.and.ndpt/=0) then
-       perform_flip=.false.
-       call flip(xy,xy)
-       doflip=.true.
-    else
-       doflip=.false.
-    endif
+
 
     call etini(rel)
 
@@ -1899,12 +1828,6 @@ contains
        call etinv(a1,a1i)
        call datruncd(a1i,nord+1,a1i)
     endif
-    if(doflip) then
-       call flip(xy,xy)
-       call flip(a1,a1)
-       call flip(a1i,a1i)
-       perform_flip=.true.
-    endif
 
 
     !    call danot(no)
@@ -1961,11 +1884,9 @@ contains
        ! W = V o X
        call etcct(v,x,w)
        if(lielib_print(5)==1) then
-          w_p=0
-          w_p%nc=1
-          w_p%fc='(1((1X,A72),/))'
-          write(w_p%c(1),'(a13,i4)') ' ORDERFLO K= ', k
-          !CALL !WRITE_a
+
+          write(6,'(a13,i4)') ' ORDERFLO K= ', k
+
        endif
        ! X = EXP(B9) W
        call facflod(b9,w,x,k,k,1.0_dp,1)
@@ -2189,16 +2110,9 @@ contains
     integer i,bb1,bb2,j1,j2
     integer,dimension(:)::h,t
     integer,dimension(ndim2)::b1,b2,temp
-    logical doflip
+ 
     if(.not.c_%stable_da) return
 
-    if(perform_flip.and.new_ndpt.and.ndpt/=0) then
-       perform_flip=.false.
-       call flipflo(h,h,1)
-       doflip=.true.
-    else
-       doflip=.false.
-    endif
 
 
     call etall(b1,nd2)
@@ -2220,34 +2134,6 @@ contains
     if(ndpt.ne.0) then
        call dacop(h(ndt),t(nd))
        call dacop(b1(ndt),t(nd2))
-    endif
-
-    if(doflip) then
-       call flipflo(h,h,-1)
-       call etall(temp,nd2)
-       do i=1,nd2
-          call flip_i(t(i),temp(i),-1)
-       enddo
-
-       if(mod(ndpt,2)==0) then
-          j1=ndpt/2
-          j2=npt_pos/2
-       else
-          j1=(ndpt+1)/2
-          j2=(npt_pos+1)/2
-       endif
-
-       do i=1,nd2
-          call dacop(temp(i),t(i))
-       enddo
-
-       call dacop(temp(j1),t(j2))
-       call dacop(temp(j1+nd),t(j2+nd))
-       call dacop(temp(j2),t(j1))
-       call dacop(temp(j2+nd),t(j1+nd))
-
-       call dadal(temp,nd2)
-       perform_flip=.true.
     endif
 
     call dadal1(bb2)
@@ -2301,7 +2187,7 @@ contains
        call dapok(h(ndt),j,ang(nd))
     elseif(ndpt.eq.nd2) then
        j(ndpt)=1
-       call dapok(h(ndt),j,-ang(nd))
+       call dapok(h(ndt),j,ang(nd))     !!!! correct 2014.2.12 with David Sagan and Chris Mayes
     endif
     return
   end subroutine h2pluflo
@@ -2435,16 +2321,10 @@ contains
     !   C1------> R2+I R1
     integer c1,r2,i2,b1,b2
     integer,dimension(ndim2)::x
-    logical doflip
+
     if(.not.c_%stable_da) return
 
-    if(perform_flip.and.new_ndpt.and.ndpt/=0) then
-       perform_flip=.false.
-       call flip_i(c1,c1,1)
-       doflip=.true.
-    else
-       doflip=.false.
-    endif
+
 
     call etall1(b1)
     call etall1(b2)
@@ -2457,12 +2337,6 @@ contains
     call dalin(b1,0.5_dp,b2,0.5_dp,r2)
     call dalin(b1,0.5_dp,b2,-0.5_dp,i2)
 
-    if(doflip) then
-       call flip_i(c1,c1,-1)
-       if(r2/=c1) call flip_i(r2,r2,-1)
-       if(i2/=c1.and.i2/=r2) call flip_i(i2,i2,-1)
-       perform_flip=.true.
-    endif
 
 
     call dadal(x,nd2)
@@ -2474,17 +2348,10 @@ contains
     implicit none
     !  INVERSE OF CTOR
     integer c2,r1,i1,b1
-    logical doflip
+
     if(.not.c_%stable_da) return
 
-    if(perform_flip.and.new_ndpt.and.ndpt/=0) then
-       perform_flip=.false.
-       call flip_i(r1,r1,1)
-       call flip_i(i1,i1,1)
-       doflip=.true.
-    else
-       doflip=.false.
-    endif
+
 
     call etall1(b1)
 
@@ -2493,12 +2360,7 @@ contains
     call dadal1(b1)
 
 
-    if(doflip) then
-       call flip_i(r1,r1,-1)
-       if(i1/=r1) call flip_i(i1,i1,-1)
-       if(c2/=r1.and.c2/=i1) call flip_i(c2,c2,-1)
-       perform_flip=.true.
-    endif
+
 
     return
   end subroutine rtoc
@@ -2563,16 +2425,9 @@ contains
     integer i
     integer,dimension(:)::ci,cr
     integer,dimension(2)::tr,ti
-    logical doflip
+
     if(.not.c_%stable_da) return
-    if(perform_flip.and.new_ndpt.and.ndpt/=0) then
-       perform_flip=.false.
-       call flipflo(cr,cr,1)
-       call flipflo(ci,ci,1)
-       doflip=.true.
-    else
-       doflip=.false.
-    endif
+
 
     call etall(tr,2)
     call etall(ti,2)
@@ -2604,11 +2459,6 @@ contains
     !       call dacop(ci(i),di(i))
     !    enddo
 
-    if(doflip) then
-       call flipflo(cr,cr,-1)
-       call flipflo(ci,ci,-1)
-       perform_flip=.true.
-    endif
 
     call dadal(tr,2)
     call dadal(ti,2)
@@ -2621,17 +2471,10 @@ contains
     integer i
     integer,dimension(:)::c,ci,f,fi
     integer,dimension(ndim2)::e,ei
-    logical doflip
+ 
     if(.not.c_%stable_da) return
 
-    if(perform_flip.and.new_ndpt.and.ndpt/=0) then
-       perform_flip=.false.
-       call flipflo(c,c,1)
-       call flipflo(ci,ci,1)
-       doflip=.true.
-    else
-       doflip=.false.
-    endif
+ 
 
     call etall(e,nd2)
     call etall(ei,nd2)
@@ -2659,17 +2502,7 @@ contains
     call dadal(e,nd2)
     call dadal(ei,nd2)
 
-    if(doflip) then
-       call flipflo(c,c,-1)
-       call flipflo(ci,ci,-1)
-       if(c(1)/=f(1).and.ci(1)/=f(1)) then
-          call flipflo(f,f,-1)
-       endif
-       if(c(1)/=fi(1).and.ci(1)/=fi(1)) then
-          call flipflo(fi,fi,-1)
-       endif
-       perform_flip=.true.
-    endif
+ 
 
     return
   end subroutine reelflo
@@ -2781,7 +2614,7 @@ contains
     ! ---------------------
     integer i,ier,iunst,j,l,n1
     integer,dimension(ndim)::n
-    real(dp) ap,ax,rd,rd1,xd,xsu
+    real(dp) ap,ax,rd,rd1,xd,xsu,xsus
     real(dp),dimension(ndim2,ndim2)::cr,xj,sa,sai,cm,w,vr,vi,s1
     real(dp),dimension(ndim)::x,xx,st
     real(dp),dimension(ndim2)::rr,ri,p
@@ -2819,29 +2652,18 @@ contains
     endif
     call mulnd2(xj,w)
     call mulnd2(cr,w)
-    if(lielib_print(6)==1) then
-       w_p=0
-       w_p%nc=1
-       w_p%fc='(1((1X,A72),/))'
-       w_p%c(1)= 'Check of the symplectic condition on the linear part'
-       !CALL !WRITE_a
+
+
        xsu=0.0_dp
        do i=1,nd2
-          w_p=0
-          w_p%nr=nd2
-          w_p%fr='(6(2x,g23.16))'
-          do j=1,nd2
-             w_p%r(j)=w(i,j)
-          enddo
-          !CALL !WRITE_a
+
 
           do j=1,nd2
              xsu=xsu+abs(w(i,j)-XJ(I,J))
           enddo
        enddo
-       w_p=0
-       w_p%nc=1
-       w_p%fc='((1X,A120))'
+xsus=(xsu)/ND2
+  if(lielib_print(6)==1) then
        !     write(w_p%c(1),'(a29,g23.16,a2)') 'Deviation from symplecticity ',c_100*(xsu)/ND2, ' %'
        write(6,'(a29,g23.16,a2)') 'Deviation from symplecticity ',100.0_dp*(xsu)/ND2, ' %'
        !CALL !WRITE_a
@@ -2878,64 +2700,58 @@ contains
          endif
     endif  ! no_hyperbolic_in_normal_form
     
-!  checking for Krein    
-
-if(check_krein.and.(.not.hyp)) then
+    !  checking for Krein    
+    if(check_krein.and.(.not.hyp)) then
    
      if(.not.hyp.and.nd2>2) then
-      xsu=0.0_dp
-      xd=0.0_dp
+       xsu=0.0_dp
+       xd=0.0_dp
+ 
        do i=1,4
         xsu=log(rr(i)**2+ri(i)**2)+xsu
         xd=abs(log(rr(i)**2+ri(i)**2))+xd
        enddo
  
-       if(xsu>=0.and.xd>size_krein) then
+       if(xsu>=0.and.xd>size_krein.and.xsus<=size_krein) then
          write(6,*) " A Krein collision seemed to have happened "
          write(6,*) " All calculations interrupted "
-       do i=1,nd2-ndc
-        write(6,*)"damping ", log(rr(i)**2+ri(i)**2) 
-       enddo
-       do i=1,nd2-ndc
-        write(6,*)"tunes ",  atan2(ri(i),rr(i))/twopi
-       enddo
-       do i=1,nd2
-        write(6,*)"eigenvalues ",  rr(i),ri(i)
-       enddo
-       
-       c_%stable_da=.false.
-       c_%check_stable=.false.
-       messagelost="d_lielib.f90 mapflol : check_krein failed"    
+         
+         do i=1,nd2-ndc
+           write(6,*)"damping ", log(rr(i)**2+ri(i)**2) 
+         enddo
+         
+         do i=1,nd2-ndc
+           write(6,*)"tunes ",  atan2(ri(i),rr(i))/twopi
+         enddo
+         
+         do i=1,nd2
+           write(6,*)"eigenvalues ",  rr(i),ri(i)
+         enddo
+         c_%stable_da=.false.
+         c_%check_stable=.false.
+          
+         messagelost="d_lielib.f90: mapflol: A Krein collision seemed to have happened" 
        endif
        
      endif  
 endif     
            
     if(lielib_print(7)==-1) then
-       w_p=0
-       w_p%nc=3
-       w_p%fc='(2(1X,A120,/),(1X,A120))'
-       w_p%c(2)= '       Index         Real Part         ArcSin(Imaginary Part)/2/pi'
-       write(6,w_p%fc) w_p%c(2)
-       !CALL !WRITE_a
+
        do i=1,nd-ndc
           rd1=SQRT(rr(2*i-1)**2+ri(2*i-1)**2)
           rd=SQRT(rr(2*i)**2+ri(2*i)**2)
    !       write(6,*) "modulus ",rd1,rd
-          w_p=0
-          w_p%nc=3
-          w_p%fc='(2(1X,A120,/),(1X,A120))'
+
           write(6,'(i4,2(1x,g21.14))') 2*i-1,rr(2*i-1),ASIN(ri(2*i-1)/rd1)*twopii
           write(6,'(i4,2(1x,g21.14))') 2*i,rr(2*i),ASIN(ri(2*i)/rd)*twopii
           write(6,'(a8,g21.14)') ' alphas ', LOG(SQRT(rd*rd1))
           !CALL !WRITE_a
        enddo
-       w_p=0
-       w_p%nc=1
-       w_p%fc='((1X,A120))'
+
        !      write(w_p%c(1),'(a8,i4,a40)') ' select ',nd-ndc,' eigenplanes (odd integers <0 real axis)'
        write(6,'(a8,i4,a40)') ' select ',nd-ndc,' eigenplanes (odd integers <0 real axis)'
-       !CALL !WRITE_a
+
        call read(n,nd-ndc)
     elseif(lielib_print(8)==-1) then
        do i=1,nd-ndc
@@ -3355,32 +3171,31 @@ endif
     endif
 
 
-    w_p=0
     i=0
     if(ic.eq.0) then
        call movemul(rt,s,rto,xr)
        i=i+1
-       w_p%c(i)=  " no exchanged"
+!       w_p%c(i)=  " no exchanged"
     elseif(ic.eq.1) then
        call movemul(rt,xy,rto,xr)
        i=i+1
-       w_p%c(i)=  " x-y exchanged"
+!       w_p%c(i)=  " x-y exchanged"
     elseif(ic.eq.2) then
        call movemul(rt,xz,rto,xr)
        i=i+1
-       w_p%c(i)=  " x-z exchanged"
+!       w_p%c(i)=  " x-z exchanged"
     elseif(ic.eq.3) then
        call movemul(rt,yz,rto,xr)
        i=i+1
-       w_p%c(i)= " y-z exchanged"
+!       w_p%c(i)= " y-z exchanged"
     elseif(ic.eq.4) then
        call movemul(rt,xyz,rto,xr)
        i=i+1
-       w_p%c(i)=  " x-y-z permuted"
+ !      w_p%c(i)=  " x-y-z permuted"
     elseif(ic.eq.5) then
        call movemul(rt,xzy,rto,xr)
        i=i+1
-       w_p%c(i)=  " x-z-y permuted"
+ !      w_p%c(i)=  " x-z-y permuted"
     elseif(ic.eq.6) then
        call movemul(rt,xt,rto,xr)
     elseif(ic.eq.7) then
@@ -3472,11 +3287,7 @@ endif
     if(.not.c_%stable_da) return
 
     if(iref.gt.0) then
-       w_p=0
-       w_p%nc=1
-       w_p%fc='((1X,A120))'
-       write(w_p%c(1),'(a19,i4)') " resonance in file ",iref
-       ! call ! WRITE_I
+ 
        read(iref,*) nres
        if(nres.ge.nreso) then
           line= ' NRESO IN LIELIB TOO SMALL '
@@ -3486,11 +3297,7 @@ endif
        nres=0
     endif
     if(nres.ne.0.and.global_verbose) then
-       w_p=0
-       w_p%nc=1
-       w_p%fc='((1X,A120))'
-       w_p%c(1) =' warning resonances left in the map'
-       ! call ! WRITE_I
+
     endif
     if(iref.gt.0) then
        do i=1,nres
@@ -3731,12 +3538,9 @@ endif
     enddo
     do i=1,nd2-ndc2
        if(abs(reval(i)**2+aieval(i)**2 -1.0_dp).gt.1e-10_dp) then
-          w_p=0
-          w_p%nc=1
-          w_p%fc='((1X,A120))'
-          w_p%c(1) =' EIG6: Eigenvalues off the unit circle!'
+ 
           if(lielib_print(4)==1) then
-             !CALL !WRITE_a
+ 
              write(6,*) sqrt(reval(i)**2+aieval(i)**2)
           endif
        endif
@@ -4494,10 +4298,10 @@ endif
     implicit none
 
 
-    integer i,j
+    integer i
     real(dp) a(6,6),ai(6,6),b(6,6)
 
-    real(dp) xj(6,6),mj(6,6),xn,jb(6,6),kick(3),br(6,6)
+    real(dp) xj(6,6),xn,jb(6,6),kick(3),br(6,6)
 
 
 
@@ -4537,12 +4341,11 @@ endif
     !---- FROM TRACKING CODE
     ! ---------------------
     integer, parameter :: ndimt=3,ndimt2=6
-    integer i,ier,iunst,j,l,n1,n(ndimt)
-    real(dp) ap,ax,rd,rd1,xd,xsu
+    integer i,ier,iunst,j,n1,n(ndimt)
     real(dp),dimension(ndimt2,ndimt2)::cr,xj,sa,sai,cm,w,vr,vi,s1
     real(dp),dimension(ndimt)::x,xx,st
-    real(dp),dimension(ndimt2)::rr,ri,p
-    logical hyp
+    real(dp),dimension(ndimt2)::rr,ri
+
     if(.not.c_%stable_da) return
 
     n1=0
@@ -4649,7 +4452,7 @@ endif
     integer jet,nn,i,i1,ilo,ihi,mdim,info
     real(dp),dimension(ndimt2)::reval,aieval,ort
     real(dp),dimension(ndimt2,ndimt2)::revec,aievec,fm,aa,vv
-    INTEGER IPAUSE,MYPAUSES
+
     if(.not.c_%stable_da) return
 
     !  copy matrix to temporary storage (the matrix aa is destroyed)
@@ -4680,12 +4483,9 @@ endif
     enddo
     do i=1,ndimt2
        if(abs(reval(i)**2+aieval(i)**2 -1.0_dp).gt.1e-10_dp) then
-          w_p=0
-          w_p%nc=1
-          w_p%fc='((1X,A120))'
-          w_p%c(1) =' EIG6: Eigenvalues off the unit circle!'
+ 
           if(lielib_print(4)==1) then
-             !CALL !WRITE_a
+ 
              write(6,*) sqrt(reval(i)**2+aieval(i)**2)
           endif
        endif
@@ -4950,32 +4750,32 @@ endif
     endif
 
 
-    w_p=0
+!    w_p=0
     i=0
     if(ic.eq.0) then
        call movemuls(rt,s,rto,xr)
        i=i+1
-       w_p%c(i)=  " no exchanged"
+ !      w_p%c(i)=  " no exchanged"
     elseif(ic.eq.1) then
        call movemuls(rt,xy,rto,xr)
        i=i+1
-       w_p%c(i)=  " x-y exchanged"
+!       w_p%c(i)=  " x-y exchanged"
     elseif(ic.eq.2) then
        call movemuls(rt,xz,rto,xr)
        i=i+1
-       w_p%c(i)=  " x-z exchanged"
+ !      w_p%c(i)=  " x-z exchanged"
     elseif(ic.eq.3) then
        call movemuls(rt,yz,rto,xr)
        i=i+1
-       w_p%c(i)= " y-z exchanged"
+!       w_p%c(i)= " y-z exchanged"
     elseif(ic.eq.4) then
        call movemuls(rt,xyz,rto,xr)
        i=i+1
-       w_p%c(i)=  " x-y-z permuted"
+!       w_p%c(i)=  " x-y-z permuted"
     elseif(ic.eq.5) then
        call movemuls(rt,xzy,rto,xr)
        i=i+1
-       w_p%c(i)=  " x-z-y permuted"
+!       w_p%c(i)=  " x-z-y permuted"
     elseif(ic.eq.6) then
        call movemuls(rt,xt,rto,xr)
     elseif(ic.eq.7) then
