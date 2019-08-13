@@ -291,6 +291,15 @@ SUBROUTINE ptc_synchronous_after(i_node)
    endif
 end SUBROUTINE ptc_synchronous_after
 
+SUBROUTINE setdebuglevel(n)
+     use pointer_lattice
+     IMPLICIT NONE
+     integer n
+     
+     dbglvl_sqorbit = n
+     
+end SUBROUTINE setdebuglevel
+
 subroutine fort_warn(t1, t2)
   implicit none
   !----------------------------------------------------------------------*
