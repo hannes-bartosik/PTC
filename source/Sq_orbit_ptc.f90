@@ -23,6 +23,8 @@ module orbit_ptc
   real(dp) :: t0_main=0.0_dp
   character(len=50) :: signature
   
+  integer :: dbglvl_sqorbit = 0
+    
   character(nlp), allocatable :: orbitname(:)
   !   integer mfff
   INTERFACE ORBIT_TRACK_NODE
@@ -517,7 +519,10 @@ contains
              if(associated(t%parent_fibre%mag%c4%acc).and.cav) then !accelerate
                 if(t%parent_fibre%mag%c4%acc%pos==1.and.t%pos_in_fibre==3) call find_all_energies(t,state0) !accelerate
              endif !accelerate
-             if(associated(t%parent_fibre%mag%c4%acc).and.cav) call set_cavity(t,state0,dt_orbit_sync)
+             
+             if(associated(t%parent_fibre%mag%c4%acc).and.cav) then 
+                call set_cavity(t,state0,dt_orbit_sync)
+             endif
              !          if(cav) call set_cavity(t,state0,dt_orbit_sync)
              p_orbit=>t%parent_fibre   !p_orbit%mag%c4%t
           endif !accelerate
@@ -1092,6 +1097,7 @@ contains
     IMPLICIT NONE
     TYPE(INTEGRATION_NODE), POINTER  :: TIN,T,t0
     TYPE(internal_state), target  :: state0
+    TYPE(internal_state)    :: my_state
     integer n,it,i,nit,count
     real(dp) r,ti,rat,tot,dtot,x(6),tc,dep,dtc,en0,dtc0,e_fin,dt
     real(dp) small_tc, energy0
@@ -1112,7 +1118,7 @@ contains
     
     hh=hh+1
     t=>tin
-    nit=1000
+    nit=100
 
     w=t%parent_fibre
     energy0=w%kinetic   !+x_orbit_sync(5)*w%p0c
@@ -1146,8 +1152,11 @@ contains
 
     call find_energy(a%w2,kinetic=energy0)
     
+    my_state = default0 - delta0 - only_4d0 - NOCAVITY0 + time0
+    
+    
     if (ldbg) then
-      call print(state0,6)
+      call print(my_state,6)
       print*, "Initial energy"
       call print(a%w2,6)
       print*, "a%de = ", a%de
@@ -1163,7 +1172,7 @@ contains
           do count=-50,50
              x=0.d0;
              el%c4%t=count*dtc
-             CALL TRACK_NODE_SINGLE(T,X,STATE0)
+             CALL TRACK_NODE_SINGLE(T,X,my_state)
              write(mdebug,*) el%c4%t, x(5)*w%p0c,a%de(n)
           enddo
           el%c4%t=tc
@@ -1171,34 +1180,48 @@ contains
        
        dtc0=1.e38_dp
        
+       
+       !call print(my_state,6)
+       !print*, "T=",el%c4%t, " freq = ", el%c4%freq, " volt=", el%c4%volt
        do i=1,nit
           tc=el%c4%t
           
           x=0.d0;
-          CALL TRACK_NODE_SINGLE(T,X,STATE0)
+          CALL TRACK_NODE_SINGLE(T,X,my_state)
           ! print*,"t + 0 :  x5 x6", x(5),x(6)
           
           en0=x(5)*w%p0c
 
           x=0.d0;
           el%c4%t=tc+dep
-          CALL TRACK_NODE_SINGLE(T,X,STATE0)
+          CALL TRACK_NODE_SINGLE(T,X,my_state)
           !print*,"t + d :  x5 x6", x(5),x(6)
           !write(6,*) " i= ",i," t0=",tc, " t1=",el%c4%t, "en0=",en0, x(5)*w%p0c
           
           dtc=(x(5)*w%p0c-en0)/dep
-          !write(6,*) " dtc1= ",dtc
+          if (ldbg) then
+            write(6,*) " dtc1= ",dtc
+          endif
+
           dtc=(a%de(n)-en0)/dtc
-          !write(6,*) " dtc= ",dtc
+          if (ldbg) then
+            write(6,*) " dtc= ",dtc
+          endif
           
           el%c4%t=tc+dtc
 
           if (ldbg) then
+            
             write(6,*) "i=",i," new t = ",el%c4%t, " old t = ", tc, " dtc = ", dtc
+            write(6,*) "x(5), w%p0c, en0, dep  a%de(n)"
+            write(6,*)  x(5), w%p0c, en0, dep, a%de(n)
+            
           endif
           
-          if(i>100) then
-             if(abs(dtc)<small_tc.and.abs(dtc)>=dtc0) exit
+          if(i>20) then
+             if(abs(dtc)<small_tc.and.abs(dtc)>=dtc0) then 
+               exit
+             endif
              dtc0=abs(dtc)
              !    pause 123
           endif
@@ -1209,7 +1232,7 @@ contains
        el%c4%t=tc+dtc
        !     elp%c4%t=tc+dtc
        x=0.d0;
-       CALL TRACK_NODE_SINGLE(T,X,STATE0)
+       CALL TRACK_NODE_SINGLE(T,X,my_state)
        dt=x(6)
 
        if(mdebug/=0) write(mdebug,*) "final tc = ", el%c4%t
@@ -1714,13 +1737,22 @@ contains
     ORBIT_NODES=>my_ORBIT_LATTICE%ORBIT_NODES
     my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS=MY_FALSE
  
-    STATE=(my_ORBIT_LATTICE%state-time0)+delta0   
+    !STATE=(my_ORBIT_LATTICE%state-time0)+delta0   
+    
+    ! skowron: 5D no time
+    STATE=default0-time0+delta0
 
     CALL INIT(STATE,1,0,BERZ)
     CALL ALLOC(ID);CALL ALLOC(Y);CALL ALLOC(NORM);
 
     closed=0.0_dp
     CALL FIND_ORBIT(R,CLOSED,1,STATE,1e-5_dp)
+    
+    if (( .not. check_stable ) .or. ( .not. c_%stable_da )) then
+       write(6,*) 'DA got unstable: PTC msg: ',messagelost
+       write(6,*) 'update_twiss_for_orbit ENDED WITH ERROR'
+       return
+    endif
 
 
     ID=1
@@ -1737,11 +1769,12 @@ contains
     ETA(1)=Y(1).SUB.'00001'
     ETAP(1)=Y(2).SUB.'00001'
     
-    WRITE(6,*) "TWISS PARAMETERS AT THE ENTRANCE"
-    WRITE(6,*) "BETAS ", BET
-    WRITE(6,*) "ALPHAS ",ALF
-    WRITE(6,*) "ETAS ", ETA
-    WRITE(6,*) "ETAPS ", ETAP
+    WRITE(6,*) signature, "TWISS PARAMETERS AT THE ENTRANCE"
+    WRITE(6,*) signature, "BETAS ", BET
+    WRITE(6,*) signature, "ALPHAS ",ALF
+    WRITE(6,*) signature, "ETAS ", ETA
+    WRITE(6,*) signature, "ETAPS ", ETAP
+    
     DO K=1,my_ORBIT_LATTICE%ORBIT_N_NODE
        CALL ORBIT_TRACK_NODE(K,Y,STATE)
        CALL ORBIT_TRACK_NODE(K,CLOSED,STATE)
