@@ -298,6 +298,13 @@ SUBROUTINE setdebuglevel(n)
      
      dbglvl_sqorbit = n
      
+     if (n > 0) then
+       ldbg_stpointers = .true.
+     else
+       ldbg_stpointers = .false.
+     endif
+     
+     
 end SUBROUTINE setdebuglevel
 
 subroutine fort_warn(t1, t2)
