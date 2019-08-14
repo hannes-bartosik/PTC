@@ -268,6 +268,23 @@ static PyObject* wrap_ptc_trackBunch(PyObject *self, PyObject *args)
   return Py_None;
 }
 
+
+static PyObject* wrap_ptc_set_dbglevel_(PyObject *self, PyObject *args)
+{
+  int* dbglevel;
+  if(!PyArg_ParseTuple(args, "i:ptc_set_dbglevel_",
+                       &dbglevel))
+  {
+    error("ptc_set_dbglevel_ - cannot parse arguments!");
+  }
+  
+  setdebuglevel_(dbglevel);
+  
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
+
 static PyMethodDef ptcMethods[] =
 {
   {"ptc_init_",               wrap_ptc_init_,               METH_VARARGS, "Initializes PTC"},
@@ -283,6 +300,7 @@ static PyMethodDef ptcMethods[] =
   {"ptc_get_task_type_",      wrap_ptc_get_task_type_,      METH_VARARGS, "Call before tracking"},
   {"ptc_get_omega_",          wrap_ptc_get_omega_,          METH_VARARGS, "Returns fundamental RF frequency"},
   {"ptc_trackBunch",          wrap_ptc_trackBunch,          METH_VARARGS, "Track the Bunch through a PTC element"},
+  {"ptc_setdbglevel",         wrap_ptc_set_dbglevel_,       METH_VARARGS, "Set debug level in PTC-Orbit interface"},
   {NULL, NULL}
 };
 
@@ -305,6 +323,7 @@ PyObject* getBasePTCType(char* name)
   Py_DECREF(pyType);
   return pyType;
 }
+
 
 #ifdef __cplusplus
 }

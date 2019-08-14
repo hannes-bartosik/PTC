@@ -51,8 +51,9 @@ module pointer_lattice
   real(dp), allocatable :: a_f(:),a_f0(:),yfit(:),dyfit(:,:)
   integer sizeind1
   logical :: onefunc = .true.,skipzero=.false.,skipcomplex=.true.
- type(probe), pointer :: xs0g(:) => null()
-
+  type(probe), pointer :: xs0g(:) => null()
+  
+  logical :: ldbg_stpointers = .true.
    
   INTERFACE SCRIPT
      MODULE PROCEDURE read_ptc_command
@@ -141,8 +142,10 @@ endif
     my_scale_planar=100.d0
     my_fix(1:6)=.000d0
 
-    write(6,*) " absolute_aperture  ", absolute_aperture
-    write(6,*) " hyperbolic_aperture ", hyperbolic_aperture
+    if (ldbg_stpointers) then
+      write(6,*) " absolute_aperture  ", absolute_aperture
+      write(6,*) " hyperbolic_aperture ", hyperbolic_aperture
+    endif
 
     ! CALL create_p_ring
 
@@ -243,12 +246,15 @@ endif
     my_estate=>my_default
     skip=.false.
     call kanalnummer(mf)
-    write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
-    write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
-    write(6,*) "$$$$$$$$$$         Write New read_ptc_command           $$$$$$$$$$"
-    write(6,*) "$$$$$$$$$$         ",      ptc_fichier     ,"           $$$$$$$$$$"
-    write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
-    write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+    
+    if (ldbg_stpointers) then
+      write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+      write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+      write(6,*) "$$$$$$$$$$         Write New read_ptc_command           $$$$$$$$$$"
+      write(6,*) "$$$$$$$$$$         ",      ptc_fichier     ,"           $$$$$$$$$$"
+      write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+      write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+    endif
 
     if(ptc_fichier/="screen") then
      open(unit=mf,file=ptc_fichier)
@@ -258,7 +264,9 @@ endif
     if(i_layout==0) then
              i_layout=1
              call move_to_layout_i(m_u,my_ering,i_layout)
-             write(6,*) "Selected Layout in m_u",i_layout,"  called  ---> ",my_ering%name
+             if (ldbg_stpointers) then
+               write(6,*) "Selected Layout in m_u",i_layout,"  called  ---> ",my_ering%name
+             endif
              m_u_t=.true.
     endif
     do i=1,10000
@@ -279,7 +287,7 @@ endif
 
 
        if(com(1:1)==' ') THEN
-          WRITE(6,*) ' '
+         if (ldbg_stpointers) WRITE(6,*) ' '
           cycle
        ENDIF
   !     if(com(1:1)=='!'.and.com(2:2)/='!') THEN
@@ -301,25 +309,27 @@ endif
           endif
           cycle
        endif         ! 1
-       write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
-       write(6,*) " "
-       write(6,*) '            ',i,comT(1:LEN_TRIM(COMT))
-       write(6,*) " "
-       write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
-
+       
+       if (ldbg_stpointers) then
+         write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+         write(6,*) " "
+         write(6,*) '            ',i,comT(1:LEN_TRIM(COMT))
+         write(6,*) " "
+         write(6,*) "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+       endif
+       
        select case(com)
        case('SELECTLAYOUT','SELECTLATTICE')
           read(mf,*) i_layout_temp
           if(i_layout_temp>m_u%n) then
              write(6,*) " Universe Size ", m_u%n
-
              write(6,*) " Selected Layout does not exist "
 
           else
 
              i_layout=i_layout_temp
              call move_to_layout_i(m_u,my_ering,i_layout)
-             write(6,*) "Selected Layout in m_u",i_layout,"  called  ---> ",my_ering%name
+             if (ldbg_stpointers) write(6,*) "Selected Layout in m_u",i_layout,"  called  ---> ",my_ering%name
              m_u_t=.true.
           endif
        case('SELECTTRACKABLELAYOUT','SELECTTRACKABLELATTICE')
@@ -2596,7 +2606,10 @@ write(6,*) x_ref
 100 continue
 !    if(associated(my_old_state)) my_estate=>my_old_state
 
-    write(6,*) " Exiting Command File ", ptc_fichier(1:len_trim(ptc_fichier))
+
+    if (ldbg_stpointers) then
+      write(6,*) " Exiting Command File ", ptc_fichier(1:len_trim(ptc_fichier))
+    endif 
 
      longprint=longprintt 
 

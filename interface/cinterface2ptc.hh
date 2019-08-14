@@ -110,4 +110,6 @@ extern "C" void  ptc_get_omega_(double* X);
 void ptc_trackBunch(Bunch* bunch, double ZtoPhi,
                     int &orbit_ptc_node_index);
 
+extern "C" void setdebuglevel_(int* dbglevel);
+
 #endif  // PTC_C_INTERFACE_H

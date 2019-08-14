@@ -23,6 +23,11 @@ module orbit_ptc
   real(dp) :: t0_main=0.0_dp
   character(len=50) :: signature
   
+  integer :: dbglvl_sqorbit = 0
+  
+  logical :: sqorbit_time   = .true.
+  logical :: sqorbit_fringe = .true.
+    
   character(nlp), allocatable :: orbitname(:)
   !   integer mfff
   INTERFACE ORBIT_TRACK_NODE
@@ -284,10 +289,11 @@ contains
 
 100 continue
     T=>my_ORBIT_LATTICE%ORBIT_NODES(m)%NODE
-    write(6,*) " Fibre position ",n,t%parent_fibre%mag%name
-    write(6,*) "  position in fibre ",t%pos_in_fibre,t%parent_fibre%mag%p%nst
-    write(6,*) " Orbit node ",m
-
+    if (dbglvl_sqorbit > 0) then
+      write(6,*) " Fibre position ",n,t%parent_fibre%mag%name
+      write(6,*) "  position in fibre ",t%pos_in_fibre,t%parent_fibre%mag%p%nst
+      write(6,*) " Orbit node ",m
+    endif
   end SUBROUTINE Locate_orbit_start
 
 
@@ -354,33 +360,8 @@ contains
     TYPE(INTEGRATION_NODE), POINTER  :: T
     TYPE(INTERNAL_STATE), target :: STATE
     integer PATCHT
-    !    if(state%time) then
+
     x(6)=x(6)+T%ds_AC*0.5_dp/t%PARENT_FIBRE%beta0
-    !    else
-    !       x(6)=x(6)+T%ds_AC*half
-    !    endif
-
-    !    if(T%CAS==CASEP1.and.include_patch) then
-    !       PATCHT=t%parent_fibre%patch%time
-    !       IF(PATCHT/=0.AND.PATCHT/=2) THEN
-    !         if(state%time) then
-    !          X(6)=X(6)+t%parent_fibre%PATCH%a_T*half/t%parent_fibre%beta0
-    !         else
-    !          X(6)=X(6)+t%parent_fibre%PATCH%a_T*half
-    !         endif
-    !       ENDIF
-    !    endif
-
-    !    if(T%CAS==CASEP2.and.include_patch) then
-    !       PATCHT=t%parent_fibre%patch%time
-    !       IF(PATCHT/=0.AND.PATCHT/=1) THEN
-    !         if(state%time) then
-    !          X(6)=X(6)+t%parent_fibre%PATCH%b_T*half/t%parent_fibre%beta0
-    !         else
-    !          X(6)=X(6)+t%parent_fibre%PATCH%b_T*half
-    !         endif
-    !       ENDIF
-    !    endif
 
   end SUBROUTINE TRACK_NODE_fake_totalpath_half_plain
 
@@ -435,7 +416,6 @@ contains
     TYPE(INTEGRATION_NODE), POINTER  :: T
     TYPE(INTERNAL_STATE), target, OPTIONAL :: STATE
     TYPE(INTERNAL_STATE), pointer :: STATE0
-    logical :: ldbg = .false.
     integer, save :: lastk=0, trackno=0
     
     
@@ -447,7 +427,7 @@ contains
     endif
 
     
-   ! if (ldbg) then
+   ! if (dbglvl_sqorbit > 0) then
    !   print*,'orbit_tracknode_std: NODE = ', K
    !   print*,'orbit_tracknode_std: in orb ', x
    ! endif
@@ -464,7 +444,7 @@ contains
 
     T=>my_ORBIT_LATTICE%ORBIT_NODES(K)%NODE
 
-    if (ldbg ) then
+    if (dbglvl_sqorbit > 0 ) then
       if (lastk /= k ) then
          trackno = 0
          print*,''
@@ -474,7 +454,7 @@ contains
       trackno = trackno + 1
     endif
 
-    if (ldbg .and. trackno == 1) then
+    if (dbglvl_sqorbit > 0 .and. trackno == 1) then
       print*,'orbit_tracknode_std: ',trackno,'  in ptc x = ', x
     endif
     
@@ -498,7 +478,7 @@ contains
     DO I=1,my_ORBIT_LATTICE%ORBIT_NODES(K)%dpos
 
 
-       if (ldbg .and. trackno == 1) then
+       if (dbglvl_sqorbit > 0 .and. trackno == 1) then
          print*,'orbit_tracknode_std: ', trackno, t%parent_fibre%mag%name, &
                 " CAS=", T%CAS, " pos_in_fibre=",T%POS_IN_FIBRE, " pos=",T%POS, ' K+I-1=', K+I-1
        endif
@@ -517,7 +497,10 @@ contains
              if(associated(t%parent_fibre%mag%c4%acc).and.cav) then !accelerate
                 if(t%parent_fibre%mag%c4%acc%pos==1.and.t%pos_in_fibre==3) call find_all_energies(t,state0) !accelerate
              endif !accelerate
-             if(associated(t%parent_fibre%mag%c4%acc).and.cav) call set_cavity(t,state0,dt_orbit_sync)
+             
+             if(associated(t%parent_fibre%mag%c4%acc).and.cav) then 
+                call set_cavity(t,state0,dt_orbit_sync)
+             endif
              !          if(cav) call set_cavity(t,state0,dt_orbit_sync)
              p_orbit=>t%parent_fibre   !p_orbit%mag%c4%t
           endif !accelerate
@@ -527,13 +510,13 @@ contains
 
        if(first_particle.and.(accelerate.or.ramp)) then !accelerate
 
-          if (ldbg .and. trackno == 1) then
+          if (dbglvl_sqorbit > 0 .and. trackno == 1) then
             print*,'orbit_tracknode_std: 1st amd AccOrRamp Part1 x in = ', x_orbit_sync
           endif
 
           call TRACK_NODE_fake_totalpath_half(T,x_orbit_sync,STATE0,my_true)  ! accelerate
 
-          if (ldbg .and. trackno == 1) then
+          if (dbglvl_sqorbit > 0 .and. trackno == 1) then
             print*,'orbit_tracknode_std: 1st amd AccOrRamp Part1 x out = ', x_orbit_sync
           endif
 
@@ -546,20 +529,20 @@ contains
        endif !modulate
 
        if(u) then 
-         if (ldbg) then
+         if (dbglvl_sqorbit > 0) then
            print*,'orbit_tracknode_std: u is true, exiting'
          endif
          exit
        endif
 
-      ! if (ldbg) then
+      ! if (dbglvl_sqorbit > 0) then
       !   print*,'orbit_tracknode_std: I = ',I, t%parent_fibre%mag%name
       !   print*,X
       ! endif
 
 
 
-       if (ldbg .and. trackno == 1) then
+       if (dbglvl_sqorbit > 0 .and. trackno == 1) then
          print*,'orbit_tracknode_std: ',trackno,' ii  ptc x = ', x
        endif
 
@@ -572,7 +555,7 @@ contains
 
        if(.not.CHECK_STABLE) then 
           
-          if (ldbg) then
+          if (dbglvl_sqorbit > 0) then
             
             print*,'orbit_tracknode_std: track is lost at I = ',I, t%parent_fibre%mag%name
             write(whymsg,*) ' check_stable ',check_stable,' c_%stable_da ',c_%stable_da,' PTC msg: ', &
@@ -593,21 +576,21 @@ contains
           exit
        endif
 
-       if (ldbg .and. trackno == 1) then
+       if (dbglvl_sqorbit > 0 .and. trackno == 1) then
          print*,'orbit_tracknode_std: ',trackno,' out ptc x = ', x
        endif
 
 
        if(first_particle.and.(accelerate.or.ramp)) then !accelerate
        
-          if (ldbg .and. trackno == 1) then
+          if (dbglvl_sqorbit > 0 .and. trackno == 1) then
             print*,'orbit_tracknode_std: 1st amd AccOrRamp Part2 x in = ', x_orbit_sync
           endif
        
           call TRACK_NODE_fake_totalpath_half(T,x_orbit_sync,STATE0,my_true)  ! accelerate
 
 
-          if (ldbg .and. trackno == 1) then
+          if (dbglvl_sqorbit > 0 .and. trackno == 1) then
             print*,'orbit_tracknode_std: 1st amd AccOrRamp Part2 x out = ', x_orbit_sync
           endif
 
@@ -676,12 +659,17 @@ contains
     t0=x_orbit_sync(6) ! read from the initial_settings file and multiplied by clight
     if(present(t)) t0=t
     if(fill_patch) then
-       write(6,*) " filling patches with t= x0 from main program "
+       if (dbglvl_sqorbit > 0) then   
+         write(6,*) " filling patches with t= x0 from main program "
+       endif
        t0=t0_main
     endif
-    write(6,*) "energize at time ", t0,t0/clight
-    write(6,*) "Initial Frequency of First Cavity", paccfirst%mag%c4%freq
-
+    
+    if (dbglvl_sqorbit > 0) then
+      write(6,*) "energize at time ", t0,t0/clight
+      write(6,*) "Initial Frequency of First Cavity", paccfirst%mag%c4%freq
+    endif
+    
     call find_acc_energy(paccfirst,t0,e_in,my_true) ! new
     !      call find_acc_energy(paccfirst,x_orbit_sync(6),e_in,.false.)
     call find_energy(werk,kinetic=e_in)
@@ -719,9 +707,12 @@ contains
        write(6,*) " cavity with frequency problems ", freqs,found
        stop
     endif
-    write(6,*) "Final Frequency of First Cavity", paccfirst%mag%c4%freq
-    write(6,*) "Initial and Final beta0 ",travail%beta0,werk%beta0
-    write(6,*) "Starting time of simulations =",t0/clight ," and kinetic energy =",my_ORBIT_LATTICE%ORBIT_kinetic
+
+    if (dbglvl_sqorbit > 0) then
+      write(6,*) "Final Frequency of First Cavity", paccfirst%mag%c4%freq
+      write(6,*) "Initial and Final beta0 ",travail%beta0,werk%beta0
+      write(6,*) "Starting time of simulations =",t0/clight ," and kinetic energy =",my_ORBIT_LATTICE%ORBIT_kinetic
+    endif  
 
   end subroutine energize_ORBIT_lattice
 
@@ -1092,6 +1083,7 @@ contains
     IMPLICIT NONE
     TYPE(INTEGRATION_NODE), POINTER  :: TIN,T,t0
     TYPE(internal_state), target  :: state0
+    TYPE(internal_state)    :: my_state
     integer n,it,i,nit,count
     real(dp) r,ti,rat,tot,dtot,x(6),tc,dep,dtc,en0,dtc0,e_fin,dt
     real(dp) small_tc, energy0
@@ -1100,9 +1092,10 @@ contains
     type(element), pointer :: el
     type(elementp), pointer :: elp
     integer :: hh=0
-    logical :: ldbg = .false.
     
-    if (ldbg) then
+    
+    
+    if (dbglvl_sqorbit > 0) then
       print*,"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
       print*,"         set_cavity           "
       print*,"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
@@ -1112,7 +1105,7 @@ contains
     
     hh=hh+1
     t=>tin
-    nit=1000
+    nit=100
 
     w=t%parent_fibre
     energy0=w%kinetic   !+x_orbit_sync(5)*w%p0c
@@ -1124,7 +1117,7 @@ contains
 
     n=t%pos_in_fibre-2
     
-    if (ldbg) then
+    if (dbglvl_sqorbit > 0) then
       print*, " n = ",n, ' t%pos_in_fibre=',t%pos_in_fibre, " EL%freq = ", EL%freq, " EL%volt = ", EL%volt
     endif
 
@@ -1146,8 +1139,11 @@ contains
 
     call find_energy(a%w2,kinetic=energy0)
     
-    if (ldbg) then
-      call print(state0,6)
+    my_state = default0 - delta0 - only_4d0 - NOCAVITY0 + time0
+    
+    
+    if (dbglvl_sqorbit > 0) then
+      call print(my_state,6)
       print*, "Initial energy"
       call print(a%w2,6)
       print*, "a%de = ", a%de
@@ -1163,7 +1159,7 @@ contains
           do count=-50,50
              x=0.d0;
              el%c4%t=count*dtc
-             CALL TRACK_NODE_SINGLE(T,X,STATE0)
+             CALL TRACK_NODE_SINGLE(T,X,my_state)
              write(mdebug,*) el%c4%t, x(5)*w%p0c,a%de(n)
           enddo
           el%c4%t=tc
@@ -1171,34 +1167,48 @@ contains
        
        dtc0=1.e38_dp
        
+       
+       !call print(my_state,6)
+       !print*, "T=",el%c4%t, " freq = ", el%c4%freq, " volt=", el%c4%volt
        do i=1,nit
           tc=el%c4%t
           
           x=0.d0;
-          CALL TRACK_NODE_SINGLE(T,X,STATE0)
+          CALL TRACK_NODE_SINGLE(T,X,my_state)
           ! print*,"t + 0 :  x5 x6", x(5),x(6)
           
           en0=x(5)*w%p0c
 
           x=0.d0;
           el%c4%t=tc+dep
-          CALL TRACK_NODE_SINGLE(T,X,STATE0)
+          CALL TRACK_NODE_SINGLE(T,X,my_state)
           !print*,"t + d :  x5 x6", x(5),x(6)
           !write(6,*) " i= ",i," t0=",tc, " t1=",el%c4%t, "en0=",en0, x(5)*w%p0c
           
           dtc=(x(5)*w%p0c-en0)/dep
-          !write(6,*) " dtc1= ",dtc
+          if (dbglvl_sqorbit > 0) then
+            write(6,*) " dtc1= ",dtc
+          endif
+
           dtc=(a%de(n)-en0)/dtc
-          !write(6,*) " dtc= ",dtc
+          if (dbglvl_sqorbit > 0) then
+            write(6,*) " dtc= ",dtc
+          endif
           
           el%c4%t=tc+dtc
 
-          if (ldbg) then
+          if (dbglvl_sqorbit > 0) then
+            
             write(6,*) "i=",i," new t = ",el%c4%t, " old t = ", tc, " dtc = ", dtc
+            write(6,*) "x(5), w%p0c, en0, dep  a%de(n)"
+            write(6,*)  x(5), w%p0c, en0, dep, a%de(n)
+            
           endif
           
-          if(i>100) then
-             if(abs(dtc)<small_tc.and.abs(dtc)>=dtc0) exit
+          if(i>20) then
+             if(abs(dtc)<small_tc.and.abs(dtc)>=dtc0) then 
+               exit
+             endif
              dtc0=abs(dtc)
              !    pause 123
           endif
@@ -1209,7 +1219,7 @@ contains
        el%c4%t=tc+dtc
        !     elp%c4%t=tc+dtc
        x=0.d0;
-       CALL TRACK_NODE_SINGLE(T,X,STATE0)
+       CALL TRACK_NODE_SINGLE(T,X,my_state)
        dt=x(6)
 
        if(mdebug/=0) write(mdebug,*) "final tc = ", el%c4%t
@@ -1221,7 +1231,7 @@ contains
        endif
     endif  ! de=zero
 
-    if (ldbg) then
+    if (dbglvl_sqorbit > 0) then
       print*,"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
       print*,"         end set_cavity           "
       print*,"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
@@ -1375,7 +1385,7 @@ contains
     TYPE(DAMAP) ID
     TYPE(NORMALFORM) NORM
     TYPE(REAL_8) Y(6)
-    REAL(DP) BET(2),ALF(2),ETA(2),ETAP(2)
+    REAL(DP) BET(2),ALF(2),ETA(2),ETAP(2), CO(2), COP(2)
     TYPE(ORBIT_NODE), pointer :: ORBIT_NODES(:)
     logical(lp) doit,cav
      integer mf,i1
@@ -1604,19 +1614,26 @@ contains
     ETA(2)=Y(3).SUB.'00001'
     ETAP(1)=Y(2).SUB.'00001'
     ETAP(2)=Y(4).SUB.'00001'
+    CO(1)=Y(1).SUB.'0000'
+    CO(2)=Y(3).SUB.'0000'
+    COP(1)=Y(2).SUB.'0000'
+    COP(2)=Y(4).SUB.'0000'
 
-    WRITE(6,*) signature,"CLOSED TWISS PARAMETERS AT THE ENTRANCE"
-    WRITE(6,*) signature,"BETAS ", BET
-    WRITE(6,*) signature,"ALPHAS ",ALF
-    WRITE(6,*) signature,"ETAS ", ETA
-    WRITE(6,*) signature,"ETAPS ", ETAP
-    WRITE(6,*) signature,"ETAPS ", ETAP
+    if (dbglvl_sqorbit > 0) then
+      WRITE(6,*) signature,"CLOSED TWISS PARAMETERS AT THE ENTRANCE"
+      WRITE(6,*) signature,"BETAs ", BET
+      WRITE(6,*) signature,"ALPHAs ",ALF
+      WRITE(6,*) signature,"ETAs ", ETA
+      WRITE(6,*) signature,"ETAPs ", ETAP
+      WRITE(6,*) signature,"COs ", CO
+      WRITE(6,*) signature,"COPs ", COP
 
-    WRITE(6,*) signature,"PRODUCING TWISS FOR EACH NODE"
+      WRITE(6,*) signature,"PRODUCING TWISS FOR EACH NODE"
+    endif
 
     DO K=1,my_ORBIT_LATTICE%ORBIT_N_NODE
        CALL ORBIT_TRACK_NODE(K,Y,STATE)
-       CALL ORBIT_TRACK_NODE(K,CLOSED,STATE) !usless: closed(1) == Y(1).sub.'0'
+       !CALL ORBIT_TRACK_NODE(K,CLOSED,STATE) !usless: closed(1) == Y(1).sub.'0'
        BET(1)=(Y(1).SUB.'1')**2+(Y(1).SUB.'01')**2
        BET(2)=(Y(3).SUB.'001')**2+(Y(3).SUB.'0001')**2
        ALF(1)=-((Y(1).SUB.'1')*(Y(2).SUB.'1')+(Y(1).SUB.'01')*(Y(2).SUB.'01'))
@@ -1625,24 +1642,31 @@ contains
        ETAP(1)=Y(2).SUB.'00001'
        ETA(2)=Y(3).SUB.'00001'
        ETAP(2)=Y(4).SUB.'00001'
+       CO(1)=Y(1).SUB.'0000'
+       CO(2)=Y(3).SUB.'0000'
+       COP(1)=Y(2).SUB.'0000'
+       COP(2)=Y(4).SUB.'0000'
        ORBIT_NODES(K)%LATTICE(2:3)=BET
        ORBIT_NODES(K)%LATTICE(4:5)=ALF
        ORBIT_NODES(K)%LATTICE(6)=ETA(1)
        ORBIT_NODES(K)%LATTICE(7)=ETAP(1)
        ORBIT_NODES(K)%LATTICE(8)=ETA(2)
        ORBIT_NODES(K)%LATTICE(9)=ETAP(2)
-       ORBIT_NODES(K)%LATTICE(10)=CLOSED(1)
-       ORBIT_NODES(K)%LATTICE(11)=CLOSED(2)
-       ORBIT_NODES(K)%LATTICE(12)=CLOSED(3)
-       ORBIT_NODES(K)%LATTICE(13)=CLOSED(4)
+       ORBIT_NODES(K)%LATTICE(10)=CO(1)
+       ORBIT_NODES(K)%LATTICE(11)=COP(1)
+       ORBIT_NODES(K)%LATTICE(12)=CO(2)
+       ORBIT_NODES(K)%LATTICE(13)=COP(2)
     ENDDO
     
-    WRITE(6,*) signature,"TWISS PARAMETERS AT THE EXIT"
-    WRITE(6,*) signature,"BETAS ", BET
-    WRITE(6,*) signature,"ALPHAS ",ALF
-    WRITE(6,*) signature,"ETAS ", ETA
-    WRITE(6,*) signature,"ETAPS ", ETAP
-
+    if (dbglvl_sqorbit > 0) then
+      WRITE(6,*) signature,"TWISS PARAMETERS AT THE EXIT"
+      WRITE(6,*) signature,"BETAs ", BET
+      WRITE(6,*) signature,"ALPHAs ",ALF
+      WRITE(6,*) signature,"ETAs ", ETA
+      WRITE(6,*) signature,"ETAPs ", ETAP
+      WRITE(6,*) signature,"COs ", CO
+      WRITE(6,*) signature,"COPs ", COP
+    endif
 
     my_ORBIT_LATTICE%ORBIT_L=r%t%end%s(1)
     my_ORBIT_LATTICE%ORBIT_gammat=norm%tune(3)/my_ORBIT_LATTICE%ORBIT_L
@@ -1704,7 +1728,7 @@ contains
     TYPE(DAMAP) ID
     TYPE(NORMALFORM) NORM
     TYPE(REAL_8) Y(6)
-    REAL(DP) BET(2),ALF(2),ETA(2),ETAP(2)
+    REAL(DP) BET(2),ALF(2),ETA(2),ETAP(2), CO(2), COP(2)
     TYPE(ORBIT_NODE), pointer :: ORBIT_NODES(:)
 
     signature = 'Sq_orbit_ptc.f90:update_twiss_for_orbit '//char(0)
@@ -1714,13 +1738,22 @@ contains
     ORBIT_NODES=>my_ORBIT_LATTICE%ORBIT_NODES
     my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS=MY_FALSE
  
-    STATE=(my_ORBIT_LATTICE%state-time0)+delta0   
+    !STATE=(my_ORBIT_LATTICE%state-time0)+delta0   
+    
+    ! skowron: 5D no time
+    STATE=default0-time0+delta0
 
     CALL INIT(STATE,1,0,BERZ)
     CALL ALLOC(ID);CALL ALLOC(Y);CALL ALLOC(NORM);
 
     closed=0.0_dp
     CALL FIND_ORBIT(R,CLOSED,1,STATE,1e-5_dp)
+    
+    if (( .not. check_stable ) .or. ( .not. c_%stable_da )) then
+       write(6,*) 'DA got unstable: PTC msg: ',messagelost
+       write(6,*) 'update_twiss_for_orbit ENDED WITH ERROR'
+       return
+    endif
 
 
     ID=1
@@ -1736,15 +1769,25 @@ contains
     ALF(2)=-((Y(3).SUB.'001')*(Y(4).SUB.'001')+(Y(3).SUB.'0001')*(Y(4).SUB.'0001'))
     ETA(1)=Y(1).SUB.'00001'
     ETAP(1)=Y(2).SUB.'00001'
+    CO(1)=Y(1).SUB.'0000'
+    CO(2)=Y(3).SUB.'0000'
+    COP(1)=Y(2).SUB.'0000'
+    COP(2)=Y(4).SUB.'0000'
     
-    WRITE(6,*) "TWISS PARAMETERS AT THE ENTRANCE"
-    WRITE(6,*) "BETAS ", BET
-    WRITE(6,*) "ALPHAS ",ALF
-    WRITE(6,*) "ETAS ", ETA
-    WRITE(6,*) "ETAPS ", ETAP
+    
+    if (dbglvl_sqorbit > 0) then
+      WRITE(6,*) signature, "TWISS PARAMETERS AT THE ENTRANCE"
+      WRITE(6,*) signature, "BETAs ", BET
+      WRITE(6,*) signature, "ALPHAs ",ALF
+      WRITE(6,*) signature, "ETAs ", ETA
+      WRITE(6,*) signature, "ETAPs ", ETAP
+      WRITE(6,*) signature, "COs ", CO
+      WRITE(6,*) signature, "COPs ", COP
+    endif
+    
     DO K=1,my_ORBIT_LATTICE%ORBIT_N_NODE
        CALL ORBIT_TRACK_NODE(K,Y,STATE)
-       CALL ORBIT_TRACK_NODE(K,CLOSED,STATE)
+       !CALL ORBIT_TRACK_NODE(K,CLOSED,STATE)
        BET(1)=(Y(1).SUB.'1')**2+(Y(1).SUB.'01')**2
        BET(2)=(Y(3).SUB.'001')**2+(Y(3).SUB.'0001')**2
        ALF(1)=-((Y(1).SUB.'1')*(Y(2).SUB.'1')+(Y(1).SUB.'01')*(Y(2).SUB.'01'))
@@ -1753,22 +1796,33 @@ contains
        ETA(2)=Y(3).SUB.'00001'
        ETAP(1)=Y(2).SUB.'00001'
        ETAP(2)=Y(4).SUB.'00001'
+       CO(1)=Y(1).SUB.'0000'
+       CO(2)=Y(3).SUB.'0000'
+       COP(1)=Y(2).SUB.'0000'
+       COP(2)=Y(4).SUB.'0000'       
        ORBIT_NODES(K)%LATTICE(2:3)=BET
        ORBIT_NODES(K)%LATTICE(4:5)=ALF
        ORBIT_NODES(K)%LATTICE(6)=ETA(1)
        ORBIT_NODES(K)%LATTICE(7)=ETAP(1)
        ORBIT_NODES(K)%LATTICE(8)=ETA(2)
        ORBIT_NODES(K)%LATTICE(9)=ETAP(2)
-       ORBIT_NODES(K)%LATTICE(10)=CLOSED(1)
-       ORBIT_NODES(K)%LATTICE(11)=CLOSED(2)
-       ORBIT_NODES(K)%LATTICE(12)=CLOSED(3)
-       ORBIT_NODES(K)%LATTICE(13)=CLOSED(4)
+       ORBIT_NODES(K)%LATTICE(10)=CO(1)
+       ORBIT_NODES(K)%LATTICE(11)=COP(1)
+       ORBIT_NODES(K)%LATTICE(12)=CO(2)
+       ORBIT_NODES(K)%LATTICE(13)=COP(2)
     ENDDO
-    WRITE(6,*) signature,"TWISS PARAMETERS AT THE EXIT"
-    WRITE(6,*) signature,"BETAS ", BET
-    WRITE(6,*) signature,"ALPHAS ",ALF
-    WRITE(6,*) signature,"ETAS ", ETA
-    WRITE(6,*) signature,"ETAPS ", ETAP
+    
+    if (dbglvl_sqorbit > 0) then
+    
+      WRITE(6,*) signature,"TWISS PARAMETERS AT THE EXIT"
+      WRITE(6,*) signature,"BETAs ", BET
+      WRITE(6,*) signature,"ALPHAs ",ALF
+      WRITE(6,*) signature,"ETAs ", ETA
+      WRITE(6,*) signature,"ETAPs ", ETAP
+      WRITE(6,*) signature,"COs ", CO
+      WRITE(6,*) signature,"COPs ", COP
+    
+    endif
     
     my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS=my_true
  
@@ -1783,7 +1837,6 @@ subroutine ptc_track_particle(node_index, x,xp,y,yp,phi,dE)
   REAL(DP) x,xp,y,yp,phi,dE
   INTEGER node_index
   INTEGER i
-  logical :: ldbg = .false.
 
   i = node_index + 1
 
