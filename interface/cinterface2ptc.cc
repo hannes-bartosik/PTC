@@ -22,7 +22,7 @@ void ptc_trackBunch(Bunch* bunch, double PhaseLength,
   double ZtoPhi = -twopi / PhaseLength;
   double PhaseWrap = 0.0;
 
-  ptc_synchronous_set_(&orbit_ptc_node_index);
+  //ptc_synchronous_set_(&orbit_ptc_node_index); function does nothing now so it was removed from ptc interface
 
   bunch->compress();
   SyncPart* syncPart = bunch->getSyncPart();

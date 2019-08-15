@@ -87,25 +87,6 @@ static PyObject* wrap_ptc_get_syncpart_(PyObject *self, PyObject *args)
   return Py_BuildValue("(did)", mass, charge, kin_energy);
 }
 
-// Call ptc method to set up synchronous particle calualtions
-// (before and after node).
-// This method should be called from PTC_Map instance.
-// These methods are located inside PTC (not interfaces).
-// If node_index < 0 then PTC will do something inside
-// that does not relate to tracking.
-
-static PyObject* wrap_ptc_synchronous_set_(PyObject *self, PyObject *args)
-{
-  int* node_index;
-  if(!PyArg_ParseTuple(args, "i:ptc_synchronous_set_",
-                       &node_index))
-  {
-    error("ptc_synchronous_set_ - cannot parse arguments!");
-  }
-  ptc_synchronous_set_(node_index);
-  Py_INCREF(Py_None);
-  return Py_None;
-}
 
 static PyObject* wrap_ptc_synchronous_after_(PyObject *self, PyObject *args)
 {
@@ -271,14 +252,14 @@ static PyObject* wrap_ptc_trackBunch(PyObject *self, PyObject *args)
 
 static PyObject* wrap_ptc_set_dbglevel_(PyObject *self, PyObject *args)
 {
-  int* dbglevel;
+  int dbglevel;
   if(!PyArg_ParseTuple(args, "i:ptc_set_dbglevel_",
                        &dbglevel))
   {
     error("ptc_set_dbglevel_ - cannot parse arguments!");
   }
   
-  setdebuglevel_(dbglevel);
+  setdebuglevel_(&dbglevel);
   
   Py_INCREF(Py_None);
   return Py_None;
@@ -291,7 +272,6 @@ static PyMethodDef ptcMethods[] =
   {"ptc_get_twiss_init_",     wrap_ptc_get_twiss_init_,     METH_VARARGS, "Gets entrance twiss parameters"},
   {"ptc_get_ini_params_",     wrap_ptc_get_ini_params_,     METH_VARARGS, "Gets main lattice parameters"},
   {"ptc_get_syncpart_",       wrap_ptc_get_syncpart_,       METH_VARARGS, "Gets synchronous particle parameters"},
-  {"ptc_synchronous_set_",    wrap_ptc_synchronous_set_,    METH_VARARGS, "Sets synchronous particle calculations"},
   {"ptc_synchronous_after_",  wrap_ptc_synchronous_after_,  METH_VARARGS, "Completes synchronous particle calculations"},
   {"ptc_read_accel_table_",   wrap_ptc_read_accel_table_,   METH_VARARGS, "Reads acceleration information table"},
   {"ptc_get_twiss_for_node_", wrap_ptc_get_twiss_for_node_, METH_VARARGS, "Twiss parameters at node"},

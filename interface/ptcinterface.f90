@@ -263,11 +263,6 @@ end
        
    END SUBROUTINE ptc_read_accel_table
 
-SUBROUTINE ptc_synchronous_set(i_node)
-     IMPLICIT NONE
-     integer i_node
- !  write(6,*) " Not needed anymore "
-end SUBROUTINE ptc_synchronous_set
 
 SUBROUTINE ptc_synchronous_after(i_node)
      use pointer_lattice
@@ -293,10 +288,11 @@ end SUBROUTINE ptc_synchronous_after
 
 SUBROUTINE setdebuglevel(n)
      use pointer_lattice
+     use orbit_ptc
      IMPLICIT NONE
      integer n
      
-     dbglvl_sqorbit = n
+     call setdbglvl_sqorbit(n)
      
      if (n > 0) then
        ldbg_stpointers = .true.
