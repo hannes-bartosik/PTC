@@ -5,7 +5,9 @@ module orbit_ptc
   implicit none
   public
   ! TYPE(INTERNAL_STATE),POINTER :: MY_ORBIT_STATE
-
+  
+  public setdbglvl_sqorbit
+  
   PRIVATE ORBIT_TRACK_NODEP,ORBIT_TRACK_NODE_Standard_R
 
   REAL(dp)  X_ORBIT(6)
@@ -57,7 +59,13 @@ module orbit_ptc
   
 contains
 
-
+  subroutine setdbglvl_sqorbit(lvl)
+    implicit none
+    integer :: lvl
+    
+    dbglvl_sqorbit = lvl
+    
+  end subroutine setdbglvl_sqorbit
 
   SUBROUTINE PUT_RAY(X1,X2,X3,X4,X5,X6)
     IMPLICIT NONE
