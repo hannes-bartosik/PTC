@@ -427,18 +427,11 @@ contains
     REAL(DP),  INTENT(INOUT) :: X(6)
     INTEGER K,I
     LOGICAL(LP) U,cav
-    REAL(DP) X5,dt,dt_orbit_sync
+    REAL(DP) dt,dt_orbit_sync
     TYPE(INTEGRATION_NODE), POINTER  :: T
     TYPE(INTERNAL_STATE), target, OPTIONAL :: STATE
     TYPE(INTERNAL_STATE), pointer :: STATE0
-
-    IF(my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS) THEN
-       x(1:4)=x(1:4)*1.e-3_dp
-       X5=X(5)
-       X(5)=X(6)/my_ORBIT_LATTICE%ORBIT_P0C
-       X(6)=X5/my_ORBIT_LATTICE%ORBIT_OMEGA
-    ENDIF
-
+    
     u=my_false
 
     T=>my_ORBIT_LATTICE%ORBIT_NODES(K)%NODE
@@ -548,14 +541,7 @@ contains
        T=>T%NEXT
     ENDDO
     first_particle=.false.
-
-    IF(my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS) THEN
-       x(1:4)=x(1:4)*1.e3_dp
-       X5=X(5)
-       X(5)=X(6)*my_ORBIT_LATTICE%ORBIT_OMEGA
-       X(6)=X5*my_ORBIT_LATTICE%ORBIT_P0C
-    ENDIF
-
+    
   end SUBROUTINE ORBIT_TRACK_NODE_Standard_R
 
 
@@ -679,7 +665,7 @@ contains
     real(dp),intent(inout) :: x(6)
     TYPE(INTEGRATION_NODE), POINTER  :: T
     type(acceleration), pointer :: a
-
+    
     a=>t%parent_fibre%mag%c4%acc
 
     X(2)=X(2)*a%w1%P0C/a%w2%P0C
@@ -1117,19 +1103,8 @@ contains
     type(real_8),  INTENT(INOUT) :: X(6)
     INTEGER K,I,j
     LOGICAL(LP) U
-    type(real_8) X5
     TYPE(INTEGRATION_NODE), POINTER  :: T
     TYPE(INTERNAL_STATE), OPTIONAL :: STATE
-
-    IF(my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS) THEN
-       call alloc(x5)
-       do i=1,4
-          x(i)=x(i)*1.e-3_dp
-       enddo
-       X5=X(5)
-       X(5)=X(6)/my_ORBIT_LATTICE%ORBIT_P0C
-       X(6)=X5/my_ORBIT_LATTICE%ORBIT_OMEGA
-    ENDIF
 
 
     u=my_false
@@ -1167,17 +1142,6 @@ contains
        T=>T%NEXT
     ENDDO
     !    ENDIF
-
-    IF(my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS) THEN
-       do i=1,4
-          x(i)=x(i)*1.e3_dp
-       enddo
-       X5=X(5)
-       X(5)=X(6)*my_ORBIT_LATTICE%ORBIT_OMEGA
-       X(6)=X5*my_ORBIT_LATTICE%ORBIT_P0C
-       call kill(x5)
-
-    ENDIF
 
   end SUBROUTINE ORBIT_TRACK_NODEP
 
@@ -1409,18 +1373,12 @@ contains
     closed=0.0_dp
 
  !   CALL FIND_ORBIT(R,CLOSED,1,STATE,c_1d_5)
-closed(1)=0.001d0
-call kanalnummer(mf,"junk.txt")
-p=>r%start
-do i=1,r%n
-    CALL TRACK(R,closed,i,i+1,STATE)
-write(mf,*) i,p%mag%name
-write(mf,*) closed(1:2)
-p=>p%next
-enddo
-!write(6,*) closed
-close(mf)
-!pause 123
+    closed(1)=0.001d0
+    p=>r%start
+    do i=1,r%n
+      CALL TRACK(R,closed,i,i+1,STATE)
+    p=>p%next
+    enddo
 
 	CALL FIND_ORBIT(R,CLOSED,1,STATE,1e-5_dp)
     ID=1
@@ -1576,13 +1534,13 @@ close(mf)
     COP(1)=Y(2).SUB.'0000'
     COP(2)=Y(4).SUB.'0000'
 
-    WRITE(6,*) "TWISS PARAMETERS AT THE ENTRANCE"
-    WRITE(6,*) "BETAs ", BET
-    WRITE(6,*) "ALPHAs ",ALF
-    WRITE(6,*) "ETAs ", ETA
-    WRITE(6,*) "ETAPs ", ETAP
-    WRITE(6,*) "COs ", CO
-    WRITE(6,*) "COPs ", COP
+    !! WRITE(6,*) "TWISS PARAMETERS AT THE ENTRANCE"
+    !! WRITE(6,*) "BETAs ", BET
+    !! WRITE(6,*) "ALPHAs ",ALF
+    !! WRITE(6,*) "ETAs ", ETA
+    !! WRITE(6,*) "ETAPs ", ETAP
+    !! WRITE(6,*) "COs ", CO
+    !! WRITE(6,*) "COPs ", COP
 
     DO K=1,my_ORBIT_LATTICE%ORBIT_N_NODE
        CALL ORBIT_TRACK_NODE(K,Y,STATE)
@@ -1609,13 +1567,13 @@ close(mf)
        ORBIT_NODES(K)%LATTICE(12)=CO(2)
        ORBIT_NODES(K)%LATTICE(13)=COP(2)
     ENDDO
-    WRITE(6,*) "TWISS PARAMETERS AT THE EXIT"
-    WRITE(6,*) "BETAs ", BET
-    WRITE(6,*) "ALPHAs ",ALF
-    WRITE(6,*) "ETAs ", ETA
-    WRITE(6,*) "ETAPs ", ETAP
-    WRITE(6,*) "COs ", CO
-    WRITE(6,*) "COPs ", COP
+    !! WRITE(6,*) "TWISS PARAMETERS AT THE EXIT"
+    !! WRITE(6,*) "BETAs ", BET
+    !! WRITE(6,*) "ALPHAs ",ALF
+    !! WRITE(6,*) "ETAs ", ETA
+    !! WRITE(6,*) "ETAPs ", ETAP
+    !! WRITE(6,*) "COs ", CO
+    !! WRITE(6,*) "COPs ", COP
 
     my_ORBIT_LATTICE%ORBIT_USE_ORBIT_UNITS=my_true
  
@@ -1623,27 +1581,27 @@ close(mf)
 
 end module orbit_ptc
 
-subroutine ptc_track_particle(node_index, x,xp,y,yp,phi,dE)
+subroutine ptc_track_particle(node_index, x,xp,y,yp,pt,ct)
 
   USE orbit_ptc
   IMPLICIT NONE
-  REAL(DP) x,xp,y,yp,phi,dE
+  REAL(DP) x,xp,y,yp,pt,ct
   INTEGER node_index
   INTEGER i
 
   i = node_index + 1
 
 
-  call PUT_RAY(x,xp,y,yp,phi,dE)
+  call PUT_RAY(x,xp,y,yp,pt,ct)
 
   call TRACK_ONE_NODE(i)
 
-  call GET_RAY(x,xp,y,yp,phi,dE)
+  call GET_RAY(x,xp,y,yp,pt,ct)
 
   IF(I==1.AND.MF_HERD/=0) THEN
-     WRITE(MF_HERD,'(4(1X,E15.8))') PHI,DE,my_ORBIT_LATTICE%orbit_p0c, &
+     WRITE(MF_HERD,'(4(1X,E15.8))') ct,pt,my_ORBIT_LATTICE%orbit_p0c, &
           x_orbit_sync(5)/my_ORBIT_LATTICE%ORBIT_OMEGA/clight*1e3_dp
-     !       WRITE(MF_HERD,'(6(1X,E15.8))') PHI,DE,X_ORBIT(6),X_ORBIT(5), &
+     !       WRITE(MF_HERD,'(6(1X,E15.8))') ct,pt,X_ORBIT(6),X_ORBIT(5), &
      !x_orbit_sync(5)/my_ORBIT_LATTICE%ORBIT_OMEGA/clight*1000.d0,my_ORBIT_LATTICE%ORBIT_OMEGA
      !        ,my_ORBIT_LATTICE%ORBIT_P0C
   ENDIF

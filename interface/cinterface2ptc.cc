@@ -15,51 +15,54 @@ void ptc_trackBunch(Bunch* bunch, double PhaseLength,
   double xp_map;
   double y_map;
   double yp_map;
-  double phi_map;
-  double deltaE_map;
+  double ct_map;
+  double pt_map;
+  double Ekin;
 
-  double twopi = 2.0 * OrbitConst::PI;
-  double ZtoPhi = -twopi / PhaseLength;
-  double PhaseWrap = 0.0;
-
+  double beta0_ent, p0c_ent, beta0_ext, p0c_ext;
   ptc_synchronous_set_(&orbit_ptc_node_index);
 
   bunch->compress();
   SyncPart* syncPart = bunch->getSyncPart();
   double** arr = bunch->coordArr();
-
+  
   for(int i = 0; i < bunch->getSize(); i++)
   {
-    x_map   = 1000.0 * arr[i][0];
-    xp_map  = 1000.0 * arr[i][1];
-    y_map   = 1000.0 * arr[i][2];
-    yp_map  = 1000.0 * arr[i][3];
-
-    phi_map = ZtoPhi * arr[i][4];
-
-    PhaseWrap = 0.0;
-    if(phi_map < -OrbitConst::PI)
+    if(i==0)
     {
-      PhaseWrap = twopi;
+      ptc_get_p0c_(&p0c_ent);
+      ptc_get_beta0_(&beta0_ent);
     }
-    if(phi_map >  OrbitConst::PI)
-    {
-      PhaseWrap = -twopi;
-    }
-    phi_map += PhaseWrap;
-
-    deltaE_map = arr[i][5];
+    x_map   =  arr[i][0];
+    xp_map  =  arr[i][1];
+    y_map   =  arr[i][2];
+    yp_map  =  arr[i][3];
+    ct_map  = -arr[i][4]/beta0_ent;
+    pt_map  =  arr[i][5]/p0c_ent;
 
     ptc_track_particle_(&orbit_ptc_node_index, &x_map, &xp_map,
-                        &y_map, &yp_map, &phi_map, &deltaE_map);
+                        &y_map, &yp_map, &pt_map, &ct_map);
 
-    arr[i][0] =  x_map / 1000.0;
-    arr[i][1] =  xp_map / 1000.0;
-    arr[i][2] =  y_map / 1000.0;
-    arr[i][3] =  yp_map / 1000.0;
-    arr[i][4] = (phi_map - PhaseWrap) / ZtoPhi;
-    arr[i][5] = deltaE_map;
+    if(i==0)
+    {
+      ptc_get_p0c_(&p0c_ext);
+      ptc_get_beta0_(&beta0_ext);
+    }
+    arr[i][0] =  x_map;
+    arr[i][1] =  xp_map;
+    arr[i][2] =  y_map;
+    arr[i][3] =  yp_map;
+    arr[i][4] = -ct_map*beta0_ext;
+    arr[i][5] =  pt_map*p0c_ext;
+  }
+  
+  ptc_synchronous_after_(&orbit_ptc_node_index);
+
+  if(p0c_ent != p0c_ext)
+  {
+    ptc_get_kinetic_(&Ekin);
+    syncPart->setMomentum(syncPart->energyToMomentum(Ekin));
   }
 
-  ptc_synchronous_after_(&orbit_ptc_node_index);
 }
+
