@@ -197,27 +197,6 @@ end
       return
       end
 
-
-!===================================================
-!track 6D coordinates through the PTC-ORBIT node
-!===================================================
-!       subroutine ptc_track_particle(node_index, x,xp,y,yp,phi,dE)
-!
-!         USE orbit_ptc
-!         IMPLICIT NONE
-!         REAL(DP) x,xp,y,yp,phi,dE
-!         INTEGER node_index
-!         INTEGER i
-!        
-!         i = node_index + 1
-!        
-!         call PUT_RAY(x,xp,y,yp,phi,dE)
-!         call TRACK_ONE_NODE(i)
-!         call GET_RAY(x,xp,y,yp,phi,dE)
-!
-!       return
-!       end subroutine orbit_ptc_track_particle
-!
 !===========================================================
 ! This subroutine should be called before particle tracking.
 !  It specifies the type of the task that will be performed
@@ -249,7 +228,51 @@ end
      call GET_omega(x)
 
    END SUBROUTINE ptc_get_omega
+   
+!===================================================
+!It returns P0C
+!===================================================
+   SUBROUTINE ptc_get_p0c(x)
 
+     USE orbit_ptc
+     IMPLICIT NONE
+     REAL(DP) x
+     call GET_P0C(x)
+
+   END SUBROUTINE ptc_get_p0c
+
+!===================================================
+!It returns BETA0
+!===================================================
+   SUBROUTINE ptc_get_beta0(x)
+
+     USE orbit_ptc
+     IMPLICIT NONE
+     REAL(DP) x
+     call GET_BETA0(x)
+
+   END SUBROUTINE ptc_get_beta0
+
+!===================================================
+!It returns E_kin
+!===================================================
+   SUBROUTINE ptc_get_kinetic(x)
+
+     USE orbit_ptc
+     IMPLICIT NONE
+     REAL(DP) x
+     call GET_kinetic(x)
+
+   END SUBROUTINE ptc_get_kinetic
+
+!===========================================================
+! This subroutine updates the TWISS
+!===========================================================
+  SUBROUTINE PTC_UPDATE_TWISS
+    use orbit_ptc
+    call UPDATE_TWISS_FOR_ORBIT
+  END SUBROUTINE PTC_UPDATE_TWISS
+  
 !===================================================
 !It reads the acceleration table into the ptc code
 !===================================================

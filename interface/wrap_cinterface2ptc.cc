@@ -265,6 +265,16 @@ static PyObject* wrap_ptc_set_dbglevel_(PyObject *self, PyObject *args)
   return Py_None;
 }
 
+//===================================================
+// This recalculates the PTC TWISS
+//===================================================
+
+static PyObject* wrap_ptc_update_twiss_(PyObject *self, PyObject *args)
+{
+  ptc_update_twiss_();
+  Py_INCREF(Py_None);
+  return Py_None;
+}
 
 static PyMethodDef ptcMethods[] =
 {
@@ -281,6 +291,7 @@ static PyMethodDef ptcMethods[] =
   {"ptc_get_omega_",          wrap_ptc_get_omega_,          METH_VARARGS, "Returns fundamental RF frequency"},
   {"ptc_trackBunch",          wrap_ptc_trackBunch,          METH_VARARGS, "Track the Bunch through a PTC element"},
   {"ptc_setdbglevel",         wrap_ptc_set_dbglevel_,       METH_VARARGS, "Set debug level in PTC-Orbit interface"},
+  {"ptc_update_twiss_",       wrap_ptc_update_twiss_,		METH_VARARGS, "Recalculates the PTC TWISS"},
   {NULL, NULL}
 };
 
