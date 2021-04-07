@@ -55,7 +55,6 @@ extern "C" void ptc_get_syncpart_(double* mass, int* charge,
 // These methods are located inside PTC (not interfaces)
 // If node_index < 0 then PTC will do something inside
 //     that does not relate to tracking
-
 extern "C" void ptc_synchronous_after_(int* node_index);
 
 // Read the acceleration table into the ptc code

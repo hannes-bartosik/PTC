@@ -20,7 +20,7 @@ void ptc_trackBunch(Bunch* bunch, double PhaseLength,
   double Ekin;
 
   double beta0_ent, p0c_ent, beta0_ext, p0c_ext;
-  ptc_synchronous_set_(&orbit_ptc_node_index);
+  //ptc_synchronous_set_(&orbit_ptc_node_index); function does nothing now so it was removed from ptc interface
 
   bunch->compress();
   SyncPart* syncPart = bunch->getSyncPart();
