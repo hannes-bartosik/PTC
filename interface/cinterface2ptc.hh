@@ -55,7 +55,6 @@ extern "C" void ptc_get_syncpart_(double* mass, int* charge,
 // These methods are located inside PTC (not interfaces)
 // If node_index < 0 then PTC will do something inside
 //     that does not relate to tracking
-
 extern "C" void ptc_synchronous_after_(int* node_index);
 
 // Read the acceleration table into the ptc code
@@ -78,7 +77,7 @@ extern "C" void ptc_get_twiss_for_node_(int* node_index, double* length,
 extern "C" void ptc_track_particle_(int* node_index,
                                     double* x,   double* xp,
                                     double* y,   double* yp,
-                                    double* phi, double* dE);
+									double* pt, double* ct);
 
 // Reads additional ptc commands from file and executes them inside ptc
 
@@ -102,6 +101,24 @@ extern "C" void ptc_get_task_type_(int* i_node, int* i_task);
 extern "C" void  ptc_get_omega_(double* X);
 
 //===================================================
+// It returns P0C
+//===================================================
+
+extern "C" void  ptc_get_p0c_(double* X);
+
+//===================================================
+// It returns BETA0
+//===================================================
+
+extern "C" void  ptc_get_beta0_(double* X);
+
+//===================================================
+// It returns kinetic energy
+//===================================================
+
+extern "C" void  ptc_get_kinetic_(double* X);
+
+//===================================================
 // Method to track a bunch of particles using
 // ptc_track_particle_
 //===================================================
@@ -110,5 +127,11 @@ void ptc_trackBunch(Bunch* bunch, double ZtoPhi,
                     int &orbit_ptc_node_index);
 
 extern "C" void setdebuglevel_(int* dbglevel);
+
+//===================================================
+// This recalculates the PTC TWISS
+//===================================================
+
+extern "C" void  ptc_update_twiss_();
 
 #endif  // PTC_C_INTERFACE_H
